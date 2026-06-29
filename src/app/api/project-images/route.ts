@@ -27,14 +27,22 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const data = await req.json();
-    if (!data.image) return jsonError("Image is required.", 400);
+    const data = await req.json().catch(() => null);
+    if (!data || typeof data !== "object") {
+      return jsonError("Invalid request payload.", 400);
+    }
+
+    const image = typeof data.image === "string" ? data.image.trim() : "";
+    if (!image) return jsonError("Image is required.", 400);
+
+    const title = typeof data.title === "string" ? data.title.trim() : "";
+    const sortOrder = Number.parseInt(String((data as { sortOrder?: unknown }).sortOrder ?? 0), 10) || 0;
 
     const item = await prisma.projectImage.create({
       data: {
-        title: String(data.title || "Project image").trim(),
-        image: String(data.image),
-        sortOrder: Number.parseInt(String(data.sortOrder || 0), 10) || 0,
+        title: title || "Project image",
+        image,
+        sortOrder,
       },
     });
     return NextResponse.json(item, { status: 201 });

@@ -39,6 +39,7 @@ import {
   getPublicFeaturedProducts,
   getPublicNewArrivals,
 } from "@/lib/publicProducts";
+import { getPublicServiceSpecializations } from "@/lib/publicSpecializations";
 import { ReactElement } from "react";
 import { getPublicProjectImages } from "@/lib/publicGalleries";
 import { getRecentPublishedBlogs, parseBlogImages } from "@/lib/publicBlogs";
@@ -75,12 +76,14 @@ export default async function HomePage() {
     featuredProducts,
     projectImages,
     recentBlogs,
+    specializations,
   ] = await Promise.all([
     getPublicCategories(),
     getPublicNewArrivals(8),
     getPublicFeaturedProducts(8),
     getPublicProjectImages(),
     getRecentPublishedBlogs(3),
+    getPublicServiceSpecializations(),
   ]);
 
   return (
@@ -91,7 +94,7 @@ export default async function HomePage() {
   {/* Background */}
   <div className="absolute inset-0">
     <Image
-      src="/images/fire-1.png" 
+      src="/images/sendenquiry.png" 
       alt="Fire Safety Solutions"
       fill
       className="object-cover opacity-40" // Increased visibility
@@ -162,65 +165,69 @@ export default async function HomePage() {
       {/* ==================== ABOUT SECTION ==================== */}
       <section className="py-16 bg-white" id="about">
   <div className="max-w-7xl mx-auto px-4 sm:px-6">
-    <div className="flex flex-col lg:flex-row gap-12 items-start">
-      
-      {/* LEFT: Image */}
-      <div className="w-full lg:w-[400px] h-[300px] shrink-0 rounded-2xl overflow-hidden shadow-lg">
-        <Image
-          src="/images/team-1.png" // Replace with your team/engineers image
-          alt="Radiatech Electra Engineers"
-          width={400}
-          height={300}
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* CENTER: Text Content */}
-      <div className="flex-1 space-y-6">
+    <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+      <div className="space-y-8">
         <div className="flex items-center gap-3">
           <span className="text-red-600 font-bold text-sm uppercase tracking-wider">About Us</span>
           <div className="h-0.5 w-12 bg-red-600" />
         </div>
-        
-        <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight">
-          BUILDING SAFER TOMORROW <br />
-          WITH <span className="text-red-600">SMART SOLUTIONS</span>
-        </h2>
-        
-        <p className="text-gray-600 leading-relaxed">
-          Radiatech Electra is a trusted name in the field of fire protection and safety solutions. 
-          We deliver complete turnkey projects with high-quality products, advanced engineering 
-          and timely execution. Our mission is to protect lives, assets and the environment.
-        </p>
+
+        <div className="space-y-6">
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight">
+            YOUR TRUSTED PARTNER FOR <br />
+            INDUSTRIAL FIRE &amp; SAFETY SOLUTIONS
+          </h2>
+          <p className="max-w-2xl text-gray-600 leading-relaxed">
+            Radiatech Electra delivers complete turnkey solutions for fire protection, safety systems, and industrial piping.
+            We combine high-quality products, modern engineering, and disciplined execution to protect lives, assets, and operations.
+          </p>
+          <Link
+            href="/about"
+            className="inline-flex items-center justify-center rounded-full bg-red-600 px-8 py-3 text-sm font-semibold text-white transition-all hover:bg-red-700"
+          >
+            Learn More About Us
+          </Link>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            "Fire Protection Systems",
+            "Fire Alarm & Detection",
+            "Emergency Response Solutions",
+            "Safety Audit & Risk Assessment",
+            "Hydrant & Sprinkler Systems",
+            "Industrial Safety Solutions",
+            "AMC & Maintenance Services",
+            "Design, Supply, Installation & Commissioning",
+          ].map((item) => (
+            <div key={item} className="flex items-start gap-3 rounded-3xl border border-gray-200 bg-gray-50 p-5">
+              <CheckCircle2 size={20} className="mt-1 text-red-600 shrink-0" />
+              <p className="text-sm font-medium text-gray-700">{item}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* RIGHT: Services List */}
-      <div className="w-full lg:w-1/3 border-l-0 lg:border-l border-gray-200 lg:pl-10 space-y-4">
-        {[
-          "Fire Protection Systems",
-          "Fire Alarm & Detection",
-          "Hydrant & Sprinkler Systems",
-          "Industrial Safety Solutions",
-          "AMC & Maintenance Services",
-          "Design, Supply, Installation & Commissioning"
-        ].map((item) => (
-          <div key={item} className="flex items-center gap-3 text-gray-800">
-            <CheckCircle2 size={20} className="text-red-600 shrink-0" />
-            <span className="font-medium text-sm">{item}</span>
-          </div>
-        ))}
+      <div className="relative h-[520px] overflow-hidden rounded-[2rem] shadow-2xl bg-gray-100">
+        <Image
+          src="/images/main2.png"
+          alt="Radiatech Electra Engineers"
+          fill
+          sizes="(min-width: 1024px) 45vw, (min-width: 640px) 60vw, 100vw"
+          className="object-cover"
+        />
       </div>
     </div>
   </div>
 </section>
 
       {/* ==================== PRODUCT CATEGORIES ==================== */}
-      {/* <section className="py-20 sm:py-28 bg-white" id="products">
+      <section className="py-20 sm:py-28 bg-white" id="products">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center justify-center gap-3 mb-4">
-              <div className="w-10 h-0.5 bg-primary" />
-              <span className="text-primary font-bold text-sm uppercase tracking-[0.2em]">
+              <div className="w-10 h-0.5 bg-red-600" />
+              <span className="text-red-600 font-bold text-sm uppercase tracking-[0.2em]">
                 Our Collection
               </span>
             </div>
@@ -228,12 +235,12 @@ export default async function HomePage() {
               Our Product Range
             </h2>
             <p className="text-gray-600 max-w-xl mx-auto">
-              Comprehensive range of PPR-C pipes, fittings, and industrial
+              Comprehensive range of Fire & Safety products, fittings, and industrial
               solutions meeting international standards.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {categories.map((cat) => (
               <div
                 key={cat.slug}
@@ -247,7 +254,7 @@ export default async function HomePage() {
                     src={cat.image}
                     alt={cat.name}
                     fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -267,13 +274,13 @@ export default async function HomePage() {
                   <div className="mt-auto flex items-center gap-3">
                     <Link
                       href={`/products/${cat.slug}`}
-                      className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white px-4 py-3 rounded-xl text-xs font-bold transition-all"
+                      className="flex-1 inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-xl text-xs font-bold transition-all"
                     >
                       View <ChevronRight size={14} />
                     </Link>
                     <EnquiryButton
                       productName={cat.name}
-                      className="flex-[1.5] inline-flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-900 hover:border-primary hover:text-primary px-4 py-3 rounded-xl text-xs font-bold transition-all"
+                      className="flex-[1.5] inline-flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-900 hover:border-red-600 hover:text-red-600 px-4 py-3 rounded-xl text-xs font-bold transition-all"
                     />
                   </div>
                 </div>
@@ -284,16 +291,16 @@ export default async function HomePage() {
           <div className="text-center mt-16">
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-10 py-4 rounded-2xl font-bold transition-all shadow-lg hover:shadow-xl"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-10 py-4 rounded-2xl font-bold transition-all shadow-lg hover:shadow-xl"
             >
               View All Products <ArrowRight size={18} />
             </Link>
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* ==================== NEW ARRIVALS ==================== */}
-      {/* <section className="py-20 sm:py-28 bg-gray-50">
+      /* <section className="py-20 sm:py-28 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center justify-center gap-3 mb-4">
@@ -361,7 +368,7 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-      </section> */}
+      </section> */
 
       {/* ==================== FEATURED PRODUCTS ==================== */}
       {/* <section className="py-20 sm:py-28 bg-white" id="featured">
@@ -521,44 +528,43 @@ export default async function HomePage() {
 
       {/* ====================OUR SPECIALISATIONS=================== */}
       <section className="py-20 bg-white" id="specialisations">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6">
-    {/* Section Header */}
-    <div className="text-center mb-16">
-      <h2 className="text-4xl font-bold text-gray-900 mb-4">OUR SPECIALISATIONS</h2>
-      <div className="h-1.5 w-20 bg-red-600 mx-auto" />
-    </div>
-
-    {/* Grid Container */}
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-      {companyInfo.specialisations.map((item) => (
-        <div
-          key={item.title}
-          className="flex flex-col items-center text-center p-8 border border-gray-100 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 min-h-[320px]"
-        >
-          {/* Icon - Slightly larger (size 48) */}
-          <div className="text-red-600 mb-8">
-            {iconMap[item.icon as keyof typeof iconMap] ? (
-              React.cloneElement(iconMap[item.icon as keyof typeof iconMap] as React.ReactElement)
-            ) : (
-              <Shield size={48} />
-            )}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">OUR SPECIALISATIONS</h2>
+            <div className="h-1.5 w-20 bg-red-600 mx-auto" />
           </div>
 
-          {/* Title & Description - Slightly more breathing room */}
-          <h3 className="text-base font-bold text-gray-900 uppercase mb-4 px-2 tracking-wide">
-            {item.title}
-          </h3>
-          <p className="text-sm text-gray-600 leading-relaxed mb-8 px-2">
-            {item.description}
-          </p>
+          {/* Auto-scrolling card row */}
+          <div className="overflow-hidden">
+            <div className="flex gap-6 py-8 min-w-max animate-marquee">
+              {specializations.concat(specializations).map((item, index) => (
+                <div
+                  key={`${item.id}-${index}`}
+                  className="flex min-w-[320px] max-w-[320px] flex-col items-center text-center p-8 border border-gray-100 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="relative mb-8 h-40 w-full overflow-hidden rounded-3xl bg-slate-100">
+                    {item.image ? (
+                      <Image src={item.image} alt={item.title} fill className="object-cover" unoptimized />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-slate-500">No image</div>
+                    )}
+                  </div>
 
-          {/* Red underline accent */}
-          <div className="h-1 w-12 bg-red-600 mt-auto rounded-full" />
+                  <h3 className="text-xl font-bold text-gray-900 uppercase mb-4 px-2 tracking-wide">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-8 px-2">
+                    {item.shortDescription}
+                  </p>
+
+                  <div className="h-1 w-12 bg-red-600 mt-auto rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* ==================== WORK PROCESS ==================== */}
       <section className="py-24 bg-white" id="process">
@@ -629,7 +635,7 @@ export default async function HomePage() {
 </section>
 
       {/* ==================== PROJECT SHOWCASE ==================== */}
-      {/* <section className="py-20 sm:py-28 bg-gray-50" id="projects">
+      /* <section className="py-20 sm:py-28 bg-gray-50" id="projects">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center justify-center gap-3 mb-4">
@@ -649,7 +655,7 @@ export default async function HomePage() {
 
           <ExpandableGallery images={projectImages} initialLimit={6} />
         </div>
-      </section> */}
+      </section> */
 
       {/* ==================== APPLICATIONS ==================== */}
       <section className="py-20 bg-gray-50" id="applications">
@@ -780,7 +786,7 @@ export default async function HomePage() {
       </section> */}
 
       {/* ==================== BLOG / INSIGHTS ==================== */}
-      {/* <section className="py-20 sm:py-28 bg-white" id="blogs">
+      /* <section className="py-20 sm:py-28 bg-white" id="blogs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center justify-center gap-3 mb-4">
@@ -860,7 +866,7 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
-      </section> */}
+      </section> */
 
       {/* ==================== CTA / INQUIRY SECTION ==================== */}
       <section className="py-20 relative overflow-hidden">

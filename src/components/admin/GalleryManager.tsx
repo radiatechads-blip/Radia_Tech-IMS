@@ -33,8 +33,10 @@ export default function GalleryManager({ endpoint, uploadFolder, title, descript
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [showForm, setShowForm] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -79,16 +81,30 @@ export default function GalleryManager({ endpoint, uploadFolder, title, descript
     setShowForm(false);
     setEditId(null);
     setForm(emptyForm);
+    setSubmitError("");
   };
 
   const handleEdit = (item: GalleryItem) => {
     setEditId(item.id);
     setForm({ title: item.title, image: item.image, sortOrder: item.sortOrder });
+    setSubmitError("");
     setShowForm(true);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSubmitError("");
+
+    if (!form.image.trim()) {
+      setSubmitError("Please upload an image before saving.");
+      return;
+    }
+
+    if (uploadingImage) {
+      setSubmitError("Please wait for the image upload to finish.");
+      return;
+    }
+
     const url = editId ? `/api/${endpoint}/${editId}` : `/api/${endpoint}`;
     const method = editId ? "PUT" : "POST";
     const response = await fetch(url, {
@@ -105,7 +121,7 @@ export default function GalleryManager({ endpoint, uploadFolder, title, descript
     }
 
     const data = (await response.json().catch(() => null)) as { error?: unknown } | null;
-    alert(typeof data?.error === "string" ? data.error : "Failed to save gallery image.");
+    setSubmitError(typeof data?.error === "string" ? data.error : "Failed to save gallery image.");
   };
 
   const handleDelete = async (id: string) => {
@@ -144,7 +160,8 @@ export default function GalleryManager({ endpoint, uploadFolder, title, descript
                 <input type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number.parseInt(event.target.value, 10) || 0 })} className="admin-input" />
               </label>
             </div>
-            <ImageUpload folder={uploadFolder} currentImage={form.image} onImageSelect={(url) => setForm({ ...form, image: url })} label="Image *" />
+            <ImageUpload folder={uploadFolder} currentImage={form.image} onImageSelect={(url) => setForm({ ...form, image: url })} onUploadStateChange={setUploadingImage} label="Image *" />
+            {submitError && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</div>}
             <div className="flex flex-col gap-2 pt-2 sm:flex-row">
               <button type="submit" className="bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark">{editId ? "Update Image" : "Create Image"}</button>
               <button type="button" onClick={resetForm} className="border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>

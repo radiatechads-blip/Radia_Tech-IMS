@@ -17,23 +17,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     default:
-      "Radiatech Electra - Leading PPR-C Pipes & Fittings Supplier in India",
+      "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
     template: "%s | Radiatech Electra",
   },
   description:
-    "Radiatech Electra Private Limited is a leading trader and supplier of PPR-C pipes and fittings for industrial applications. DIN 16962 compliant products with 50+ year service life. Serving 500+ businesses across India.",
+    "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
   keywords: [
-    "PPR pipes",
-    "PPRC fittings",
-    "industrial piping",
-    "pipe supplier",
+    "Fire Protection",
+    "Fire Detection",
+    "Hydrant Systems",
+    "Sprinkler Systems",
+    "Integrated Safety Solutions",
     "Radiatech Electra",
-    "piping solutions India",
-    "PPR-C pipes supplier",
-    "DIN 16962 pipes",
-    "industrial pipe fittings",
-    "PPR valves",
-    "pipe welding tools",
+    "Fire Safety India",
+    "Industrial Fire Safety",
+    "Critical Infrastructure Protection",
+    "Quality Fire Safety Solutions",
+    "Reliable Fire Safety Equipment",
   ],
   authors: [{ name: "Radiatech Electra Private Limited" }],
   creator: "Radiatech Electra",
@@ -51,9 +51,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     siteName: "Radiatech Electra",
-    title: "Radiatech Electra - Leading PPR-C Pipes & Fittings Supplier",
+    title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
     description:
-      "Leading trader and supplier of PPR-C pipes and fittings for industrial applications. DIN 16962 compliant. Trusted by 500+ businesses.",
+      "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
     images: [
       {
         url: "/LOGO.png",
@@ -65,9 +65,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "Radiatech Electra - PPR-C Pipes Supplier",
+    title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
     description:
-      "Leading supplier of industrial PPR-C piping solutions in India.",
+      "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
     images: ["/LOGO.png"],
   },
   robots: { index: true, follow: true },
@@ -89,8 +89,8 @@ const jsonLd = {
   },
   image: `${siteUrl}/LOGO.png`,
   description:
-    "Leading trader and supplier of PPR-C pipes and fittings for industrial applications in India.",
-  foundingDate: "2021",
+    "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
+  foundingDate: "2026",
   telephone: "+91-8178850959",
   email: "radiatechelectra@gmail.com",
   priceRange: "$$",
@@ -136,7 +136,7 @@ export default function RootLayout({
       <body className="min-h-full bg-white text-[#111] antialiased">
         {/* <div style={{ fontFamily: "sans-serif", color: "#111", textAlign: "center" }}>
           <p style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Please contact to developer</p>
-          <p style={{ fontSize: "1.5rem" }}>📞 9621492080</p>
+          <p style={{ fontSize: "1.5rem" }}>📞 7239066492</p>
         </div> */}
         <SiteFrame>
           {/* <PopupModal /> */}

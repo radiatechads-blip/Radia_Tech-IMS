@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, BookOpenText, Building2, FolderTree, ImageIcon, Inbox, LogOut, Menu, Package, UserCircle, X } from "lucide-react";
+import { BarChart3, BookOpenText, Building2, FolderTree, ImageIcon, Inbox, LogOut, Menu, Package, Sparkles, UserCircle, X } from "lucide-react";
 import { companyInfo } from "@/data/company";
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
   { label: "Our Projects", href: "/admin/projects", icon: ImageIcon },
   { label: "Infrastructure Gallery", href: "/admin/infrastructure-gallery", icon: Building2 },
+  { label: "Specialisations", href: "/admin/specializations", icon: Sparkles },
   { label: "Blog Posts", href: "/admin/blogs", icon: BookOpenText },
   { label: "Inquiries", href: "/admin/inquiries", icon: Inbox },
   { label: "My Profile", href: "/admin/profile", icon: UserCircle },

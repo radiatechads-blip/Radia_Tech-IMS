@@ -84,10 +84,10 @@ export default function Footer() {
               {[
                 { label: "Home", href: "/" },
                 { label: "About Us", href: "/about" },
-                { label: "Products", href: "/products" },
-                { label: "Catalogue", href: "/catalogue" },
-                { label: "Infrastructure", href: "/infrastructure" },
-                { label: "Clients", href: "/clients" },
+                { label: "Why Us", href: "/why-us" },
+                { label: "Fire Systems", href: "/products" },
+                { label: "Specialisation", href: "/specialisation" },
+                { label: "Projects", href: "/projects" },
                 { label: "Blogs", href: "/blogs" },
                 { label: "Contact", href: "/contact" },
               ].map((link) => (

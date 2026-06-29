@@ -32,9 +32,9 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
   return (
     <main className="bg-white">
       {/* Hero Section */}
-      <section className="bg-primary py-18">
+      <section className="bg-red-700 py-18">
         <div className="max-w-4xl mx-auto px-6">
-          <Link href="/blogs" className="inline-flex items-center gap-2 text-blue-200 hover:text-white text-sm font-medium mb-6 transition-colors">
+          <Link href="/blogs" className="inline-flex items-center gap-2 text-red-200 hover:text-white text-sm font-medium mb-6 transition-colors">
             <ArrowLeft size={16} /> Back to Blog
           </Link>
           {tags[0] && (
@@ -43,7 +43,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
             </span>
           )}
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 leading-tight">{blog.title}</h1>
-          <div className="flex flex-wrap items-center gap-6 text-blue-200 text-sm">
+          <div className="flex flex-wrap items-center gap-6 text-red-200 text-sm">
             <span className="flex items-center gap-2">
               <Calendar size={16} />
               {new Date(blog.publishedAt || blog.createdAt).toLocaleDateString("en-IN", { month: "long", day: "numeric", year: "numeric" })}
@@ -98,7 +98,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
                     <div className="relative h-56 rounded-2xl overflow-hidden mb-4 shadow-sm">
                       {rb.coverImage && <Image src={rb.coverImage} alt={rb.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />}
                     </div>
-                    <h4 className="font-bold text-gray-900 group-hover:text-primary transition-colors">{rb.title}</h4>
+                    <h4 className="font-bold text-gray-900 group-hover:text-red-700 transition-colors">{rb.title}</h4>
                     <p className="text-gray-500 text-sm mt-2">{new Date(rb.publishedAt || rb.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</p>
                   </Link>
                 ))}

@@ -97,3 +97,15 @@ model Inquiry {
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 }
+
+model ServiceSpecialization {
+  id               String   @id @default(cuid())
+  title            String
+  shortDescription String
+  fullDescription  String
+  image            String   @default("")
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

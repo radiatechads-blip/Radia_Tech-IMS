@@ -10,10 +10,10 @@ import useCategoryLinks from "@/components/useCategoryLinks";
 const navLinks = [
   { label: "Home", href: "/" },
   { label: "About Us", href: "/about" },
+  { label: "Why Us", href: "/why-us" },
   { label: "Fire Systems", href: "/products" },
-  { label: "Catalogue", href: "/catalogue" },
-  { label: "Infrastructure", href: "/infrastructure" },
-  { label: "Clients", href: "/clients" },
+  { label: "Specialisation", href: "/specialisation" },
+  { label: "Projects", href: "/projects" },
   { label: "Blogs", href: "/blogs" },
   { label: "Contact", href: "/contact" },
 ];

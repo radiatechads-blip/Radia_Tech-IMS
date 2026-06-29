@@ -34,7 +34,7 @@ export default function AboutPage() {
               </div>
             </div>
             <div className="relative group">
-              <Image src="/images/p3.png" alt="Company Story" width={600} height={400} className="rounded-3xl w-full h-[450px] object-cover shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]" />
+              <Image src="/images/About page.png" alt="Company Story" width={600} height={400} className="rounded-3xl w-full h-[450px] object-cover shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]" />
               <div className="absolute -bottom-8 -right-8 bg-white p-8 rounded-3xl shadow-2xl border border-gray-100">
                 <div className="text-5xl font-extrabold text-red-600 mb-1">5+</div>
                 <div className="text-sm font-bold text-gray-900 uppercase">Years Experience</div>

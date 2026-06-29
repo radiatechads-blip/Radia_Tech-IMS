@@ -25,11 +25,8 @@ export default async function ProductsPage() {
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-6">Our Products</h1>
           <p className="text-lg text-gray-600 max-w-2xl mb-8">Comprehensive range of PPR-C pipes, fittings, and industrial piping solutions for all applications.</p>
           <div className="flex flex-wrap gap-4">
-            <Link href="/catalogue" className="bg-gray-900 hover:bg-black text-white px-8 py-3.5 rounded-lg font-bold flex items-center gap-2 transition-all">
-              View Catalogue <ArrowRight size={18} />
-            </Link>
-            <a href="/RADIATECH-CATALOGUE.pdf" download className="border border-gray-300 hover:border-gray-900 text-gray-900 px-8 py-3.5 rounded-lg font-bold transition-all">
-              Download PDF
+            <a href="/RADIATECH-CATALOGUE.pdf" download className="bg-gray-900 hover:bg-black text-white px-8 py-3.5 rounded-lg font-bold flex items-center gap-2 transition-all">
+              Download Product Brochure <Download size={18} />
             </a>
           </div>
         </div>

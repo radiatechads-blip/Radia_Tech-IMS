@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { normalizeDatabaseUrl } from "./dbUrl";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
@@ -10,7 +11,8 @@ function createPrismaClient() {
 		throw new Error("DATABASE_URL is required");
 	}
 
-	const adapter = new PrismaPg({ connectionString, ssl: { rejectUnauthorized: false } });
+	const normalizedConnectionString = normalizeDatabaseUrl(connectionString);
+	const adapter = new PrismaPg({ connectionString: normalizedConnectionString, ssl: { rejectUnauthorized: false } });
 	return new PrismaClient({ adapter });
 }
 

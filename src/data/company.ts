@@ -44,9 +44,9 @@ export const companyInfo = {
   
   about: {
     short: "Expert providers of advanced fire safety systems and industrial protection infrastructure, dedicated to ensuring maximum compliance and facility security.",
-    mission: "To deliver high-quality industrial piping solutions that enhance sustainability, safety, and performance in every application we serve.",
-    vision: "To become India's most trusted nationwide supplier of PPR-C piping systems and industrial piping solutions.",
-    description: "The driving force behind Radiatech Pipe and Fittings' success is the unwavering pursuit of perfection. As one of the most reputable suppliers of PPR-C pipes and fittings, Radiatech is committed to enhancing sustainability within the pipe and fittings industry, an essential factor for ensuring both quality and safety.\n\nWith over five years of industry experience, Radiatech offers a comprehensive range of PPR-C pipes in sizes from 20MM to 615 MM and pressure ratings from PN 6 to PN 20. All fittings fully comply with DIN 16962 standards, ensuring durability and reliability.\n\nRadiatech's PPR-C pipes and fittings are an excellent alternative to conventional piping systems and are ideal for applications including hot and cold water distribution, compressed air systems, chemical supply lines, and clean water networks.",
+    mission: "To deliver reliable and innovative Fire & Safety Solutions that protect lives and property while ensuring the highest standards of safety, quality, and performance.",
+    vision: "To become a trusted leader in Fire & Safety Solutions by delivering innovative, reliable, and sustainable protection systems that create safer environments for every project and community.",
+    description: "The driving force behind Radiatech Electra’s success is an unwavering commitment to safety, quality, and engineering excellence. As a trusted provider of Fire & Safety Solutions, Radiatech is dedicated to protecting lives, property, and critical infrastructure through advanced fire protection and safety systems.\n\nWith years of industry expertise, Radiatech delivers end-to-end Fire Detection, Fire Suppression, Fire Alarm, Fire Hydrant, Sprinkler, and Integrated Safety Solutions designed to meet modern safety standards and project requirements. Every solution is engineered for reliability, compliance, and long-term performance.\n\nRadiatech’s fire and safety systems serve as a dependable choice for commercial buildings, industrial facilities, residential projects, warehouses, manufacturing plants, healthcare facilities, and infrastructure developments. From consultation and design to installation and maintenance, Radiatech ensures complete protection through innovative technology and professional execution.\n\nRadiatech Electra — Protecting Lives. Securing the Future.",
   },
   
   specializations: [
@@ -119,10 +119,10 @@ export const companyInfo = {
   ],
   
   statsItems: [
-    { value: "150+", label: "PROJECTS COMPLETED", icon: Briefcase },
-    { value: "100+", label: "HAPPY CLIENTS", icon: ThumbsUp },
-    { value: "15+", label: "YEARS OF EXPERIENCE", icon: Clock },
-    { value: "50+", label: "EXPERT ENGINEERS", icon: Users },
+    { value: "15+", label: "PROJECTS COMPLETED", icon: Briefcase },
+    { value: "10+", label: "HAPPY CLIENTS", icon: ThumbsUp },
+    { value: "6+", label: "YEARS OF EXPERIENCE", icon: Clock },
+    { value: "75+", label: "EXPERT ENGINEERS", icon: Users },
     { value: "24/7", label: "SUPPORT AVAILABLE", icon: Headset },
   ],
 

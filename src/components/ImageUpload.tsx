@@ -9,6 +9,7 @@ interface ImageUploadProps {
   onImageSelect: (url: string) => void;
   currentImage?: string;
   label?: string;
+  onUploadStateChange?: (uploading: boolean) => void;
 }
 
 export default function ImageUpload({
@@ -16,6 +17,7 @@ export default function ImageUpload({
   onImageSelect,
   currentImage,
   label = "Upload Image",
+  onUploadStateChange,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +31,7 @@ export default function ImageUpload({
 
     setError("");
     setUploading(true);
+    onUploadStateChange?.(true);
 
     try {
       // Show preview immediately
@@ -61,6 +64,7 @@ export default function ImageUpload({
       setPreviewOverride(undefined);
     } finally {
       setUploading(false);
+      onUploadStateChange?.(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
