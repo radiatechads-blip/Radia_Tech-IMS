@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BookOpenText, FolderTree, Inbox, Package, TrendingUp } from "lucide-react";
+import { BookOpenText, FolderTree, Inbox, Package, Sparkles, TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import AdminShell from "@/components/admin/AdminShell";
 
@@ -26,6 +26,7 @@ interface Stats {
   products: number;
   categories: number;
   blogs: number;
+  specializations: number;
   inquiries: { total: number; unread: number };
   recentInquiries: Inquiry[];
   categoriesWithCounts?: CategoryCount[];
@@ -86,6 +87,7 @@ export default function AdminDashboard() {
   const statCards = [
     { label: "Active Products", value: stats?.products ?? 0, icon: Package, tone: "bg-blue-50 text-primary", href: "/admin/products" },
     { label: "Categories", value: stats?.categories ?? 0, icon: FolderTree, tone: "bg-orange-50 text-accent", href: "/admin/categories" },
+    { label: "Specializations", value: stats?.specializations ?? 0, icon: Sparkles, tone: "bg-purple-50 text-purple-700", href: "/admin/specializations" },
     { label: "Blog Posts", value: stats?.blogs ?? 0, icon: BookOpenText, tone: "bg-emerald-50 text-emerald-700", href: "/admin/blogs" },
     { label: "Unread Inquiries", value: stats?.inquiries.unread ?? 0, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/inquiries" },
   ];

@@ -8,10 +8,11 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [productCount, categoryCount, blogCount, totalInquiries, unreadInquiries, recentInquiries, categoriesWithCounts] = await Promise.all([
+    const [productCount, categoryCount, blogCount, specializationCount, totalInquiries, unreadInquiries, recentInquiries, categoriesWithCounts] = await Promise.all([
       prisma.product.count({ where: { isActive: true } }),
       prisma.productCategory.count(),
       prisma.blogPost.count(),
+      prisma.serviceSpecialization.count(),
       prisma.inquiry.count(),
       prisma.inquiry.count({ where: { isRead: false } }),
       prisma.inquiry.findMany({ orderBy: { createdAt: "desc" }, take: 5, include: { product: { select: { name: true } } } }),
@@ -25,6 +26,7 @@ export async function GET() {
       products: productCount,
       categories: categoryCount,
       blogs: blogCount,
+      specializations: specializationCount,
       inquiries: { total: totalInquiries, unread: unreadInquiries },
       recentInquiries,
       categoriesWithCounts: categoriesWithCounts.map((c) => ({ name: c.name, products: c._count.products })),
