@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ArrowRight } from "lucide-react";
+import { ChevronRight, ArrowRight, Download } from "lucide-react";
 import EnquiryButton from "@/components/EnquiryButton";
 import { getPublicCategories, getPublicNewArrivals } from "@/lib/publicProducts";
 
