@@ -190,7 +190,7 @@ export default function AdminBlogForm({ params }: { params: Promise<{ id: string
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <ImageUpload folder="blogs" currentImage={form.coverImage} onImageSelect={(url) => setForm({ ...form, coverImage: url, images: form.images.length > 0 ? form.images : url ? [url] : [] })} label="Cover Image" />
             <div className="space-y-4">
-              <Field label="Tags"><input value={form.tagsText} onChange={(event) => setForm({ ...form, tagsText: event.target.value })} placeholder="PPR-C, Industrial, Guide" className="admin-input" /></Field>
+              <Field label="Tags"><input value={form.tagsText} onChange={(event) => setForm({ ...form, tagsText: event.target.value })} placeholder="Fire , Industrial, Guide" className="admin-input" /></Field>
               <Field label="Publish Date"><input type="date" value={form.publishedDate} onChange={(event) => setForm({ ...form, publishedDate: event.target.value })} className="admin-input" /></Field>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={form.isPublished} onChange={(event) => setForm({ ...form, isPublished: event.target.checked })} className="h-4 w-4 border-slate-300 text-primary" />
