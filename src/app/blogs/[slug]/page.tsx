@@ -38,7 +38,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
             <ArrowLeft size={16} /> Back to Blog
           </Link>
           {tags[0] && (
-            <span className="inline-block bg-accent px-3 py-1 text-xs font-bold text-white uppercase tracking-widest mb-6 rounded-2xl ml-2">
+            <span className="inline-block bg-accent px-3 py-2 text-xs font-bold text-white uppercase tracking-widest mb-6 rounded-2xl ml-2">
               {tags[0]}
             </span>
           )}
