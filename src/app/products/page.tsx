@@ -20,15 +20,15 @@ export default async function ProductsPage() {
   return (
     <main className="bg-white">
       {/* Header */}
-      <section className="bg-gray-50 py-20 border-b border-gray-100">
+      <section className="bg-gray-50 py-5 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-6">Our Products</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mb-8">Comprehensive range of PPR-C pipes, fittings, and industrial piping solutions for all applications.</p>
-          <div className="flex flex-wrap gap-4">
+          <p className="text-lg text-gray-600 max-w-2xl mb-8">Complete range of fire protection systems, high-quality safety equipment, and end-to-end industrial fire safety solutions for all applications.</p>
+          {/* <div className="flex flex-wrap gap-4">
             <a href="/RADIATECH-CATALOGUE.pdf" download className="bg-gray-900 hover:bg-black text-white px-8 py-3.5 rounded-lg font-bold flex items-center gap-2 transition-all">
               Download Product Brochure <Download size={18} />
             </a>
-          </div>
+          </div> */}
         </div>
       </section>
 
