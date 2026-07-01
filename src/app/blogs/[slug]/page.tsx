@@ -83,8 +83,8 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
             <h3 className="text-2xl font-bold mb-4">Need Help With Your Piping Project?</h3>
             <p className="text-gray-400 mb-8 max-w-xl mx-auto">Our experts are ready to help you find the perfect PPR-C piping solution.</p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/contact" className="bg-accent hover:bg-accent-dark px-8 py-4 font-bold text-sm transition-all">Send Inquiry</Link>
-              <a href={`https://wa.me/${companyInfo.contact.whatsapp}`} target="_blank" rel="noopener noreferrer" className="bg-[#25D366] hover:bg-[#1da851] px-8 py-4 font-bold text-sm transition-all">WhatsApp Us</a>
+              <Link href="/contact" className="bg-red-600 hover:bg-red-700 rounded-2xl px-8 py-4 font-bold text-sm transition-all">Send Inquiry</Link>
+              <a href={`https://wa.me/${companyInfo.contact.whatsapp}`} target="_blank" rel="noopener noreferrer" className="bg-[#25D366] hover:bg-[#1da851] px-8 py-4 font-bold text-sm transition-all rounded-2xl">WhatsApp Us</a>
             </div>
           </div>
 
