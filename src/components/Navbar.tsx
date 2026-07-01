@@ -63,7 +63,6 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             
-            {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
               <Image src="/LOGO.png" alt="Radiatech Electra" width={40} height={40} className="object-contain" priority />
               <span className="text-lg font-bold text-gray-900 tracking-tight">
@@ -71,7 +70,6 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Desktop Nav */}
             <div className="hidden lg:flex items-center gap-1">
               {navLinks.map((link) =>
                 link.href === "/products" ? (
@@ -87,69 +85,59 @@ export default function Navbar() {
                     </div>
                     
                     {dropdownOpen && (
-                      <div className="absolute top-full left-0 bg-white shadow-2xl border border-gray-100 py-3 min-w-[220px] rounded-b-xl animate-in fade-in slide-in-from-top-2">
-                        {productLinks.map((child) => (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className="block px-6 py-2.5 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-50 transition-colors "
-                          >
-                            {child.label}
-                          </Link>
-                        ))}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white shadow-2xl border border-gray-100 py-6 px-8 rounded-b-xl animate-in fade-in slide-in-from-top-2 z-50 w-max">
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                          {productLinks
+                            .filter((link) => !link.label.includes("Water Based Sprinkler System"))
+                            .map((link) => (
+                              <Link key={link.href} href={link.href} className="text-sm text-gray-600 hover:text-red-600 hover:underline decoration-2 underline-offset-4 transition-all whitespace-nowrap">
+                                {link.label}
+                              </Link>
+                            ))}
+                          <div className="col-span-2 mt-2 border-t pt-4">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Water Based Sprinkler System</h4>
+                            <div className="grid grid-cols-2 gap-x-12 gap-y-3">
+                              {productLinks
+                                .filter((link) => link.label.includes("Water Based Sprinkler System"))
+                                .map((link) => (
+                                  <Link key={link.href} href={link.href} className="text-sm text-gray-600 hover:text-red-600 hover:underline decoration-2 underline-offset-4 transition-all whitespace-nowrap">
+                                    {link.label.replace("Water Based Sprinkler System ", "")}
+                                  </Link>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-red-600 transition-colors underline-offset-4 hover:underline decoration-2"
-                  >
+                  <Link key={link.label} href={link.href} className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-red-600 transition-colors underline-offset-4 hover:underline decoration-2">
                     {link.label}
                   </Link>
                 )
               )}
             </div>
 
-            {/* CTA + Mobile Toggle */}
             <div className="flex items-center gap-4">
-              <Link
-                href="/contact"
-                className="hidden md:flex bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-red-600/20"
-              >
+              <Link href="/contact" className="hidden md:flex bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-red-600/20">
                 Get Quote
               </Link>
-              <button
-                onClick={() => setMobileOpen(!mobileOpen)}
-                className="lg:hidden p-2 text-gray-700"
-                aria-label="Toggle menu"
-              >
+              <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-2 text-gray-700" aria-label="Toggle menu">
                 {mobileOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Nav */}
         {mobileOpen && (
           <div className="lg:hidden bg-white border-b border-gray-100 shadow-xl px-4 py-6 space-y-2 animate-in slide-in-from-top-4">
             {navLinks.map((link) => (
               <div key={link.label}>
-                <Link
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                >
+                <Link href={link.href} onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                   {link.label}
                 </Link>
                 {link.href === "/products" && productLinks.map((child) => (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="block pl-10 py-2 text-sm text-gray-500 hover:text-red-600"
-                  >
+                  <Link key={child.href} href={child.href} onClick={() => setMobileOpen(false)} className="block pl-10 py-2 text-sm text-gray-500 hover:text-red-600">
                     {child.label}
                   </Link>
                 ))}
@@ -165,23 +153,9 @@ export default function Navbar() {
 function SocialIcon({ name }: { name: string }) {
   const size = 16;
   switch (name) {
-    case "facebook":
-      return (
-        <svg width={size} height={size} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-        </svg>
-      );
-    case "instagram":
-      return (
-        <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-          <rect x="2" y="2" width="20" height="20" rx="5" />
-          <circle cx="12" cy="12" r="5" />
-          <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "indiamart":
-      return <span className="text-[11px] font-bold leading-none">IM</span>;
-    default:
-      return null;
+    case "facebook": return <svg width={size} height={size} fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>;
+    case "instagram": return <svg width={size} height={size} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><rect x="2" y="2" width="20" height="20" rx="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>;
+    case "indiamart": return <span className="text-[11px] font-bold leading-none">IM</span>;
+    default: return null;
   }
 }
