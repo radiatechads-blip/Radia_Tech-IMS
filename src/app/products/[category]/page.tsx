@@ -90,7 +90,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
             <p className="text-gray-400 text-sm">Our team is ready to help you find the perfect piping solution.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/contact" className="bg-accent hover:bg-accent-dark px-6 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors">Send Inquiry</Link>
+            <Link href="/contact" className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-colors">Send Inquiry</Link>
             <a href={`tel:${companyInfo.contact.phoneHref}`} className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg text-sm font-bold flex items-center gap-2">
               <Phone size={16} /> Call
             </a>
