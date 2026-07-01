@@ -12,7 +12,7 @@ export default async function ProjectsPage() {
 
   return (
     <main className="bg-white">
-      <section className="bg-red-700 py-16 lg:py-20">
+      <section className="bg-red-700 py-16 lg:py-5">
         <div className="mx-auto max-w-7xl px-6 text-center">
           <span className="inline-flex rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.2em] text-red-100">
             Our Portfolio
