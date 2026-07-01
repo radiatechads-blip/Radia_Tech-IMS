@@ -32,7 +32,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
   return (
     <main className="bg-white">
       {/* Hero Section */}
-      <section className="bg-red-700 py-18">
+      <section className="bg-red-700 py-5">
         <div className="max-w-4xl mx-auto px-6">
           <Link href="/blogs" className="inline-flex items-center gap-2 text-red-200 hover:text-white text-sm font-medium mb-6 transition-colors">
             <ArrowLeft size={16} /> Back to Blog
