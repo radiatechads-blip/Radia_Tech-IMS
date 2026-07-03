@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPublicCategories } from "@/lib/publicProducts";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatech.in";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in";
 
   const staticPages = [
     { url: `${baseUrl}/`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 1 },
