@@ -19,7 +19,7 @@ export const companyInfo = {
     phone2: "+91 94578 93678",
     phoneHref: "+918178850959",
     whatsapp: "918178850959",
-    website: "www.radiatech.in",
+    website: "www.radiatechfire.in",
   },
   
   addresses: [
@@ -50,12 +50,15 @@ export const companyInfo = {
   },
   
   specializations: [
-    "Industrial PPR-C Piping Systems",
-    "Pipeline Installation & Lining",
-    "Process Equipment Solutions",
-    "Compressed Air Piping",
-    "Chemical Line Installation",
-    "Cooling Tower Piping",
+    "Sprinkle System",
+    "Hydrant Syatem",
+    "Foam System",
+    "Spray System",
+    "Fire Extinguisher",
+    "Fire Alarm System",
+    "Gas Suppression System",
+    "Public Addressable",
+    "Pump Room",  
   ],
   
   certifications: [
