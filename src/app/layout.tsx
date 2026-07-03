@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "Critical Infrastructure Protection",
     "Quality Fire Safety Solutions",
     "Reliable Fire Safety Equipment",
-    "Fire Safety Company in Noida
+    "Fire Safety Company in Noida",
 "Fire Safety Equipment Supplier in Noida",
 "Fire Fighting Equipment Supplier",
 "Fire Alarm System Supplier",
