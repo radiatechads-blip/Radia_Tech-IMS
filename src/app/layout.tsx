@@ -34,12 +34,22 @@ export const metadata: Metadata = {
     "Critical Infrastructure Protection",
     "Quality Fire Safety Solutions",
     "Reliable Fire Safety Equipment",
+    "Fire Safety Company in Noida
+"Fire Safety Equipment Supplier in Noida",
+"Fire Fighting Equipment Supplier",
+"Fire Alarm System Supplier",
+"Fire Hydrant System Supplier",
+"Fire Protection Company Delhi NCR",
+"Fire Safety Equipment Manufacturer India",
+"Fire Safety Dealer Noida",
+"Fire Safety Contractor Noida",
+"Fire Safety Solutions India",
   ],
   authors: [{ name: "Radiatech Electra Private Limited" }],
   creator: "Radiatech Electra",
   publisher: "Radiatech Electra Private Limited",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://radiatech.in",
+    process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in",
   ),
   alternates: { canonical: "/" },
   icons: {
@@ -73,7 +83,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatech.in";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in";
 
 const jsonLd = {
   "@context": "https://schema.org",
