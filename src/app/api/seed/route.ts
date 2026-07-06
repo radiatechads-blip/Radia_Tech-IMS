@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
-import { NextResponse } from "next/server";
 import { jsonError, logServerError } from "@/lib/api";
+import { hashPassword } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
         create: {
           slug: p.slug,
           name: p.name,
+          sku: `${p.slug}`.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, ""),
           description: p.description,
           specifications: JSON.stringify(p.specs),
           applications: JSON.stringify(p.apps),

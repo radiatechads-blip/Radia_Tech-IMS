@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,9 +25,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const data = await req.json();
+  const allowedUnits = ["MTR", "PCS", "FEET", "KG"];
   const updateData = {
     slug: data.slug,
     name: data.name,
+    sku: data.sku,
+    hsn: data.hsn || "",
+    unit: allowedUnits.includes(data.unit) ? data.unit : "PCS",
+    stock: Number.isFinite(Number(data.stock)) ? Number(data.stock) : 0,
     description: data.description,
     pricePerMeter: data.pricePerMeter || "",
     specifications: typeof data.specifications === "string" ? data.specifications : JSON.stringify(data.specifications || {}),

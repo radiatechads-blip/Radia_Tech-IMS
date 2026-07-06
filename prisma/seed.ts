@@ -1,7 +1,7 @@
-import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import "dotenv/config";
+import { PrismaClient } from "../src/generated/prisma";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -479,6 +479,7 @@ async function main() {
       create: {
         slug: p.slug,
         name: p.name,
+        sku: `${p.slug}`.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, ""),
         description: p.description,
         specifications: JSON.stringify(p.specs),
         applications: JSON.stringify(p.apps),

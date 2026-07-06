@@ -1,10 +1,9 @@
 "use client";
 
+import AdminShell from "@/components/admin/AdminShell";
+import { Edit3, Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Edit3, Plus, Trash2, X } from "lucide-react";
-import AdminShell from "@/components/admin/AdminShell";
-import ImageUpload from "@/components/ImageUpload";
 
 interface Category {
   id: string;
@@ -16,7 +15,7 @@ interface Category {
   _count?: { products: number };
 }
 
-const emptyForm = { name: "", slug: "", description: "", image: "", sortOrder: 0 };
+const emptyForm = { name: "", description: "" };
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -81,7 +80,7 @@ export default function AdminCategoriesPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const slug = sanitizeSlug(form.slug || form.name);
+    const slug = sanitizeSlug(form.name);
     const url = editId ? `/api/categories/${editId}` : "/api/categories";
     const method = editId ? "PUT" : "POST";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, slug }) });
@@ -99,7 +98,7 @@ export default function AdminCategoriesPage() {
 
   const handleEdit = (category: Category) => {
     setEditId(category.id);
-    setForm({ name: category.name, slug: category.slug, description: category.description, image: category.image, sortOrder: category.sortOrder });
+    setForm({ name: category.name, description: category.description });
     setShowForm(true);
   };
 
@@ -129,26 +128,13 @@ export default function AdminCategoriesPage() {
             <button onClick={resetForm} className="text-slate-400 hover:text-slate-700" aria-label="Close category form"><X size={20} /></button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Name *</label>
-                <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="w-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Slug</label>
-                <input value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} placeholder="Auto-generated" className="w-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-              </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Name *</label>
+              <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="w-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Description *</label>
               <textarea required rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} className="w-full resize-none border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ImageUpload folder="categories" currentImage={form.image} onImageSelect={(url) => setForm({ ...form, image: url })} label="Category Image" />
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Sort Order</label>
-                <input type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number.parseInt(event.target.value, 10) || 0 })} className="w-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" />
-              </div>
             </div>
             <div className="flex flex-col gap-2 pt-2 sm:flex-row">
               <button type="submit" className="bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark">{editId ? "Update Category" : "Create Category"}</button>
@@ -177,7 +163,7 @@ export default function AdminCategoriesPage() {
                 </div>
                 <span className="bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Order {category.sortOrder}</span>
               </div>
-              <p className="line-clamp-3 min-h-[3.75rem] text-sm text-slate-600">{category.description}</p>
+              <p className="line-clamp-3 min-h-15 text-sm text-slate-600">{category.description}</p>
               <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                 <span className="text-xs text-slate-500">{category._count?.products ?? 0} products</span>
                 <div className="flex gap-3">

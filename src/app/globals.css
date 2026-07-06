@@ -253,3 +253,9 @@ html {
   color: var(--gray-900);
   font-weight: 700;
 }
+@media print {
+  @page {
+    size: A3 portrait; /* Pre-selects A4 paper size in vertical mode */
+    margin: 0mm;
+  }
+}

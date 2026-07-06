@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -60,10 +60,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const data = await req.json();
+    const allowedUnits = ["MTR", "PCS", "FEET", "KG"];
+    const unit = allowedUnits.includes(data.unit) ? data.unit : "PCS";
     const product = await prisma.product.create({
       data: {
         slug: data.slug,
         name: data.name,
+        sku: data.sku,
+        hsn: data.hsn || "",
+        unit,
+        stock: Number.isFinite(Number(data.stock)) ? Number(data.stock) : 0,
         description: data.description || "",
         pricePerMeter: data.pricePerMeter || "",
         specifications: JSON.stringify(data.specifications || {}),

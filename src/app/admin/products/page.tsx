@@ -1,12 +1,12 @@
 ﻿"use client";
 
+import AdminShell from "@/components/admin/AdminShell";
+import Pagination from "@/components/admin/Pagination";
+import { Edit3, Filter, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Edit3, Filter, Plus, Trash2 } from "lucide-react";
-import AdminShell from "@/components/admin/AdminShell";
-import Pagination from "@/components/admin/Pagination";
 
 interface Product {
   id: string;
@@ -182,12 +182,15 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
-                  <Link href={`/admin/products/${product.id}`} className="inline-flex flex-1 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-sm font-semibold text-primary hover:bg-slate-50">
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                  <Link href={`/admin/products/${product.id}`} className="inline-flex flex-1 min-w-27.5 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-sm font-semibold text-primary hover:bg-slate-50">
                     <Edit3 size={15} /> Edit
                   </Link>
-                  <button onClick={() => handleDelete(product.id)} className="inline-flex flex-1 items-center justify-center gap-2 border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                  <button onClick={() => handleDelete(product.id)} className="inline-flex flex-1 min-w-27.5 items-center justify-center gap-2 border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
                     <Trash2 size={15} /> Delete
+                  </button>
+                  <button onClick={() => router.push(`/admin/stock?productId=${product.id}`)} className="inline-flex flex-1 min-w-27.5 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    Stock
                   </button>
                 </div>
               </article>
@@ -195,7 +198,7 @@ export default function AdminProductsPage() {
           </div>
 
           <div className="hidden overflow-x-auto border border-slate-200 bg-white shadow-sm md:block">
-            <table className="w-full min-w-[940px] text-left text-sm">
+            <table className="w-full min-w-235 text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Product</th>
@@ -222,9 +225,10 @@ export default function AdminProductsPage() {
                     <td className="px-5 py-4"><StatusPill active={product.isNewArrival} label="New" /></td>
                     <td className="px-5 py-4"><StatusPill active={product.isActive} label="Active" /></td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/admin/products/${product.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-dark"><Edit3 size={15} /> Edit</Link>
                         <button onClick={() => handleDelete(product.id)} className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700"><Trash2 size={15} /> Delete</button>
+                        <button onClick={() => router.push(`/admin/stock?productId=${product.id}`)} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-slate-900">Stock</button>
                       </div>
                     </td>
                   </tr>

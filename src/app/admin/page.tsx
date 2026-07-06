@@ -1,7 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
-import { BookOpenText, FolderTree, Inbox, Package, Sparkles, TrendingUp } from "lucide-react";
+import { DollarSign, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,6 +17,15 @@ interface Inquiry {
   isRead: boolean;
 }
 
+interface TransactionBill {
+  id: string;
+  invoiceNumber: string;
+  partyName: string;
+  grandTotal: number;
+  invoiceDate: string;
+  createdAt: string;
+}
+
 interface CategoryCount {
   name: string;
   products: number;
@@ -25,16 +34,17 @@ interface CategoryCount {
 interface Stats {
   products: number;
   categories: number;
-  blogs: number;
-  specializations: number;
+  stock: number;
+  customers: number;
+  totalSoldProducts: number;
+  totalAmount: number;
   inquiries: { total: number; unread: number };
   recentInquiries: Inquiry[];
+  recentTransactions?: TransactionBill[];
   categoriesWithCounts?: CategoryCount[];
 }
 
 const CHART_COLORS = ["#1e40af", "#0369a1", "#0891b2", "#0d9488", "#059669", "#16a34a", "#ca8a04", "#dc2626"];
-
-const PIE_COLORS = ["#059669", "#f59e0b"];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -86,10 +96,12 @@ export default function AdminDashboard() {
 
   const statCards = [
     { label: "Active Products", value: stats?.products ?? 0, icon: Package, tone: "bg-blue-50 text-primary", href: "/admin/products" },
+    { label: "Stock", value: stats?.stock ?? 0, icon: Package, tone: "bg-emerald-50 text-emerald-700", href: "/admin/products" },
+    { label: "Customers", value: stats?.customers ?? 0, icon: Users, tone: "bg-violet-50 text-violet-700", href: "/admin/customers" },
     { label: "Categories", value: stats?.categories ?? 0, icon: FolderTree, tone: "bg-orange-50 text-accent", href: "/admin/categories" },
-    { label: "Specializations", value: stats?.specializations ?? 0, icon: Sparkles, tone: "bg-purple-50 text-purple-700", href: "/admin/specializations" },
-    { label: "Blog Posts", value: stats?.blogs ?? 0, icon: BookOpenText, tone: "bg-emerald-50 text-emerald-700", href: "/admin/blogs" },
-    { label: "Unread Inquiries", value: stats?.inquiries.unread ?? 0, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/inquiries" },
+    { label: "Total Sold Products", value: stats?.totalSoldProducts ?? 0, icon: ShoppingCart, tone: "bg-sky-50 text-sky-700", href: "/admin/generate-bill" },
+    { label: "Total Amount", value: `₹${(stats?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: DollarSign, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
+    { label: "Total Bills", value: stats?.recentTransactions?.length ?? 0, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
   ];
 
   return (
@@ -97,14 +109,22 @@ export default function AdminDashboard() {
       title="Dashboard"
       description="Monitor website content, product catalogue, and customer inquiries from one place."
       action={
-        <Link href="/admin/products/new" className="inline-flex w-full items-center justify-center bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark sm:w-auto">
-          Add Product
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/admin/products/new" className="inline-flex w-full items-center justify-center bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark sm:w-auto">
+            Add Product
+          </Link>
+          <Link href="/admin/generate-bill/invoice" className="inline-flex w-full items-center justify-center border border-red-700 bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 sm:w-auto">
+            Invoice
+          </Link>
+          <Link href="/admin/generate-bill/quotation" className="inline-flex w-full items-center justify-center border border-green-700 bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800 sm:w-auto">
+            Quotation
+          </Link>
+        </div>
       }
     >
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {[1, 2, 3, 4, 5].map((item) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4, 5, 6].map((item) => (
             <div key={item} className="h-32 animate-pulse border border-slate-200 bg-white" />
           ))}
         </div>
@@ -112,7 +132,7 @@ export default function AdminDashboard() {
         <div className="border border-red-200 bg-red-50 px-5 py-6 text-sm font-medium text-red-700">{error}</div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {statCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -158,36 +178,33 @@ export default function AdminDashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-[260px] items-center justify-center text-sm text-slate-400">No category data yet.</div>
+                  <div className="flex h-65 items-center justify-center text-sm text-slate-400">No category data yet.</div>
                 )}
               </div>
             </section>
 
-            {/* Inquiry status pie chart — spans 2/5 */}
+            {/* Category pie chart — spans 2/5 */}
             <section className="lg:col-span-2 border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="text-lg font-semibold text-slate-950">Inquiry Status</h2>
-                <p className="text-sm text-slate-500">Breakdown of read vs. unread inquiries.</p>
+                <h2 className="text-lg font-semibold text-slate-950">Category Overview</h2>
+                <p className="text-sm text-slate-500">Distribution of products across categories.</p>
               </div>
               <div className="flex flex-col items-center px-2 py-5">
-                {stats && stats.inquiries.total > 0 ? (
+                {stats?.categoriesWithCounts && stats.categoriesWithCounts.length > 0 ? (
                   <>
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
                         <Pie
-                          data={[
-                            { name: "Read", value: stats.inquiries.total - stats.inquiries.unread },
-                            { name: "Unread", value: stats.inquiries.unread },
-                          ]}
+                          data={stats.categoriesWithCounts}
                           cx="50%"
                           cy="50%"
                           innerRadius={55}
                           outerRadius={85}
                           paddingAngle={3}
-                          dataKey="value"
+                          dataKey="products"
                         >
-                          {PIE_COLORS.map((color, index) => (
-                            <Cell key={`pie-${index}`} fill={color} />
+                          {stats.categoriesWithCounts.map((_, index) => (
+                            <Cell key={`pie-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 0, border: "1px solid #e2e8f0" }} />
@@ -195,11 +212,11 @@ export default function AdminDashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                     <p className="mt-1 text-sm text-slate-500">
-                      <span className="font-semibold text-slate-950">{stats.inquiries.total}</span> total inquiries
+                      <span className="font-semibold text-slate-950">{stats.categoriesWithCounts.length}</span> categories
                     </p>
                   </>
                 ) : (
-                  <div className="flex h-[240px] items-center justify-center text-sm text-slate-400">No inquiry data yet.</div>
+                  <div className="flex h-60 items-center justify-center text-sm text-slate-400">No category data yet.</div>
                 )}
               </div>
             </section>
@@ -218,8 +235,6 @@ export default function AdminDashboard() {
                   data={[
                     { name: "Products", value: stats?.products ?? 0, fill: "#1e40af" },
                     { name: "Categories", value: stats?.categories ?? 0, fill: "#0891b2" },
-                    { name: "Specializations", value: stats?.specializations ?? 0, fill: "#7c3aed" },
-                    { name: "Blog Posts", value: stats?.blogs ?? 0, fill: "#059669" },
                     { name: "Total Inquiries", value: stats?.inquiries.total ?? 0, fill: "#ca8a04" },
                   ]}
                   margin={{ top: 4, right: 40, left: 10, bottom: 4 }}
@@ -241,43 +256,37 @@ export default function AdminDashboard() {
           <section className="border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-950">Recent Inquiries</h2>
-                <p className="text-sm text-slate-500">Latest customer messages received through the website.</p>
+                <h2 className="text-lg font-semibold text-slate-950">Recent Transaction Bills</h2>
+                <p className="text-sm text-slate-500">Latest generated invoice bills from the Generate Bill section.</p>
               </div>
-              <Link href="/admin/inquiries" className="text-sm font-semibold text-primary hover:text-primary-dark">View all</Link>
+              <Link href="/admin/generate-bill" className="text-sm font-semibold text-primary hover:text-primary-dark">View all</Link>
             </div>
 
-            {stats?.recentInquiries.length ? (
+            {stats?.recentTransactions?.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left text-sm">
+                <table className="w-full min-w-180 text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-5 py-3 font-semibold">Name</th>
-                      <th className="px-5 py-3 font-semibold">Email</th>
-                      <th className="px-5 py-3 font-semibold">Product</th>
+                      <th className="px-5 py-3 font-semibold">Invoice No.</th>
+                      <th className="px-5 py-3 font-semibold">Customer</th>
                       <th className="px-5 py-3 font-semibold">Date</th>
-                      <th className="px-5 py-3 font-semibold">Status</th>
+                      <th className="px-5 py-3 font-semibold">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {stats.recentInquiries.map((inquiry) => (
-                      <tr key={inquiry.id} className="hover:bg-slate-50">
-                        <td className="px-5 py-4 font-medium text-slate-950">{inquiry.name}</td>
-                        <td className="px-5 py-4 text-slate-600">{inquiry.email || "-"}</td>
-                        <td className="px-5 py-4 text-slate-600">{inquiry.product?.name || inquiry.productName || "-"}</td>
-                        <td className="px-5 py-4 text-slate-500">{new Date(inquiry.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-flex px-2.5 py-1 text-xs font-semibold ${inquiry.isRead ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                            {inquiry.isRead ? "Read" : "New"}
-                          </span>
-                        </td>
+                    {stats.recentTransactions?.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-slate-50">
+                        <td className="px-5 py-4 font-medium text-slate-950">{transaction.invoiceNumber}</td>
+                        <td className="px-5 py-4 text-slate-600">{transaction.partyName || "-"}</td>
+                        <td className="px-5 py-4 text-slate-500">{new Date(transaction.invoiceDate || transaction.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-950">₹{Number(transaction.grandTotal || 0).toLocaleString("en-IN")}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <div className="px-5 py-12 text-center text-sm text-slate-500">No inquiries yet.</div>
+              <div className="px-5 py-12 text-center text-sm text-slate-500">No generated bills yet.</div>
             )}
           </section>
         </div>

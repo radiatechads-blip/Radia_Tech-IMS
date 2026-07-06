@@ -1,74 +1,140 @@
-"use client";
+﻿"use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Mail, Phone, Trash2, X } from "lucide-react";
 import AdminShell from "@/components/admin/AdminShell";
-import Pagination from "@/components/admin/Pagination";
+import {
+  BarChart3,
+  CalendarDays,
+  DollarSign,
+  FileText,
+  Gauge,
+  Package,
+  PieChart as PieChartIcon,
+  Radar as RadarIcon,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-interface Inquiry {
+type Period = "day" | "month" | "year";
+
+type TransactionBill = {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-  message: string;
-  quantity: string;
-  productName: string;
-  product?: { name: string } | null;
-  source: string;
-  isRead: boolean;
+  invoiceNumber: string;
+  partyName: string;
+  grandTotal: number;
+  invoiceDate: string;
   createdAt: string;
-}
+};
 
-interface PaginationState {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
+type TrendPoint = {
+  label: string;
+  revenue: number;
+  bills: number;
+  soldProducts: number;
+};
 
-const pageSize = 10;
+type Stats = {
+  products: number;
+  categories: number;
+  stock: number;
+  customers: number;
+  totalSoldProducts: number;
+  totalAmount: number;
+  recentTransactions?: TransactionBill[];
+  categoriesWithCounts?: Array<{ name: string; products: number }>;
+  businessSummary?: {
+    period: Period;
+    trend: TrendPoint[];
+    totalRevenue: number;
+    totalBills: number;
+    avgBillValue: number;
+    totalSoldProducts: number;
+  };
+};
 
-export default function AdminInquiriesPage() {
+const periods: Array<{ value: Period; label: string }> = [
+  { value: "day", label: "Day" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+];
+
+// Palette shared by the new pie/donut chart so each category gets a distinct,
+// consistent color between the chart and its legend.
+const CATEGORY_COLORS = [
+  "#2563eb",
+  "#0f766e",
+  "#f59e0b",
+  "#ef4444",
+  "#7c3aed",
+  "#db2777",
+  "#14b8a6",
+  "#f97316",
+  "#0ea5e9",
+  "#84cc16",
+];
+
+const formatCurrency = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+
+export default function BusinessInsightPage() {
   const router = useRouter();
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [period, setPeriod] = useState<Period>("month");
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selected, setSelected] = useState<Inquiry | null>(null);
-  const [page, setPage] = useState(1);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize, total: 0, totalPages: 1 });
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadInquiries() {
+    async function loadStats() {
       try {
-        const authResponse = await fetch("/api/auth/me");
-        if (authResponse.status === 401) {
+        const auth = await fetch("/api/auth/me");
+        if (auth.status === 401) {
           router.replace("/admin/login");
           return;
         }
 
-        const response = await fetch(`/api/inquiries?page=${page}&pageSize=${pageSize}`);
-        const data = (await response.json().catch(() => null)) as { items?: Inquiry[]; pagination?: PaginationState; error?: unknown } | null;
+        const response = await fetch(`/api/admin/stats?period=${period}`);
+        const data = (await response.json().catch(() => null)) as Stats | { error?: unknown } | null;
         if (cancelled) return;
 
         if (!response.ok) {
-          setInquiries([]);
-          setError(typeof data?.error === "string" ? data.error : "Unable to load inquiries.");
+          setStats(null);
+          setError(typeof data && data && "error" in data && typeof data.error === "string" ? data.error : "Unable to load business insight data.");
           return;
         }
 
-        setInquiries(data?.items || []);
-        setPagination(data?.pagination || { page, pageSize, total: 0, totalPages: 1 });
+        setStats(data as Stats);
         setError("");
-        if (data?.pagination?.totalPages && page > data.pagination.totalPages) setPage(data.pagination.totalPages);
       } catch {
         if (!cancelled) {
-          setInquiries([]);
-          setError("Unable to load inquiries.");
+          setStats(null);
+          setError("Unable to load business insight data.");
         }
       } finally {
         if (!cancelled) {
@@ -77,160 +143,449 @@ export default function AdminInquiriesPage() {
       }
     }
 
-    void loadInquiries();
-
+    void loadStats();
     return () => {
       cancelled = true;
     };
-  }, [page, refreshKey, router]);
+  }, [period, router]);
 
-  const markRead = async (inquiryId: string) => {
-    const response = await fetch(`/api/inquiries/${inquiryId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isRead: true }) });
-    if (response.ok) {
-      setInquiries((current) => current.map((inquiry) => inquiry.id === inquiryId ? { ...inquiry, isRead: true } : inquiry));
-      setError("");
-      return;
-    }
+  const summary = useMemo(() => ({
+    revenue: stats?.businessSummary?.totalRevenue ?? stats?.totalAmount ?? 0,
+    bills: stats?.businessSummary?.totalBills ?? stats?.recentTransactions?.length ?? 0,
+    avgBill: stats?.businessSummary?.avgBillValue ?? 0,
+    soldProducts: stats?.businessSummary?.totalSoldProducts ?? stats?.totalSoldProducts ?? 0,
+    products: stats?.products ?? 0,
+    categories: stats?.categories ?? 0,
+    stock: stats?.stock ?? 0,
+    customers: stats?.customers ?? 0,
+    categoriesWithCounts: stats?.categoriesWithCounts ?? [],
+  }), [stats]);
 
-    const data = (await response.json().catch(() => null)) as { error?: unknown } | null;
-    setError(typeof data?.error === "string" ? data.error : "Unable to update inquiry.");
-  };
+  const trendData = stats?.businessSummary?.trend ?? [];
 
-  const handleDelete = async (inquiryId: string) => {
-    if (!confirm("Delete this inquiry?")) return;
-    setLoading(true);
-    const response = await fetch(`/api/inquiries/${inquiryId}`, { method: "DELETE" });
-    if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: unknown } | null;
-      setError(typeof data?.error === "string" ? data.error : "Unable to delete inquiry.");
-      setLoading(false);
-      return;
-    }
+  // ---- Everything below is DERIVED from the same fetched `stats`/`summary`/
+  // `trendData` above — no new API calls, no change to the loading logic —
+  // just reshaping existing numbers for a few additional chart types. ----
 
-    if (selected?.id === inquiryId) setSelected(null);
-    if (inquiries.length === 1 && page > 1) setPage((currentPage) => currentPage - 1);
-    else setRefreshKey((current) => current + 1);
-  };
+  const categoryPieData = useMemo(
+    () => summary.categoriesWithCounts.map((category) => ({ name: category.name, value: category.products })),
+    [summary.categoriesWithCounts]
+  );
 
-  const handlePageChange = (nextPage: number) => {
-    setLoading(true);
-    setPage(nextPage);
-  };
+  const catalogRadarData = useMemo(() => {
+    const maxMetric = Math.max(summary.products, summary.categories, summary.stock, summary.customers, 1);
+    return [
+      { metric: "Products", value: Math.round((summary.products / maxMetric) * 100), actual: summary.products },
+      { metric: "Categories", value: Math.round((summary.categories / maxMetric) * 100), actual: summary.categories },
+      { metric: "Stock", value: Math.round((summary.stock / maxMetric) * 100), actual: summary.stock },
+      { metric: "Customers", value: Math.round((summary.customers / maxMetric) * 100), actual: summary.customers },
+    ];
+  }, [summary.products, summary.categories, summary.stock, summary.customers]);
 
-  const openInquiry = (inquiry: Inquiry) => {
-    setSelected(inquiry);
-    if (!inquiry.isRead) void markRead(inquiry.id);
-  };
+  const avgOrderValueTrend = useMemo(
+    () =>
+      trendData.map((point) => ({
+        label: point.label,
+        avgOrderValue: point.bills > 0 ? point.revenue / point.bills : 0,
+      })),
+    [trendData]
+  );
+
+  const cumulativeRevenueTrend = useMemo(() => {
+    let running = 0;
+    return trendData.map((point) => {
+      running += point.revenue;
+      return { label: point.label, cumulativeRevenue: running };
+    });
+  }, [trendData]);
+
+  const sellThroughRate = useMemo(() => {
+    const totalUnits = summary.stock + summary.soldProducts;
+    return totalUnits > 0 ? Math.round((summary.soldProducts / totalUnits) * 100) : 0;
+  }, [summary.stock, summary.soldProducts]);
+
+  const sellThroughGaugeData = useMemo(
+    () => [{ name: "Sell-through", value: sellThroughRate, fill: "#0f766e" }],
+    [sellThroughRate]
+  );
 
   return (
-    <AdminShell title="Inquiries" description="Review, mark, and manage customer inquiries submitted from product pages and contact forms.">
-      {selected && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4" onClick={() => setSelected(null)}>
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-950">Inquiry Details</h2>
-                <p className="text-sm text-slate-500">{new Date(selected.createdAt).toLocaleString("en-IN")}</p>
-              </div>
-              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700" aria-label="Close inquiry details"><X size={22} /></button>
-            </div>
-            <div className="space-y-5 px-5 py-5 text-sm">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Detail label="Name" value={selected.name} />
-                <Detail label="Phone" value={selected.phone} href={`tel:${selected.phone}`} />
-                <Detail label="Email" value={selected.email || "-"} href={selected.email ? `mailto:${selected.email}` : undefined} />
-                <Detail label="Company" value={selected.company || "-"} />
-                <Detail label="Product" value={selected.product?.name || selected.productName || "-"} />
-                <Detail label="Source" value={selected.source} />
-              </div>
-              {selected.quantity && <Detail label="Quantity" value={selected.quantity} />}
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Message</p>
-                <p className="border border-slate-100 bg-slate-50 p-4 leading-relaxed text-slate-700">{selected.message || "-"}</p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row">
-              {!selected.isRead && (
-                <button onClick={() => { void markRead(selected.id); setSelected({ ...selected, isRead: true }); }} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark">
-                  <CheckCircle2 size={16} /> Mark as Read
-                </button>
-              )}
-              <button onClick={() => handleDelete(selected.id)} className="inline-flex items-center justify-center gap-2 border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
-                <Trash2 size={16} /> Delete
-              </button>
-            </div>
+    <AdminShell
+      title="Business Insight"
+      description="Track business growth with quick summaries, period-based filters, and clear sales charts."
+    >
+      {loading ? (
+        <div className="space-y-4">
+          <div className="h-24 animate-pulse border border-slate-200 bg-white" />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="h-80 animate-pulse border border-slate-200 bg-white" />
+            <div className="h-80 animate-pulse border border-slate-200 bg-white" />
           </div>
         </div>
-      )}
-
-      {loading ? (
-        <div className="h-64 animate-pulse border border-slate-200 bg-white" />
       ) : error ? (
         <div className="border border-red-200 bg-red-50 px-5 py-6 text-sm font-medium text-red-700">{error}</div>
-      ) : inquiries.length === 0 ? (
-        <div className="border border-dashed border-slate-300 bg-white px-5 py-16 text-center text-sm text-slate-500">No inquiries yet.</div>
       ) : (
-        <>
-          <div className="grid gap-4 md:hidden">
-            {inquiries.map((inquiry) => (
-              <article key={inquiry.id} className={`border bg-white p-4 shadow-sm ${inquiry.isRead ? "border-slate-200" : "border-amber-200"}`} onClick={() => openInquiry(inquiry)}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="font-semibold text-slate-950">{inquiry.name}</h2>
-                    <p className="mt-1 text-sm text-slate-500">{inquiry.product?.name || inquiry.productName || "General inquiry"}</p>
-                  </div>
-                  <span className={`shrink-0 px-2.5 py-1 text-xs font-semibold ${inquiry.isRead ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{inquiry.isRead ? "Read" : "New"}</span>
-                </div>
-                <div className="mt-4 space-y-2 text-sm text-slate-600">
-                  <p className="flex items-center gap-2"><Phone size={15} /> {inquiry.phone}</p>
-                  {inquiry.email && <p className="flex items-center gap-2"><Mail size={15} /> {inquiry.email}</p>}
-                </div>
-              </article>
-            ))}
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">Business growth view</p>
+              <p className="mt-1 text-sm text-slate-500">Switch between day, month, and year views to understand sales momentum quickly.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {periods.map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setPeriod(item.value)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${period === item.value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-600 hover:border-primary hover:text-primary"}`}
+                >
+                  <CalendarDays size={15} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="hidden overflow-x-auto border border-slate-200 bg-white shadow-sm md:block">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3 font-semibold">Name</th>
-                  <th className="px-5 py-3 font-semibold">Email</th>
-                  <th className="px-5 py-3 font-semibold">Phone</th>
-                  <th className="px-5 py-3 font-semibold">Product</th>
-                  <th className="px-5 py-3 font-semibold">Date</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {inquiries.map((inquiry) => (
-                  <tr key={inquiry.id} className={`cursor-pointer hover:bg-slate-50 ${!inquiry.isRead ? "bg-amber-50/30" : ""}`} onClick={() => openInquiry(inquiry)}>
-                    <td className="px-5 py-4 font-medium text-slate-950">{inquiry.name}</td>
-                    <td className="px-5 py-4 text-slate-600">{inquiry.email || "-"}</td>
-                    <td className="px-5 py-4 text-slate-600">{inquiry.phone}</td>
-                    <td className="px-5 py-4 text-slate-600">{inquiry.product?.name || inquiry.productName || "-"}</td>
-                    <td className="px-5 py-4 text-slate-500">{new Date(inquiry.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</td>
-                    <td className="px-5 py-4"><span className={`inline-flex px-2.5 py-1 text-xs font-semibold ${inquiry.isRead ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{inquiry.isRead ? "Read" : "New"}</span></td>
-                    <td className="px-5 py-4">
-                      <button onClick={(event) => { event.stopPropagation(); void handleDelete(inquiry.id); }} className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700"><Trash2 size={15} /> Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard title="Revenue" value={formatCurrency(summary.revenue)} detail="Total billed amount" icon={DollarSign} tone="bg-emerald-50 text-emerald-700" />
+            <MetricCard title="Bills" value={summary.bills.toString()} detail="Generated invoices" icon={FileText} tone="bg-blue-50 text-primary" />
+            <MetricCard title="Avg. Bill" value={formatCurrency(summary.avgBill)} detail="Per invoice value" icon={BarChart3} tone="bg-amber-50 text-amber-700" />
+            <MetricCard title="Sold Items" value={summary.soldProducts.toString()} detail="Products sold" icon={Package} tone="bg-violet-50 text-violet-700" />
           </div>
-          <Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={handlePageChange} />
-        </>
+
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-lg font-semibold text-slate-950">Business snapshot</h2>
+                <p className="mt-1 text-sm text-slate-500">A quick look at your active inventory and customer base.</p>
+              </div>
+              <div className="grid gap-4 p-5 md:grid-cols-2">
+                <MiniStatCard label="Active products" value={summary.products.toString()} detail="Live product catalog" />
+                <MiniStatCard label="Categories" value={summary.categories.toString()} detail="Product groups" />
+                <MiniStatCard label="Stock units" value={summary.stock.toString()} detail="Available inventory" />
+                <MiniStatCard label="Customers" value={summary.customers.toString()} detail="Registered buyers" />
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-lg font-semibold text-slate-950">Top categories</h2>
+                <p className="mt-1 text-sm text-slate-500">See which categories are driving your product mix.</p>
+              </div>
+              <div className="space-y-4 p-5">
+                {summary.categoriesWithCounts.length ? (
+                  summary.categoriesWithCounts.map((category) => (
+                    <div key={category.name}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="font-medium text-slate-700">{category.name}</span>
+                        <span className="text-slate-500">{category.products} products</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-slate-100">
+                        <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(12, category.products * 10))}%` }} />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No category data available yet.</p>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* ===== NEW: Category distribution donut chart (same categoriesWithCounts data, new view) ===== */}
+          <section className="border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <PieChartIcon size={18} className="text-fuchsia-600" />
+                <h2 className="text-lg font-semibold text-slate-950">Category distribution</h2>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">The same category breakdown above, visualized as a share of your total catalog.</p>
+            </div>
+            <div className="grid gap-4 p-5 md:grid-cols-[1fr_1.2fr] md:items-center">
+              <div className="h-72">
+                {categoryPieData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryPieData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="55%"
+                        outerRadius="85%"
+                        paddingAngle={2}
+                      >
+                        {categoryPieData.map((entry, index) => (
+                          <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number | string) => `${value} products`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-500">No category data available yet.</div>
+                )}
+              </div>
+              <div className="space-y-2">
+                {categoryPieData.map((entry, index) => (
+                  <div key={entry.name} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 font-medium text-slate-700">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }} />
+                      {entry.name}
+                    </span>
+                    <span className="text-slate-500">{entry.value} products</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={18} className="text-emerald-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Revenue growth trend</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">See how your business is growing across the selected period.</p>
+              </div>
+              <div className="h-80 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="bills" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <Users size={18} className="text-primary" />
+                  <h2 className="text-lg font-semibold text-slate-950">Sales snapshot</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">Product units sold over the same period.</p>
+              </div>
+              <div className="h-80 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
+                    <Tooltip formatter={(value: number | string) => `${value} units`} />
+                    <Bar dataKey="soldProducts" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          </div>
+
+          {/* ===== NEW: Average order value + cumulative revenue, both derived from the same trendData ===== */}
+          <div className="grid gap-6 xl:grid-cols-2">
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={18} className="text-sky-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Average order value trend</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">Revenue per bill across the selected period — a read on ticket size, not just volume.</p>
+              </div>
+              <div className="h-72 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={avgOrderValueTrend}>
+                    <defs>
+                      <linearGradient id="avgOrderValueFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Area type="monotone" dataKey="avgOrderValue" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#avgOrderValueFill)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={18} className="text-indigo-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Cumulative revenue</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">Running total of revenue built up across the selected period.</p>
+              </div>
+              <div className="h-72 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cumulativeRevenueTrend}>
+                    <defs>
+                      <linearGradient id="cumulativeRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Area type="monotone" dataKey="cumulativeRevenue" stroke="#4f46e5" strokeWidth={2.5} fill="url(#cumulativeRevenueFill)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+          </div>
+
+          <section className="border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <BarChart3 size={18} className="text-primary" />
+                <h2 className="text-lg font-semibold text-slate-950">Revenue vs bill activity</h2>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">Compare revenue growth with the number of bills generated over the same period.</p>
+            </div>
+            <div className="h-80 px-3 py-5">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: "#64748b" }} />
+                  <Tooltip formatter={(value: number | string, name: string) => name === "revenue" ? formatCurrency(Number(value)) : `${value} bills`} />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="bills" fill="#4f46e5" radius={[4, 4, 0, 0]} name="Bills" />
+                  <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} name="Revenue" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          {/* ===== NEW: Catalog composition radar + sell-through radial gauge, both derived from summary ===== */}
+          <div className="grid gap-6 xl:grid-cols-2">
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <RadarIcon size={18} className="text-teal-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Catalog composition</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">Products, categories, stock, and customers scaled relative to one another.</p>
+              </div>
+              <div className="h-80 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={catalogRadarData} outerRadius="75%">
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} />
+                    <Radar name="Relative scale" dataKey="value" stroke="#0f766e" fill="#0f766e" fillOpacity={0.35} />
+                    <Tooltip
+                      formatter={(value: number | string, _name: string, item) => {
+                        const actual = item?.payload?.actual;
+                        return actual !== undefined ? `${actual} (${value}% of max)` : `${value}%`;
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <Gauge size={18} className="text-rose-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Sell-through rate</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">Share of total units (sold + in stock) that have already been sold.</p>
+              </div>
+              <div className="relative h-80 px-3 py-5">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart
+                    innerRadius="70%"
+                    outerRadius="100%"
+                    data={sellThroughGaugeData}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+                    <RadialBar background dataKey="value" cornerRadius={12} />
+                  </RadialBarChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-bold text-slate-950">{sellThroughRate}%</span>
+                  <span className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">Sold vs total units</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section className="border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Latest transaction bills</h2>
+                <p className="text-sm text-slate-500">Your recent billing activity and customer payments.</p>
+              </div>
+              <a href="/admin/generate-bill" className="text-sm font-semibold text-primary hover:text-primary-dark">Open bills</a>
+            </div>
+
+            {stats?.recentTransactions?.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3 font-semibold">Invoice</th>
+                      <th className="px-5 py-3 font-semibold">Customer</th>
+                      <th className="px-5 py-3 font-semibold">Date</th>
+                      <th className="px-5 py-3 font-semibold">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {stats.recentTransactions.map((transaction) => (
+                      <tr key={transaction.id} className="hover:bg-slate-50">
+                        <td className="px-5 py-4 font-medium text-slate-950">{transaction.invoiceNumber}</td>
+                        <td className="px-5 py-4 text-slate-600">{transaction.partyName || "-"}</td>
+                        <td className="px-5 py-4 text-slate-500">{new Date(transaction.invoiceDate || transaction.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
+                        <td className="px-5 py-4 font-semibold text-slate-950">{formatCurrency(Number(transaction.grandTotal || 0))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="px-5 py-12 text-center text-sm text-slate-500">No bills generated yet.</div>
+            )}
+          </section>
+        </div>
       )}
     </AdminShell>
   );
 }
 
-function Detail({ label, value, href }: { label: string; value: string; href?: string }) {
+function MetricCard({ title, value, detail, icon: Icon, tone }: { title: string; value: string; detail: string; icon: typeof DollarSign; tone: string }) {
   return (
-    <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      {href ? <a href={href} className="font-medium text-primary hover:text-primary-dark">{value}</a> : <p className="font-medium text-slate-800">{value}</p>}
+    <div className="border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
+        </div>
+        <span className={`flex h-12 w-12 items-center justify-center rounded-full ${tone}`}>
+          <Icon size={20} />
+        </span>
+      </div>
+      <p className="mt-4 text-sm text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function MiniStatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 text-sm text-slate-500">{detail}</p>
     </div>
   );
 }

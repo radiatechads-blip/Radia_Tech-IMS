@@ -1,21 +1,20 @@
 "use client";
 
+import { companyInfo } from "@/data/company";
+import { BarChart3, FileText, FolderTree, Inbox, LogOut, Menu, Package, UserCircle, Users, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, BookOpenText, Building2, FolderTree, ImageIcon, Inbox, LogOut, Menu, Package, Sparkles, UserCircle, X } from "lucide-react";
-import { companyInfo } from "@/data/company";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
   { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Stock", href: "/admin/stock", icon: Package },
+  { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Generate Bill", href: "/admin/generate-bill", icon: FileText },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
-  { label: "Our Projects", href: "/admin/projects", icon: ImageIcon },
-  { label: "Infrastructure Gallery", href: "/admin/infrastructure-gallery", icon: Building2 },
-  { label: "Specialisations", href: "/admin/specializations", icon: Sparkles },
-  { label: "Blog Posts", href: "/admin/blogs", icon: BookOpenText },
-  { label: "Inquiries", href: "/admin/inquiries", icon: Inbox },
+  { label: "Business Insight", href: "/admin/inquiries", icon: Inbox },
   { label: "My Profile", href: "/admin/profile", icon: UserCircle },
 ];
 
@@ -124,17 +123,17 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 lg:grid lg:grid-cols-[280px_1fr]">
-      <aside className="sticky top-0 hidden h-screen overflow-y-auto lg:block">{sidebar}</aside>
+    <div className="min-h-screen bg-slate-50 text-slate-900 lg:grid lg:grid-cols-[280px_1fr] print:block print:bg-white">
+      <aside className="sticky top-0 hidden h-screen overflow-y-auto lg:block print:hidden">{sidebar}</aside>
 
       {sidebarOpen && <button aria-label="Close menu overlay" className="fixed inset-0 z-40 bg-slate-900/45 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[86vw] transform transition-transform duration-200 lg:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[86vw] transform transition-transform duration-200 lg:hidden print:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {sidebar}
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-col">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -166,8 +165,8 @@ export default function AdminShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <main className="flex-1 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-8 print:px-0 print:py-0 print:overflow-visible">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between print:hidden">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{title}</h1>
               {description && <p className="mt-1 max-w-2xl text-sm text-slate-500">{description}</p>}
