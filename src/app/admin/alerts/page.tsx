@@ -17,6 +17,7 @@ type InvoiceRow = {
   grandTotal: number;
   dueDate?: string | null;
   email: string;
+  remindersPaused?: boolean | null;
   reminders: Reminder[];
 };
 
@@ -24,6 +25,7 @@ export default function AlertsPage() {
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +66,9 @@ export default function AlertsPage() {
         body: JSON.stringify({ invoiceId, type: "manual" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Send failed");
+      if (!res.ok || !data?.ok || !data?.result?.ok) {
+        throw new Error(data?.error || data?.result?.error || "Send failed");
+      }
       alert("Reminder sent successfully");
       // refresh
       const refreshed = await (await fetch("/api/admin/invoice-reminders")).json();
@@ -72,6 +76,27 @@ export default function AlertsPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Send failed';
       alert(message);
+    }
+  }
+
+  async function updateReminderStatus(invoiceId: string, status: "paid" | "unpaid") {
+    if (!confirm(status === "paid" ? "Pause reminders for this invoice?" : "Resume reminders for this invoice?")) return;
+    setUpdatingId(invoiceId);
+    try {
+      const res = await fetch("/api/admin/invoice-reminders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ invoiceId, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Unable to update reminder status");
+      const refreshed = await (await fetch("/api/admin/invoice-reminders")).json();
+      setRows(refreshed.invoices || []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unable to update reminder status";
+      alert(message);
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -115,7 +140,15 @@ export default function AlertsPage() {
                     <td className="px-3 py-2 text-sm">{r.partyName} <div className="text-xs text-slate-400">{r.email}</div></td>
                     <td className="px-3 py-2 text-sm">₹{r.grandTotal.toFixed(2)}</td>
                     <td className="px-3 py-2 text-sm">{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-' }<div className="text-xs text-slate-400">{daysTo(r.dueDate)}</div></td>
-                    <td className="px-3 py-2 text-sm">{r.reminders.length > 0 ? <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Sent</span> : <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">Pending</span>}</td>
+                    <td className="px-3 py-2 text-sm">
+                      {r.remindersPaused ? (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">Paused</span>
+                      ) : r.reminders.length > 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Sent</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">Pending</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-sm">
                       {r.reminders.map((m) => (
                         <div key={m.id} className="mb-1 text-xs text-slate-600">
@@ -124,7 +157,11 @@ export default function AlertsPage() {
                       ))}
                     </td>
                     <td className="px-3 py-2 text-sm">
-                      <button onClick={() => sendManual(r.id)} className="rounded bg-primary px-3 py-1 text-sm font-semibold text-white">Send Reminder</button>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => updateReminderStatus(r.id, "paid")} disabled={Boolean(r.remindersPaused) || updatingId === r.id} className="rounded bg-slate-700 px-3 py-1 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Paid</button>
+                        <button onClick={() => updateReminderStatus(r.id, "unpaid")} disabled={!Boolean(r.remindersPaused) || updatingId === r.id} className="rounded bg-emerald-600 px-3 py-1 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Unpaid</button>
+                        <button onClick={() => sendManual(r.id)} className="rounded bg-primary px-3 py-1 text-sm font-semibold text-white">Send Reminder</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -140,7 +140,32 @@ type InvoiceReminderInvoice = {
   grandTotal: number;
   dueDate?: Date | string | null;
   email?: string | null;
+  remindersPaused?: boolean | null;
 };
+
+async function ensureRemindersPausedColumn() {
+  try {
+    await prisma.$executeRaw`
+      ALTER TABLE "Invoice"
+      ADD COLUMN IF NOT EXISTS "remindersPaused" BOOLEAN NOT NULL DEFAULT false
+    `;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.toLowerCase().includes("already exists") && !message.toLowerCase().includes("duplicate column")) {
+      throw err;
+    }
+  }
+}
+
+async function getReminderPauseState(invoiceId: string) {
+  await ensureRemindersPausedColumn();
+  const [row] = await prisma.$queryRaw<Array<{ remindersPaused: boolean }>>`
+    SELECT "remindersPaused"
+    FROM "Invoice"
+    WHERE "id" = ${invoiceId}
+  `;
+  return row?.remindersPaused ?? false;
+}
 
 function buildHtml({ heading, intro, invoice }: { heading: string; intro: string; invoice: InvoiceReminderInvoice }) {
   return `
@@ -176,6 +201,10 @@ function buildHtml({ heading, intro, invoice }: { heading: string; intro: string
 
 export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, type: ReminderType) {
   if (!invoice?.email) return { ok: false, error: 'No recipient' };
+  const remindersPaused = invoice.remindersPaused ?? (await getReminderPauseState(invoice.id));
+  if (remindersPaused) {
+    return { ok: false, error: 'Reminders paused for invoice', skipped: true };
+  }
 
   let subject = '';
   let heading = '';
@@ -222,30 +251,38 @@ export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, 
 
   const res = await sendEmail({ to: [invoice.email], subject, html });
 
-  // Record reminder in DB when sent (or record attempt)
-  try {
-    await prisma.invoiceReminder.create({
-      data: {
-        invoiceId: invoice.id,
-        type,
-        meta: JSON.stringify({ sentAt: new Date().toISOString(), result: res }),
-      },
-    });
-  } catch {
-    // non-fatal: log could be added here
+  if (res.ok) {
+    try {
+      await prisma.invoiceReminder.create({
+        data: {
+          invoiceId: invoice.id,
+          type,
+          meta: JSON.stringify({ sentAt: new Date().toISOString(), result: res }),
+        },
+      });
+    } catch {
+      // non-fatal: log could be added here
+    }
   }
 
   return res;
 }
 
 export async function findInvoicesByDueDate(targetStart: Date, targetEnd: Date) {
-  return prisma.invoice.findMany({
-    where: {
-      dueDate: {
-        gte: targetStart,
-        lt: targetEnd,
-      },
-      email: { not: '' },
-    },
-  });
+  await ensureRemindersPausedColumn();
+  return prisma.$queryRaw<Array<{
+    id: string;
+    invoiceNumber: string;
+    partyName: string;
+    grandTotal: number;
+    dueDate: Date | null;
+    email: string;
+  }>>`
+    SELECT "id", "invoiceNumber", "partyName", "grandTotal", "dueDate", "email"
+    FROM "Invoice"
+    WHERE "dueDate" >= ${targetStart}
+      AND "dueDate" < ${targetEnd}
+      AND "email" <> ''
+      AND COALESCE("remindersPaused", false) = false
+  `;
 }

@@ -1,9 +1,16 @@
 import { companyInfo } from "@/data/company";
 import { Resend } from "resend";
 
+export function isValidResendApiKey(apiKey?: string | null) {
+  if (!apiKey) return false;
+  const normalized = apiKey.trim();
+  if (!normalized) return false;
+  return /^re_[A-Za-z0-9_]{10,}$/.test(normalized);
+}
+
 function getResendClient() {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!isValidResendApiKey(apiKey)) return null;
   return new Resend(apiKey);
 }
 
@@ -46,33 +53,57 @@ function getAdminRecipients() {
     .filter(Boolean);
 }
 
+function resolveFromAddress() {
+  const configured = process.env.EMAIL_FROM?.trim();
+  if (configured) {
+    return configured;
+  }
+  return "onboarding@resend.dev";
+}
+
 async function sendToOne(to: string, subject: string, html: string): Promise<EmailResult> {
   const resend = getResendClient();
   if (!resend) {
-    return { ok: false, error: "RESEND_API_KEY is not configured" };
+    const apiKey = process.env.RESEND_API_KEY?.trim();
+    if (!apiKey) {
+      return { ok: false, error: "RESEND_API_KEY is not configured" };
+    }
+    if (!isValidResendApiKey(apiKey)) {
+      return { ok: false, error: "RESEND_API_KEY is malformed or not a valid Resend key" };
+    }
+    return { ok: false, error: "Unable to initialize Resend client" };
   }
 
   try {
     const result = await resend.emails.send({
-      from: process.env.EMAIL_FROM || "Radiatech Electra <noreply@radiatech.in>",
+      from: resolveFromAddress(),
       to: [to],
       subject,
       html,
     });
 
     if (result.error) {
-      return { ok: false, error: result.error.message || "Email provider rejected the message" };
+      const message = result.error.message || "Email provider rejected the message";
+      console.error("Resend send failed", { to, subject, error: message });
+      return { ok: false, error: message };
     }
 
     return { ok: true, id: result.data?.id };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Email delivery failed" };
+    const message = error instanceof Error ? error.message : "Email delivery failed";
+    console.error("Resend send exception", { to, subject, error: message });
+    return { ok: false, error: message };
   }
 }
 
 export async function sendEmail({ to, subject, html }: { to: string[]; subject: string; html: string }): Promise<EmailResult> {
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
     return { ok: false, error: "RESEND_API_KEY is not configured" };
+  }
+
+  if (!isValidResendApiKey(apiKey)) {
+    return { ok: false, error: "RESEND_API_KEY is malformed or not a valid Resend key" };
   }
 
   if (to.length === 0) {

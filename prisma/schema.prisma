@@ -132,6 +132,7 @@ model Invoice {
   partyName           String
   contactPerson       String         @default("")
   email               String         @default("")
+  remindersPaused     Boolean        @default(false)
   phone               String         @default("")
   city                String         @default("")
   pincode             String         @default("")

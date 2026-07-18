@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     await requireAuth();
-  } catch (err) {
+  } catch {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
@@ -19,9 +19,13 @@ export async function POST(request: Request) {
     const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) return NextResponse.json({ ok: false, error: "Invoice not found" }, { status: 404 });
 
-    const result = await sendInvoiceReminderEmail(invoice as any, type);
+    const result = await sendInvoiceReminderEmail(invoice as Parameters<typeof sendInvoiceReminderEmail>[0], type as Parameters<typeof sendInvoiceReminderEmail>[1]);
+    if (!result?.ok) {
+      return NextResponse.json({ ok: false, error: result?.error || "Failed to send reminder" }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, result });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || String(err) }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
