@@ -2960,26 +2960,6 @@ export default function InvoicePage() {
                 {isSaving ? "Saving…" : isEditing ? "Update Quotation" : "Save Quotation"}
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPreview(true);
-                  window.setTimeout(() => window.print(), 220);
-                }}
-                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Print
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPreview(true);
-                  setTimeout(() => openPreviewAsPdf(), 250);
-                }}
-                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Open PDF
-              </button>
             </div>
           </div>
 

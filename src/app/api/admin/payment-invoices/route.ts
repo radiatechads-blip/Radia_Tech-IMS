@@ -24,6 +24,7 @@ export async function GET() {
         partyName: invoice.partyName,
         email: invoice.email,
         grandTotal: invoice.grandTotal,
+        invoiceDate: invoice.invoiceDate?.toISOString() ?? null,
         dueDate: invoice.dueDate?.toISOString() ?? null,
         paymentMode: invoice.paymentMode,
         notes: invoice.notes,

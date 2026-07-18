@@ -886,13 +886,7 @@ export default function ProformaInvoicePage() {
                 {isSaving ? "Saving…" : isEditing ? "Update Proforma" : "Save Proforma"}
               </button>
 
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Print
-              </button>
+            
             </div>
           </div>
 

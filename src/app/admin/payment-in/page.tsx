@@ -240,7 +240,8 @@ type InvoiceRow = {
   partyName: string;
   email: string;
   grandTotal: number;
-  dueDate: string | null;
+  invoiceDate?: string | null;
+  dueDate?: string | null;
   paymentMode: string;
   notes: string;
   totalPaid: number;
@@ -248,11 +249,26 @@ type InvoiceRow = {
   payments: PaymentRecord[];
 };
 
+type PaymentDateFilter =
+  | "all"
+  | "thisMonth"
+  | "lastMonth"
+  | "thisQuarter"
+  | "thisYear"
+  | "custom";
+
 export default function PaymentInPage() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState<PaymentDateFilter>("all");
+  const [customStartDate, setCustomStartDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
 
   // Modal states
   const [historyInvoice, setHistoryInvoice] = useState<InvoiceRow | null>(null);
@@ -296,15 +312,58 @@ export default function PaymentInPage() {
 
   const filteredInvoices = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return invoices;
+
+    const matchesDateFilter = (invoice: InvoiceRow) => {
+      if (dateFilter === "all") return true;
+
+      const invoiceDateValue = invoice.invoiceDate || invoice.dueDate || "";
+      if (!invoiceDateValue) return false;
+
+      const invoiceDate = new Date(`${invoiceDateValue}T00:00:00`);
+      if (Number.isNaN(invoiceDate.getTime())) return false;
+
+      const today = new Date();
+
+      if (dateFilter === "custom") {
+        if (!customStartDate || !customEndDate) return false;
+        const start = new Date(`${customStartDate}T00:00:00`);
+        const end = new Date(`${customEndDate}T23:59:59`);
+        return invoiceDate >= start && invoiceDate <= end;
+      }
+
+      if (dateFilter === "thisMonth") {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+        return invoiceDate >= start && invoiceDate <= end;
+      }
+
+      if (dateFilter === "lastMonth") {
+        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+        return invoiceDate >= start && invoiceDate <= end;
+      }
+
+      if (dateFilter === "thisQuarter") {
+        const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+        const start = new Date(today.getFullYear(), quarterStartMonth, 1);
+        const end = new Date(today.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59);
+        return invoiceDate >= start && invoiceDate <= end;
+      }
+
+      const start = new Date(today.getFullYear(), 0, 1);
+      const end = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
+      return invoiceDate >= start && invoiceDate <= end;
+    };
+
     return invoices.filter((invoice) => {
       const haystack = [invoice.invoiceNumber, invoice.partyName, invoice.email]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return haystack.includes(term);
+      const matchesSearch = !term || haystack.includes(term);
+      return matchesSearch && matchesDateFilter(invoice);
     });
-  }, [invoices, searchTerm]);
+  }, [invoices, searchTerm, dateFilter, customStartDate, customEndDate]);
 
   // Handle open modals and clear previous form values
   const openUpdateModal = (invoice: InvoiceRow) => {
@@ -344,17 +403,60 @@ export default function PaymentInPage() {
       <div className="space-y-6">
         
         {/* Top Control Panel */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="relative max-w-md w-full">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by ID, name, or email..."
-              className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full max-w-md">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by ID, name, or email..."
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+              <span className="font-medium text-slate-700">Filter by</span>
+              <select
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value as PaymentDateFilter)}
+                className="border-none bg-transparent pr-1 font-medium text-slate-700 outline-none"
+              >
+                <option value="all">All Payments</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="thisQuarter">This Quarter</option>
+                <option value="thisYear">This Year</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+
+            {dateFilter === "custom" && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+                <label className="flex items-center gap-2">
+                  <span className="font-medium text-slate-700">From</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    className="border-none bg-transparent font-medium text-slate-700 outline-none"
+                  />
+                </label>
+                <span className="text-slate-400">to</span>
+                <label className="flex items-center gap-2">
+                  <span className="font-medium text-slate-700">To</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    className="border-none bg-transparent font-medium text-slate-700 outline-none"
+                  />
+                </label>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-slate-500 font-medium">
+
+          <div className="text-sm font-medium text-slate-500">
             Showing {filteredInvoices.length} of {invoices.length} entries
           </div>
         </div>
@@ -369,85 +471,87 @@ export default function PaymentInPage() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</div>
         ) : (
           /* Main Table Grid Layout */
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                <tr>
-                  <th className="px-6 py-4">ID & Date</th>
-                  <th className="px-6 py-4">Customer Name</th>
-                  <th className="px-6 py-4 text-right">Total</th>
-                  <th className="px-6 py-4 text-right">Paid</th>
-                  <th className="px-6 py-4 text-right">Remaining</th>
-                  <th className="px-6 py-4 text-center">Mode</th>
-                  <th className="px-6 py-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                {filteredInvoices.length === 0 ? (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
-                      No matching records found.
-                    </td>
+                    <th className="px-6 py-4">ID & Date</th>
+                    <th className="px-6 py-4">Customer Name</th>
+                    <th className="px-6 py-4 text-right">Total</th>
+                    <th className="px-6 py-4 text-right">Paid</th>
+                    <th className="px-6 py-4 text-right">Remaining</th>
+                    <th className="px-6 py-4 text-center">Mode</th>
+                    <th className="px-6 py-4 text-center">Actions</th>
                   </tr>
-                ) : (
-                  filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* ID & Date */}
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="font-semibold text-slate-900">{invoice.invoiceNumber}</div>
-                        <div className="text-xs text-slate-400">
-                          {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-US", { dateStyle: "medium" }) : "-"}
-                        </div>
-                      </td>
-                      {/* Customer Name */}
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-slate-900">{invoice.partyName}</div>
-                        <div className="text-xs text-slate-400">{invoice.email}</div>
-                      </td>
-                      {/* Total */}
-                      <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-slate-900">
-                        ₹{invoice.grandTotal.toFixed(2)}
-                      </td>
-                      {/* Paid */}
-                      <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-emerald-600">
-                        ₹{invoice.totalPaid.toFixed(2)}
-                      </td>
-                      {/* Remaining */}
-                      <td className="whitespace-nowrap px-6 py-4 text-right font-medium">
-                        <span className={`px-2 py-1 rounded-md text-xs ${invoice.remaining > 0 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                          ₹{invoice.remaining.toFixed(2)}
-                        </span>
-                      </td>
-                      {/* Mode */}
-                      <td className="whitespace-nowrap px-6 py-4 text-center">
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
-                          {invoice.paymentMode || "N/A"}
-                        </span>
-                      </td>
-                      {/* Actions */}
-                      <td className="whitespace-nowrap px-6 py-4 text-center">
-                        <div className="inline-flex rounded-lg shadow-sm gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openUpdateModal(invoice)}
-                            className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition"
-                          >
-                            Update Payment
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setHistoryInvoice(invoice)}
-                            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
-                          >
-                            Payment History
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
+                  {filteredInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
+                        No matching records found.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* ID & Date */}
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="font-semibold text-slate-900">{invoice.invoiceNumber}</div>
+                          <div className="text-xs text-slate-400">
+                            {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString("en-US", { dateStyle: "medium" }) : "-"}
+                          </div>
+                        </td>
+                        {/* Customer Name */}
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-slate-900">{invoice.partyName}</div>
+                          <div className="text-xs text-slate-400">{invoice.email}</div>
+                        </td>
+                        {/* Total */}
+                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-slate-900">
+                          ₹{invoice.grandTotal.toFixed(2)}
+                        </td>
+                        {/* Paid */}
+                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-emerald-600">
+                          ₹{invoice.totalPaid.toFixed(2)}
+                        </td>
+                        {/* Remaining */}
+                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">
+                          <span className={`px-2 py-1 rounded-md text-xs ${invoice.remaining > 0 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                            ₹{invoice.remaining.toFixed(2)}
+                          </span>
+                        </td>
+                        {/* Mode */}
+                        <td className="whitespace-nowrap px-6 py-4 text-center">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+                            {invoice.paymentMode || "N/A"}
+                          </span>
+                        </td>
+                        {/* Actions */}
+                        <td className="whitespace-nowrap px-6 py-4 text-center">
+                          <div className="inline-flex rounded-lg shadow-sm gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openUpdateModal(invoice)}
+                              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition"
+                            >
+                              Update Payment
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHistoryInvoice(invoice)}
+                              className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                            >
+                              Payment History
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

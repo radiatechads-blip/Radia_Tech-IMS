@@ -51,9 +51,16 @@ const DOCUMENT_TYPE_OPTIONS = [
 ] as const;
 
 type DocumentType = (typeof DOCUMENT_TYPE_OPTIONS)[number];
+type InvoiceDateFilter =
+  | "all"
+  | "thisMonth"
+  | "lastMonth"
+  | "thisQuarter"
+  | "thisYear"
+  | "custom";
 
 const MENU_WIDTH = 192;
-const MENU_HEIGHT_ESTIMATE = 380;
+const MENU_HEIGHT_ESTIMATE = 280; // Adjusted to a more realistic expectation
 
 const PAYMENT_TERMS_OPTIONS = [
   "Due on Receipt",
@@ -110,12 +117,19 @@ export default function GenerateBillPage() {
   const [selectedDocType, setSelectedDocType] = useState<DocumentType | null>(
     "Tax Invoice",
   );
+  const [dateFilter, setDateFilter] = useState<InvoiceDateFilter>("all");
+  const [customStartDate, setCustomStartDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
   const [isDocTypeMenuOpen, setIsDocTypeMenuOpen] = useState(false);
   const docTypeMenuRef = useRef<HTMLDivElement>(null);
 
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; openBelow: boolean } | null>(
     null,
   );
 
@@ -180,14 +194,14 @@ export default function GenerateBillPage() {
       const rect = trigger.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const openBelow = spaceBelow >= MENU_HEIGHT_ESTIMATE;
-      const top = openBelow
-        ? rect.bottom + 4
-        : Math.max(8, rect.top - MENU_HEIGHT_ESTIMATE - 4);
+      
+      // If opening below, track from bottom. If above, track from top edge.
+      const top = openBelow ? rect.bottom + 4 : rect.top - 4;
       const left = Math.max(
         8,
         Math.min(window.innerWidth - MENU_WIDTH - 8, rect.right - MENU_WIDTH),
       );
-      setMenuPos({ top, left });
+      setMenuPos({ top, left, openBelow });
     };
 
     reposition();
@@ -209,7 +223,6 @@ export default function GenerateBillPage() {
 
   const getBillTypeBadge = (invoice: InvoiceSummary) => {
     const label = getBillTypeLabel(invoice);
-    const isCancelled = invoice.status === "Cancelled";
     const invoiceMeta = invoice as InvoiceWithDocType;
 
     const toneClasses: Record<string, string> = {
@@ -229,11 +242,6 @@ export default function GenerateBillPage() {
         >
           {label}
         </span>
-        {/*{isCancelled && (
-          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-400/20">
-            Cancelled
-          </span>
-        )}*/}
         {Boolean(invoice.convertedToTaxInvoice) && (
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
             <svg
@@ -272,13 +280,6 @@ export default function GenerateBillPage() {
   const getEditRoute = (invoice: InvoiceSummary) =>
     getInvoiceEditRoute(invoice);
 
-  // Maps the display label from getBillTypeLabel() to the actual
-  // documentType values the API/Prisma layer understands. The backend
-  // only has three real tables (invoice / proforma / annexure) — every
-  // other bill type (Quotation, Pending Material, Party Statement) is
-  // stored in the generic `invoice` table and distinguished only by its
-  // billType text / invoiceNumber prefix, so "invoice" is the correct
-  // fallback for all of those.
   const getApiDocumentType = (
     invoice: InvoiceSummary,
   ): "invoice" | "proforma" | "annexure" => {
@@ -398,9 +399,6 @@ export default function GenerateBillPage() {
     printWindow.onload = () => window.setTimeout(triggerPrint, 600);
   };
 
-  // Builds an actual multi-page PDF document from a rendered DOM node
-  // (the invoice preview currently shown in the Preview modal), using
-  // html2canvas to snapshot it and jsPDF to lay it out on A4 pages.
   const buildPdfFromElement = async (element: HTMLElement) => {
     const canvas = await html2canvas(element, {
       scale: 2,
@@ -431,9 +429,6 @@ export default function GenerateBillPage() {
     return pdf;
   };
 
-  // Waits for every <img> inside a container to finish loading (or fail)
-  // before we snapshot it with html2canvas — otherwise logos/signatures
-  // can render blank in the captured PDF.
   const waitForImagesToLoad = (container: HTMLElement) =>
     new Promise<void>((resolve) => {
       const imgs = Array.from(container.querySelectorAll("img"));
@@ -455,9 +450,6 @@ export default function GenerateBillPage() {
       });
     });
 
-  // Renders any invoice's preview off-screen (it doesn't need to already
-  // be open in the Preview modal) and builds a PDF from it. Used by the
-  // "Open PDF" row action in the ⋮ menu.
   const renderInvoiceToPdf = async (invoice: InvoiceSummary) => {
     const container = document.createElement("div");
     container.style.position = "fixed";
@@ -471,7 +463,6 @@ export default function GenerateBillPage() {
     root.render(renderPreviewForInvoice(invoice));
 
     try {
-      // Let React commit the render, then wait for images before capture.
       await new Promise((resolve) => window.setTimeout(resolve, 50));
       await waitForImagesToLoad(container);
       return await buildPdfFromElement(container);
@@ -481,11 +472,6 @@ export default function GenerateBillPage() {
     }
   };
 
-  // Opens the currently previewed invoice as a real PDF in a new
-  // browser tab (via a blob URL), matching exactly what's shown in
-  // the Preview modal. The tab is opened synchronously (before the
-  // PDF is built) because opening a window *after* an await is easily
-  // blocked by the browser's pop-up blocker.
   const handleOpenPdfFromPreview = () => {
     if (!previewContentRef.current || pdfBusyAction) return;
     const pdfWindow = window.open("", "_blank");
@@ -514,8 +500,6 @@ export default function GenerateBillPage() {
     })();
   };
 
-  // Downloads the currently previewed invoice as a PDF file to the
-  // user's device.
   const handleSavePdfFromPreview = async () => {
     if (!previewContentRef.current || !selectedInvoice || pdfBusyAction) return;
     setPdfBusyAction("save");
@@ -537,8 +521,6 @@ export default function GenerateBillPage() {
     }
   };
 
-  // ---------- Row action handlers ----------
-
   const handleViewEdit = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
     router.push(getEditRoute(invoice));
@@ -554,10 +536,6 @@ export default function GenerateBillPage() {
 
   const handleDuplicate = async (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
-    // Keep documentType/billType exactly as they are on the source
-    // record — a duplicate should stay in the same list (Proforma stays
-    // Proforma, Tax Invoice stays Tax Invoice). Only strip fields that
-    // must be regenerated for a brand-new row.
     const {
       id: _id,
       convertedToTaxInvoice: _c,
@@ -571,9 +549,6 @@ export default function GenerateBillPage() {
       status: "Active",
       convertedToTaxInvoice: false,
       convertedInvoiceId: undefined,
-      // Mark this new row as a duplicate copy so the invoice/proforma
-      // pages can show "Duplicate Copy" instead of "Original for
-      // Recipient" on screen and when printed/exported as PDF.
       isDuplicate: true,
     };
     try {
@@ -598,9 +573,6 @@ export default function GenerateBillPage() {
 
   const handleOpenPdf = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
-    // Open the tab synchronously (within this click handler) so the
-    // browser doesn't treat the later async PDF generation as a
-    // blocked pop-up.
     const pdfWindow = window.open("", "_blank");
     if (!pdfWindow) {
       window.alert("Please allow pop-ups to open the PDF.");
@@ -675,11 +647,6 @@ export default function GenerateBillPage() {
     }
   };
 
-  // Moves a Cancelled document back to whichever category it originally
-  // belonged to. Since documentType/billType are never touched by
-  // Cancel, simply flipping status back to "Active" is enough — the
-  // existing filteredInvoices logic naturally re-groups it under its
-  // original bill type.
   const handleRetrieve = async (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
     try {
@@ -735,8 +702,6 @@ export default function GenerateBillPage() {
     }
   };
 
-  // ---------- Convert Proforma → Tax Invoice ----------
-
   const openConvertModal = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
     setConvertOptions({
@@ -752,10 +717,6 @@ export default function GenerateBillPage() {
     if (!convertModalInvoice) return;
     setIsConverting(true);
 
-    // Strip out `documentType` as well as `billType` — both fields
-    // classify the record. Leaving `documentType: "proforma"` in `rest`
-    // is what previously caused the new record to be created in the
-    // proformaInvoice table instead of the invoice table.
     const {
       id: _id,
       billType: _bt,
@@ -765,7 +726,6 @@ export default function GenerateBillPage() {
       ...rest
     } = convertModalInvoice as InvoiceWithDocType;
 
-    // Generate a sequential-looking Tax Invoice number
     const sourceInvoiceNumber = convertModalInvoice.invoiceNumber ?? "";
     const taxInvoiceNumber = `TI-${sourceInvoiceNumber.replace(/^[A-Z]+-?/i, "")}`;
 
@@ -782,16 +742,11 @@ export default function GenerateBillPage() {
       createdAt: new Date().toISOString(),
       status: "Active",
       convertedToTaxInvoice: false,
-      // Stamp this new Tax Invoice as having originated from a Proforma
-      // Invoice conversion, and remember the original Proforma's number,
-      // so the Tax Invoice page (and its printed/PDF output) can display
-      // "Converted from Proforma Invoice <number>".
       sourceProformaNumber: convertModalInvoice.invoiceNumber,
       convertedFromProforma: true,
     };
 
     try {
-      // 1. Create new Tax Invoice
       const createRes = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -800,9 +755,6 @@ export default function GenerateBillPage() {
       if (!createRes.ok) throw new Error("Failed to create Tax Invoice");
       await createRes.json();
 
-      // 2. Remove the original Proforma Invoice so it no longer shows up
-      // in the Proforma Invoice list (per requested behavior: convert
-      // = move, not just tag).
       if (convertOptions.markOriginalConverted) {
         await fetch(
           `/api/invoices?id=${encodeURIComponent(convertModalInvoice.id ?? "")}&documentType=proforma`,
@@ -822,12 +774,76 @@ export default function GenerateBillPage() {
     }
   };
 
-  // ---------- Derived data ----------
+  const getDateRangeForFilter = () => {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    if (dateFilter === "custom") {
+      if (!customStartDate || !customEndDate) {
+        return null;
+      }
+      const start = new Date(`${customStartDate}T00:00:00`);
+      const end = new Date(`${customEndDate}T23:59:59`);
+      return { start, end };
+    }
+
+    if (dateFilter === "thisMonth") {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      return { start, end };
+    }
+
+    if (dateFilter === "lastMonth") {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { start, end };
+    }
+
+    if (dateFilter === "thisQuarter") {
+      const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+      const start = new Date(today.getFullYear(), quarterStartMonth, 1);
+      const end = new Date(today.getFullYear(), quarterStartMonth + 3, 1);
+      return { start, end };
+    }
+
+    if (dateFilter === "thisYear") {
+      const start = new Date(today.getFullYear(), 0, 1);
+      const end = new Date(today.getFullYear() + 1, 0, 1);
+      return { start, end };
+    }
+
+    return { start: new Date(0), end: new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() + 1) };
+  };
+
+  const matchesDateFilter = (invoice: InvoiceSummary) => {
+    if (dateFilter === "all") {
+      return true;
+    }
+
+    const range = getDateRangeForFilter();
+    if (!range) {
+      return true;
+    }
+
+    const value = invoice.invoiceDate || invoice.createdAt;
+    if (!value) {
+      return false;
+    }
+
+    const invoiceDate = new Date(value);
+    if (Number.isNaN(invoiceDate.getTime())) {
+      return false;
+    }
+
+    return invoiceDate >= range.start && invoiceDate < range.end;
+  };
+
+  const baseFilteredInvoices = invoices.filter(matchesDateFilter);
 
   const filteredInvoices = selectedDocType
     ? selectedDocType === "Cancelled"
-      ? invoices.filter((invoice) => invoice.status === "Cancelled")
-      : invoices.filter(
+      ? baseFilteredInvoices.filter((invoice) => invoice.status === "Cancelled")
+      : baseFilteredInvoices.filter(
           (invoice) =>
             getBillTypeLabel(invoice) === selectedDocType &&
             invoice.status !== "Cancelled",
@@ -930,12 +946,8 @@ export default function GenerateBillPage() {
         </div>
       }
     >
-      <div className="mt-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        Choose a document type from the actions above to continue.
-      </div>
-
+     
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        {/* Header row */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
@@ -946,69 +958,109 @@ export default function GenerateBillPage() {
             </p>
           </div>
 
-          {/* Dropdown */}
-          <div className="relative" ref={docTypeMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsDocTypeMenuOpen((open) => !open)}
-              className="inline-flex min-w-[220px] items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              {selectedDocType ?? "Select document type"}
-              <svg
-                viewBox="0 0 24 24"
-                className={`h-4 w-4 text-slate-400 transition-transform ${isDocTypeMenuOpen ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+              <span className="font-medium text-slate-700">Filter by</span>
+              <select
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value as InvoiceDateFilter)}
+                className="border-none bg-transparent pr-1 font-medium text-slate-700 outline-none"
               >
-                <path
-                  d="M6 9l6 6 6-6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                <option value="all">All Sale Invoices</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="thisQuarter">This Quarter</option>
+                <option value="thisYear">This Year</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
 
-            {isDocTypeMenuOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-                {DOCUMENT_TYPE_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDocType(option);
-                      setIsDocTypeMenuOpen(false);
-                    }}
-                    className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-slate-50 ${
-                      selectedDocType === option
-                        ? "font-semibold text-slate-900"
-                        : "text-slate-600"
-                    }`}
-                  >
-                    {option}
-                    {selectedDocType === option && (
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-4 w-4 text-emerald-600"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path
-                          d="M5 13l4 4L19 7"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                ))}
+            {dateFilter === "custom" && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+                <label className="flex items-center gap-2">
+                  <span className="font-medium text-slate-700">From</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    className="border-none bg-transparent font-medium text-slate-700 outline-none"
+                  />
+                </label>
+                <span className="text-slate-400">to</span>
+                <label className="flex items-center gap-2">
+                  <span className="font-medium text-slate-700">To</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    className="border-none bg-transparent font-medium text-slate-700 outline-none"
+                  />
+                </label>
               </div>
             )}
+
+            <div className="relative" ref={docTypeMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsDocTypeMenuOpen((open) => !open)}
+                className="inline-flex min-w-[220px] items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                {selectedDocType ?? "Select document type"}
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`h-4 w-4 text-slate-400 transition-transform ${isDocTypeMenuOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {isDocTypeMenuOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDocType(option);
+                        setIsDocTypeMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-slate-50 ${
+                        selectedDocType === option
+                          ? "font-semibold text-slate-900"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {option}
+                      {selectedDocType === option && (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4 text-emerald-600"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            d="M5 13l4 4L19 7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Total Amount Summary Banner ── */}
         {selectedDocType && !loading && filteredInvoices.length > 0 && (
           <div
             className={`mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border px-5 py-4 ${totalColorMap[selectedDocType]}`}
@@ -1063,7 +1115,6 @@ export default function GenerateBillPage() {
           </div>
         )}
 
-        {/* ── Table / Empty States ── */}
         {loading ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
             Loading generated items...
@@ -1078,19 +1129,20 @@ export default function GenerateBillPage() {
           </div>
         ) : (
           <>
-            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[860px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                    <th className="px-4 py-3.5">ID / Bill No.</th>
-                    <th className="px-4 py-3.5">Date</th>
-                    <th className="px-4 py-3.5">Customer Name</th>
-                    <th className="px-4 py-3.5">Type of Bill</th>
-                    <th className="px-4 py-3.5">Amount</th>
-                    <th className="px-4 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
+            <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+              <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
+                <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
+                      <th className="px-4 py-3.5">ID / Bill No.</th>
+                      <th className="px-4 py-3.5">Date</th>
+                      <th className="px-4 py-3.5">Customer Name</th>
+                      <th className="px-4 py-3.5">Type of Bill</th>
+                      <th className="px-4 py-3.5">Amount</th>
+                      <th className="px-4 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
                   {filteredInvoices.map((invoice) => {
                     const isCancelled = invoice.status === "Cancelled";
                     const isMenuOpen = openActionMenuId === invoice.id;
@@ -1130,7 +1182,6 @@ export default function GenerateBillPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Convert button — only for Proforma Invoice */}
                             {isProforma && (
                               <button
                                 type="button"
@@ -1185,7 +1236,6 @@ export default function GenerateBillPage() {
                               </button>
                             )}
 
-                            {/* Three-dots action menu trigger */}
                             <div
                               className="relative inline-block text-left"
                               id={`action-trigger-${invoice.id}`}
@@ -1228,6 +1278,7 @@ export default function GenerateBillPage() {
                                   style={{
                                     top: menuPos.top,
                                     left: menuPos.left,
+                                    transform: menuPos.openBelow ? "none" : "translateY(-100%)",
                                   }}
                                 >
                                   <button
@@ -1319,17 +1370,16 @@ export default function GenerateBillPage() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {/* Invoice Preview Modal */}
             {isPreviewOpen &&
               selectedInvoice &&
               createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
                   <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-                    {/* Header */}
                     <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4">
                       <h3 className="text-base font-semibold text-slate-800">
                         Preview
@@ -1356,7 +1406,6 @@ export default function GenerateBillPage() {
                       </button>
                     </div>
 
-                    {/* Scrollable content */}
                     <div className="invoice-preview-scroll flex-1 overflow-y-auto bg-slate-100 px-6 py-6">
                       <div
                         ref={previewContentRef}
@@ -1366,7 +1415,6 @@ export default function GenerateBillPage() {
                       </div>
                     </div>
 
-                    {/* Footer actions */}
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
                       <button
                         type="button"
@@ -1401,7 +1449,6 @@ export default function GenerateBillPage() {
                     </div>
                   </div>
 
-                  {/* Thin, light scrollbar for the preview content area */}
                   <style jsx>{`
                     .invoice-preview-scroll {
                       scrollbar-width: thin;
@@ -1428,12 +1475,10 @@ export default function GenerateBillPage() {
         )}
       </div>
 
-      {/* ── Convert to Tax Invoice Modal ── */}
       {convertModalInvoice &&
         createPortal(
           <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4">
             <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-              {/* Modal header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
@@ -1481,7 +1526,6 @@ export default function GenerateBillPage() {
                 </button>
               </div>
 
-              {/* Info banner */}
               <div className="mx-6 mt-4 flex items-start gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">
                 <svg
                   viewBox="0 0 24 24"
@@ -1504,9 +1548,7 @@ export default function GenerateBillPage() {
                 </span>
               </div>
 
-              {/* Form fields */}
               <div className="space-y-4 px-6 py-5">
-                {/* Invoice date */}
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Tax Invoice Date
@@ -1524,7 +1566,6 @@ export default function GenerateBillPage() {
                   />
                 </div>
 
-                {/* Payment terms */}
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Payment Terms
@@ -1547,7 +1588,6 @@ export default function GenerateBillPage() {
                   </select>
                 </div>
 
-                {/* Conversion note */}
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Conversion Note{" "}
@@ -1569,7 +1609,6 @@ export default function GenerateBillPage() {
                   />
                 </div>
 
-                {/* Remove original option */}
                 <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100">
                   <div className="relative mt-0.5">
                     <input
@@ -1597,16 +1636,7 @@ export default function GenerateBillPage() {
                 </label>
               </div>
 
-              {/* Footer */}
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
-                {/* <button
-                  type="button"
-                  onClick={() => setConvertModalInvoice(null)}
-                  disabled={isConverting}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button> */}
                 <button
                   type="button"
                   onClick={handleConvert}
