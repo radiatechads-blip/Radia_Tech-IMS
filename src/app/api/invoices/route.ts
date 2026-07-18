@@ -323,20 +323,27 @@ async function deleteDocumentRecord(id: string, documentType: "invoice" | "profo
 // each have their own table, and "invoice" covers Tax Invoice, Quotation,
 // Pending Material, and Party Statement, which all share the Invoice
 // table and are distinguished only by billType / invoiceNumber prefix.
-//
-// NOTE: if Cancel/Retrieve fail with a generic 500 in the UI, the most
-// likely cause is that the `status` column referenced below does not
-// yet exist on the Invoice / ProformaInvoice / Annexure models in
-// schema.prisma. Add e.g. `status String @default("Active")` to each
-// of those three models and run `npx prisma migrate dev` if so.
+async function ensureDocumentStatusColumn(tableName: string) {
+  await prisma.$executeRawUnsafe(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Active'`);
+}
+
 async function updateDocumentStatus(id: string, documentType: "invoice" | "proforma" | "annexure", status: string) {
   if (documentType === "proforma") {
-    return prisma.proformaInvoice.update({ where: { id }, data: { status }, include: { items: true } });
+    await ensureDocumentStatusColumn("ProformaInvoice");
+    await prisma.$executeRawUnsafe(`UPDATE "ProformaInvoice" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.proformaInvoice.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
   }
   if (documentType === "annexure") {
-    return prisma.annexure.update({ where: { id }, data: { status }, include: { items: true } });
+    await ensureDocumentStatusColumn("Annexure");
+    await prisma.$executeRawUnsafe(`UPDATE "Annexure" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.annexure.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
   }
-  return prisma.invoice.update({ where: { id }, data: { status }, include: { items: true } });
+  await ensureDocumentStatusColumn("Invoice");
+  await prisma.$executeRawUnsafe(`UPDATE "Invoice" SET "status" = $1 WHERE "id" = $2`, status, id);
+  const record = await prisma.invoice.findUnique({ where: { id }, include: { items: true } });
+  return record ? { ...record, status } : null;
 }
 
 function parseInvoicePayload(data: unknown) {

@@ -143,6 +143,14 @@ type InvoiceReminderInvoice = {
   remindersPaused?: boolean | null;
 };
 
+type InvoiceReminderResult = {
+  ok: boolean;
+  id?: string;
+  error?: string;
+  skipped?: boolean;
+  message?: string;
+};
+
 async function ensureRemindersPausedColumn() {
   try {
     await prisma.$executeRaw`
@@ -199,7 +207,7 @@ function buildHtml({ heading, intro, invoice }: { heading: string; intro: string
   `;
 }
 
-export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, type: ReminderType) {
+export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, type: ReminderType): Promise<InvoiceReminderResult> {
   if (!invoice?.email) return { ok: false, error: 'No recipient' };
   const remindersPaused = invoice.remindersPaused ?? (await getReminderPauseState(invoice.id));
   if (remindersPaused) {

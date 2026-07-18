@@ -10,7 +10,8 @@ async function runOffset(offset: number, type: 'before3' | 'due' | 'after3' | 'a
   console.log(`Found ${invoices.length} invoices for ${type} (offset ${offset})`);
   for (const inv of invoices) {
     const res = await sendInvoiceReminderEmail(inv, type);
-    console.log(inv.invoiceNumber, inv.email, res.ok ? 'sent' : `error:${res.error}`);
+    const detail = res.ok ? 'sent' : (res.error ?? res.message ?? 'failed');
+    console.log(inv.invoiceNumber, inv.email, detail);
     await new Promise((r) => setTimeout(r, 400));
   }
 }

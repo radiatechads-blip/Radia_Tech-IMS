@@ -6,13 +6,13 @@ import InvoicePreview from "@/components/admin/InvoicePreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
 import { getBillTypeLabel, getInvoiceEditRoute } from "@/lib/invoiceRoute";
+import jsPDF from "jspdf";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import jsPDF from "jspdf";
 // NOTE: use html2canvas-pro, not html2canvas. Tailwind v4 emits modern CSS
 // color functions (oklch/oklab/color-mix) for utility classes like
 // bg-slate-950/70 or text-emerald-700. Plain html2canvas can't parse those
@@ -47,7 +47,7 @@ const DOCUMENT_TYPE_OPTIONS = [
   "Pending Material",
   "Party Statement",
   "Proforma Invoice",
-  // "Cancelled",
+  "Cancelled",
 ] as const;
 
 type DocumentType = (typeof DOCUMENT_TYPE_OPTIONS)[number];
