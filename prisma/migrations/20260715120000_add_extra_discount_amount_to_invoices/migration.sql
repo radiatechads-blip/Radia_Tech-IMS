@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "extraDiscountAmount" DOUBLE PRECISION DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "ProformaInvoice" ADD COLUMN IF NOT EXISTS "extraDiscountAmount" DOUBLE PRECISION DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Annexure" ADD COLUMN IF NOT EXISTS "extraDiscountAmount" DOUBLE PRECISION DEFAULT 0;

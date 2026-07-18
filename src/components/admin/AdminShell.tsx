@@ -1,7 +1,7 @@
 "use client";
 
 import { companyInfo } from "@/data/company";
-import { BarChart3, FileText, FolderTree, Inbox, LogOut, Menu, Package, UserCircle, Users, X } from "lucide-react";
+import { BarChart3, DollarSign, FileText, FolderTree, Inbox, LogOut, Menu, Package, UserCircle, Users, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
+  { label: "Payment IN", href: "/admin/payment-in", icon: DollarSign },
+  { label: "Alerts", href: "/admin/alerts", icon: Inbox },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Stock", href: "/admin/stock", icon: Package },
   { label: "Customers", href: "/admin/customers", icon: Users },
@@ -111,13 +113,13 @@ export default function AdminShell({
         <Link href="/" className="mb-2 block px-3 py-2 text-xs font-medium text-white/55 hover:text-white">
           View public website
         </Link>
-        <button
+        {/* <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/72 transition-colors hover:bg-red-500/20 hover:text-red-100"
         >
           <LogOut size={18} />
           Logout
-        </button>
+        </button> */}
       </div>
     </div>
   );

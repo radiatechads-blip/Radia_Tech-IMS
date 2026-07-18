@@ -1,0 +1,31 @@
+name: Send Invoice Reminders
+
+on:
+  schedule:
+    # Runs at 03:30 UTC daily (09:00 IST)
+    - cron: "30 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run reminders script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          REMINDERS_API_KEY: ${{ secrets.REMINDERS_API_KEY }}
+        run: npx ts-node scripts/send-due-reminders.ts

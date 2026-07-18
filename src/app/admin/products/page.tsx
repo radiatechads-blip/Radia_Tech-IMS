@@ -13,7 +13,9 @@ interface Product {
   slug: string;
   name: string;
   image: string;
-  pricePerMeter: string;
+  price?: number | null;
+  hsn?: string | null;
+  stock?: number | null;
   isFeatured: boolean;
   isNewArrival: boolean;
   isActive: boolean;
@@ -174,11 +176,13 @@ export default function AdminProductsPage() {
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-semibold text-slate-950">{product.name}</h2>
                     <p className="mt-1 text-sm text-slate-500">{product.category?.name || "Uncategorized"}</p>
-                    {product.pricePerMeter && <p className="mt-1 text-sm font-semibold text-accent">{product.pricePerMeter}</p>}
+                    {typeof product.price === "number" ? <p className="mt-1 text-sm font-semibold text-accent">₹{Number(product.price).toLocaleString("en-IN")}</p> : null}
+                    <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
+                      <span><span className="font-medium">HSN:</span> {product.hsn || "-"}</span>
+                      <span><span className="font-medium">Stock:</span> {typeof product.stock === "number" ? product.stock : 0}</span>
+                    </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <StatusPill active={product.isActive} label="Active" />
-                      <StatusPill active={product.isFeatured} label="Featured" />
-                      <StatusPill active={product.isNewArrival} label="New" />
                     </div>
                   </div>
                 </div>
@@ -204,8 +208,8 @@ export default function AdminProductsPage() {
                   <th className="px-5 py-3 font-semibold">Product</th>
                   <th className="px-5 py-3 font-semibold">Category</th>
                   <th className="px-5 py-3 font-semibold">Price</th>
-                  <th className="px-5 py-3 font-semibold">Featured</th>
-                  <th className="px-5 py-3 font-semibold">New</th>
+                  <th className="px-5 py-3 font-semibold">HSN</th>
+                  <th className="px-5 py-3 font-semibold">Stock</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
                   <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
@@ -220,9 +224,9 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-slate-600">{product.category?.name || "-"}</td>
-                    <td className="px-5 py-4 font-semibold text-accent">{product.pricePerMeter || "-"}</td>
-                    <td className="px-5 py-4"><StatusPill active={product.isFeatured} label="Featured" /></td>
-                    <td className="px-5 py-4"><StatusPill active={product.isNewArrival} label="New" /></td>
+                    <td className="px-5 py-4 font-semibold text-accent">{typeof product.price === "number" ? `₹${Number(product.price).toLocaleString("en-IN")}` : "-"}</td>
+                    <td className="px-5 py-4 text-slate-600">{product.hsn || "-"}</td>
+                    <td className="px-5 py-4 text-slate-700">{typeof product.stock === "number" ? product.stock : 0}</td>
                     <td className="px-5 py-4"><StatusPill active={product.isActive} label="Active" /></td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap items-center gap-2">

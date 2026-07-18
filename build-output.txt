@@ -1,0 +1,87 @@
+
+> website@0.1.0 build
+> prisma generate && next build
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+
+✔ Generated Prisma Client (v7.8.0) to .\src\generated\prisma in 1.11s
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\dell\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\dell\OneDrive\Desktop\RTE\RadiaTech-IMS\package-lock.json
+
+▲ Next.js 16.2.4 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 51s
+  Running TypeScript ...
+  Finished TypeScript in 78s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/41) ...
+  Generating static pages using 7 workers (10/41) 
+  Generating static pages using 7 workers (20/41) 
+  Generating static pages using 7 workers (30/41) 
+✓ Generating static pages using 7 workers (41/41) in 3.4s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /admin/alerts
+├ ○ /admin/categories
+├ ○ /admin/customers
+├ ○ /admin/generate-bill
+├ ○ /admin/generate-bill/eway-bill
+├ ○ /admin/generate-bill/invoice
+├ ○ /admin/generate-bill/long-bills
+├ ○ /admin/generate-bill/party-statement
+├ ○ /admin/generate-bill/pending-material
+├ ○ /admin/generate-bill/proforma-invoice
+├ ○ /admin/generate-bill/quotation
+├ ○ /admin/inquiries
+├ ○ /admin/login
+├ ○ /admin/payment-in
+├ ○ /admin/products
+├ ƒ /admin/products/[id]
+├ ○ /admin/profile
+├ ○ /admin/specializations
+├ ○ /admin/stock
+├ ƒ /api/admin/invoice-reminders
+├ ƒ /api/admin/payment-invoices
+├ ƒ /api/admin/payment-invoices/record-payment
+├ ƒ /api/admin/stats
+├ ƒ /api/auth/change-password
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/categories
+├ ƒ /api/categories/[id]
+├ ƒ /api/customers
+├ ƒ /api/customers/[id]
+├ ƒ /api/inquiries
+├ ƒ /api/inquiries/[id]
+├ ƒ /api/invoices
+├ ƒ /api/notifications/send-due
+├ ƒ /api/notifications/send-manual
+├ ƒ /api/products
+├ ƒ /api/products/[id]
+├ ƒ /api/seed
+├ ƒ /api/service-specializations
+├ ƒ /api/service-specializations/[id]
+├ ƒ /api/upload
+└ ○ /robots.txt
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

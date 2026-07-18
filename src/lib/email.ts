@@ -1,7 +1,11 @@
-import { Resend } from "resend";
 import { companyInfo } from "@/data/company";
+import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+}
 
 interface InquiryEmailData {
   name: string;
@@ -43,6 +47,11 @@ function getAdminRecipients() {
 }
 
 async function sendToOne(to: string, subject: string, html: string): Promise<EmailResult> {
+  const resend = getResendClient();
+  if (!resend) {
+    return { ok: false, error: "RESEND_API_KEY is not configured" };
+  }
+
   try {
     const result = await resend.emails.send({
       from: process.env.EMAIL_FROM || "Radiatech Electra <noreply@radiatech.in>",
@@ -61,7 +70,7 @@ async function sendToOne(to: string, subject: string, html: string): Promise<Ema
   }
 }
 
-async function sendEmail({ to, subject, html }: { to: string[]; subject: string; html: string }): Promise<EmailResult> {
+export async function sendEmail({ to, subject, html }: { to: string[]; subject: string; html: string }): Promise<EmailResult> {
   if (!process.env.RESEND_API_KEY) {
     return { ok: false, error: "RESEND_API_KEY is not configured" };
   }

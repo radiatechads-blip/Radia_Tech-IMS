@@ -2,43 +2,43 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import {
-  BarChart3,
-  CalendarDays,
-  DollarSign,
-  FileText,
-  Gauge,
-  Package,
-  PieChart as PieChartIcon,
-  Radar as RadarIcon,
-  TrendingUp,
-  Users,
+    BarChart3,
+    CalendarDays,
+    DollarSign,
+    FileText,
+    Gauge,
+    Package,
+    PieChart as PieChartIcon,
+    Radar as RadarIcon,
+    TrendingUp,
+    Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-  RadialBar,
-  RadialBarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    ComposedChart,
+    Legend,
+    Line,
+    LineChart,
+    Pie,
+    PieChart,
+    PolarAngleAxis,
+    PolarGrid,
+    PolarRadiusAxis,
+    Radar,
+    RadarChart,
+    RadialBar,
+    RadialBarChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from "recharts";
 
 type Period = "day" | "month" | "year";
@@ -317,7 +317,7 @@ export default function BusinessInsightPage() {
                           <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number | string) => `${value} products`} />
+                      <Tooltip formatter={(value: any) => typeof value === 'number' || typeof value === 'string' ? `${value} products` : ''} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -353,7 +353,7 @@ export default function BusinessInsightPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
                     <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
-                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Tooltip formatter={(value: any) => typeof value === 'number' || typeof value === 'string' ? formatCurrency(Number(value)) : ''} />
                     <Line type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
                     <Line type="monotone" dataKey="bills" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
                   </LineChart>
@@ -375,7 +375,7 @@ export default function BusinessInsightPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
                     <YAxis tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
-                    <Tooltip formatter={(value: number | string) => `${value} units`} />
+                    <Tooltip formatter={(value: any) => typeof value === 'number' || typeof value === 'string' ? `${value} units` : ''} />
                     <Bar dataKey="soldProducts" fill="#0f766e" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -405,7 +405,7 @@ export default function BusinessInsightPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
                     <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
-                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Tooltip formatter={(value: any) => typeof value === 'number' || typeof value === 'string' ? formatCurrency(Number(value)) : ''} />
                     <Area type="monotone" dataKey="avgOrderValue" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#avgOrderValueFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -432,7 +432,7 @@ export default function BusinessInsightPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
                     <YAxis tick={{ fontSize: 12, fill: "#64748b" }} />
-                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
+                    <Tooltip formatter={(value: any) => typeof value === 'number' || typeof value === 'string' ? formatCurrency(Number(value)) : ''} />
                     <Area type="monotone" dataKey="cumulativeRevenue" stroke="#4f46e5" strokeWidth={2.5} fill="url(#cumulativeRevenueFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -455,7 +455,7 @@ export default function BusinessInsightPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "#64748b" }} allowDecimals={false} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: "#64748b" }} />
-                  <Tooltip formatter={(value: number | string, name: string) => name === "revenue" ? formatCurrency(Number(value)) : `${value} bills`} />
+                  <Tooltip formatter={(value: any, name: any) => typeof value === 'number' || typeof value === 'string' ? (name === "revenue" ? formatCurrency(Number(value)) : `${value} bills`) : ''} />
                   <Legend />
                   <Bar yAxisId="left" dataKey="bills" fill="#4f46e5" radius={[4, 4, 0, 0]} name="Bills" />
                   <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} name="Revenue" />
@@ -482,7 +482,7 @@ export default function BusinessInsightPage() {
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10, fill: "#94a3b8" }} />
                     <Radar name="Relative scale" dataKey="value" stroke="#0f766e" fill="#0f766e" fillOpacity={0.35} />
                     <Tooltip
-                      formatter={(value: number | string, _name: string, item) => {
+                      formatter={(value: any, _name: any, item) => {
                         const actual = item?.payload?.actual;
                         return actual !== undefined ? `${actual} (${value}% of max)` : `${value}%`;
                       }}
@@ -532,7 +532,7 @@ export default function BusinessInsightPage() {
 
             {stats?.recentTransactions?.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[700px] text-left text-sm">
+                <table className="w-full min-w-175 text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-5 py-3 font-semibold">Invoice</th>

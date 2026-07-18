@@ -10,25 +10,6 @@ interface Category {
   slug: string;
 }
 
-const parseImages = (images: unknown, fallbackImage: string) => {
-  if (Array.isArray(images))
-    return images.filter(
-      (image): image is string => typeof image === "string" && image.length > 0,
-    );
-  if (typeof images === "string") {
-    try {
-      const parsed = JSON.parse(images);
-      if (Array.isArray(parsed))
-        return parsed.filter(
-          (image): image is string =>
-            typeof image === "string" && image.length > 0,
-        );
-    } catch {
-      return fallbackImage ? [fallbackImage] : [];
-    }
-  }
-  return fallbackImage ? [fallbackImage] : [];
-};
 
 function parseJsonObject(value: unknown): Record<string, string> {
   if (typeof value !== "string")
@@ -132,8 +113,8 @@ export default function AdminProductForm({
     hsn: "",
     unit: "PCS",
     stock: 0,
+    price: 0,
     description: "",
-    pricePerMeter: "",
     specificationText: "",
     applicationsText: "",
     image: "",
@@ -141,7 +122,6 @@ export default function AdminProductForm({
     isFeatured: false,
     isNewArrival: false,
     isActive: true,
-    images: [] as string[],
   });
 
   useEffect(() => {
@@ -203,8 +183,10 @@ export default function AdminProductForm({
               stock: Number.isFinite(Number(product.stock))
                 ? Number(product.stock)
                 : 0,
+              price: Number.isFinite(Number(product.price)) // Populating price on edit
+                ? Number(product.price)
+                : 0,
               description: String(product.description || ""),
-              pricePerMeter: String(product.pricePerMeter || ""),
               specificationText: specificationTextFromValue(
                 product.specifications,
               ),
@@ -214,7 +196,6 @@ export default function AdminProductForm({
               isFeatured: Boolean(product.isFeatured),
               isNewArrival: Boolean(product.isNewArrival),
               isActive: Boolean(product.isActive),
-              images: parseImages(product.images, String(product.image || "")),
             });
           }
         }
@@ -256,13 +237,11 @@ export default function AdminProductForm({
       hsn: form.hsn.trim(),
       unit: form.unit,
       stock: Number.isFinite(Number(form.stock)) ? Number(form.stock) : 0,
+      price: Number.isFinite(Number(form.price)) ? Number(form.price) : 0, // Adding price to body payload
       description: form.description.trim(),
-      pricePerMeter: form.pricePerMeter.trim(),
       specifications: parseSpecificationText(form.specificationText),
       applications: parseApplicationsText(form.applicationsText),
       image: form.image,
-      images:
-        form.images.length > 0 ? form.images : form.image ? [form.image] : [],
       categoryId: form.categoryId,
       isFeatured: form.isFeatured,
       isNewArrival: form.isNewArrival,
@@ -375,6 +354,12 @@ export default function AdminProductForm({
                   <option value="PCS">PCS</option>
                   <option value="FEET">FEET</option>
                   <option value="KG">KG</option>
+                  <option value="PKT">PKT</option>
+                  <option value="LOT">LOT</option>
+                  <option value="NMR">NOS</option>
+                  <option value="PAIR">PAIR</option>
+                  <option value="LTR">LTR</option>
+                  <option value="ROLLS">ROLLS</option>
                 </select>
               </Field>
               <Field label="Stock *">
@@ -387,14 +372,32 @@ export default function AdminProductForm({
                     const val = e.target.value;
                     setForm({
                       ...form,
-
                       stock: val === "" ? 0 : Number.parseInt(val, 10),
                     });
                   }}
                   className="admin-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </Field>
+              {/* Added Price Field */}
+              <Field label="Price *">
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.price || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm({
+                      ...form,
+                      price: val === "" ? 0 : Number.parseFloat(val),
+                    });
+                  }}
+                  className="admin-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </Field>
             </div>
+
           </section>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -442,24 +445,3 @@ function Field({
   );
 }
 
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 border-slate-300 text-primary"
-      />
-      {label}
-    </label>
-  );
-}

@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
 }
 
 model AdminUser {
@@ -44,11 +43,10 @@ model Product {
   unit           ProductUnit     @default(PCS)
   stock          Int             @default(0)
   description    String
-  pricePerMeter  String          @default("")
+  price          Float           @default(0)
   specifications String          @default("{}") // JSON string
   applications   String          @default("[]") // JSON string
   image          String          @default("")
-  images         String          @default("[]") // JSON string
   isNewArrival   Boolean         @default(false)
   isFeatured     Boolean         @default(false)
   isActive       Boolean         @default(true)
@@ -126,12 +124,18 @@ model Inquiry {
 
 model Invoice {
   id                  String         @id @default(cuid())
+  documentType        String         @default("invoice")
+  billType            String         @default("Invoice")
   invoiceNumber       String         @unique
   invoiceDate         DateTime
   dueDate             DateTime?
   partyName           String
-  gstin               String         @default("")
+  contactPerson       String         @default("")
+  email               String         @default("")
   phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
   state               String         @default("")
   address             String         @default("")
   poDate              DateTime?
@@ -149,10 +153,14 @@ model Invoice {
   authorizedSignature String         @default("")
   subtotal            Float          @default(0)
   discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
   taxableAmount       Float          @default(0)
   taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
   grandTotal          Float          @default(0)
   items               InvoiceItem[]
+  reminders           InvoiceReminder[]
+  payments            Payment[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 }
@@ -177,6 +185,127 @@ model InvoiceItem {
   updatedAt           DateTime @updatedAt
 }
 
+model ProformaInvoice {
+  id                  String                @id @default(cuid())
+  documentType        String                @default("proforma")
+  billType            String                @default("Proforma Invoice")
+  invoiceNumber       String                @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String                @default("")
+  email               String                @default("")
+  phone               String                @default("")
+  city                String                @default("")
+  pincode             String                @default("")
+  gstin               String                @default("")
+  state               String                @default("")
+  address             String                @default("")
+  poDate              DateTime?
+  ewayBillNo          String                @default("")
+  poNo                String                @default("")
+  placeOfSupply       String                @default("")
+  shipToAddress       String                @default("")
+  transportName       String                @default("")
+  vehicleNumber       String                @default("")
+  taxType             String                @default("cgst-sgst")
+  paymentMode         String                @default("")
+  notes               String                @default("")
+  terms               String                @default("")
+  bankDetails         String                @default("")
+  authorizedSignature String                @default("")
+  subtotal            Float                 @default(0)
+  discountTotal       Float                 @default(0)
+  extraDiscountAmount Float                 @default(0)
+  taxableAmount       Float                 @default(0)
+  taxAmount           Float                 @default(0)
+  roundOff            Float                 @default(0)
+  grandTotal          Float                 @default(0)
+  items               ProformaInvoiceItem[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+}
+
+model ProformaInvoiceItem {
+  id                  String            @id @default(cuid())
+  proformaInvoiceId   String
+  proformaInvoice     ProformaInvoice   @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  description         String
+  hsn                 String            @default("")
+  unit                String            @default("")
+  qty                 Int               @default(0)
+  rate                Float             @default(0)
+  taxPercent          Float             @default(0)
+  discountPercent     Float             @default(0)
+  taxablePerUnit      Float             @default(0)
+  taxableAmount       Float             @default(0)
+  gstAmount           Float             @default(0)
+  finalRatePerUnit    Float             @default(0)
+  rowAmount           Float             @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+}
+
+model Annexure {
+  id                  String         @id @default(cuid())
+  documentType        String         @default("annexure")
+  billType            String         @default("Annexure")
+  invoiceNumber       String         @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String         @default("")
+  email               String         @default("")
+  phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
+  state               String         @default("")
+  address             String         @default("")
+  poDate              DateTime?
+  ewayBillNo          String         @default("")
+  poNo                String         @default("")
+  placeOfSupply       String         @default("")
+  shipToAddress       String         @default("")
+  transportName       String         @default("")
+  vehicleNumber       String         @default("")
+  taxType             String         @default("cgst-sgst")
+  paymentMode         String         @default("")
+  notes               String         @default("")
+  terms               String         @default("")
+  bankDetails         String         @default("")
+  authorizedSignature String         @default("")
+  subtotal            Float          @default(0)
+  discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
+  taxableAmount       Float          @default(0)
+  taxAmount           Float          @default(0)
+  grandTotal          Float          @default(0)
+  items               AnnexureItem[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model AnnexureItem {
+  id              String   @id @default(cuid())
+  annexureId      String
+  annexure        Annexure @relation(fields: [annexureId], references: [id], onDelete: Cascade)
+  description     String
+  hsn             String   @default("")
+  unit            String   @default("")
+  qty             Int      @default(0)
+  rate            Float    @default(0)
+  taxPercent      Float    @default(0)
+  discountPercent Float    @default(0)
+  taxablePerUnit  Float    @default(0)
+  taxableAmount   Float    @default(0)
+  gstAmount       Float    @default(0)
+  finalRatePerUnit Float    @default(0)
+  rowAmount       Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model ServiceSpecialization {
   id               String   @id @default(cuid())
   title            String
@@ -187,4 +316,27 @@ model ServiceSpecialization {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model InvoiceReminder {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  type      String
+  sentAt    DateTime @default(now())
+  meta      String?  @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([invoiceId, type])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount      Float
+  paymentMode String   @default("Cash")
+  note        String   @default("")
+  paidAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
 }

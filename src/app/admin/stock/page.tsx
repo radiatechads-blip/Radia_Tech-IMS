@@ -1,8 +1,8 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 interface Product {
   id: string;
@@ -13,11 +13,15 @@ interface Product {
   category?: { name: string } | null;
 }
 
-export default function AdminStockPage() {
+function AdminStockPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialProductId = searchParams.get("productId") ?? "";
+  const [initialProductId, setInitialProductId] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    setInitialProductId(query.get("productId") ?? "");
+  }, []);
   const [selectedProductId, setSelectedProductId] = useState(initialProductId);
   const [stock, setStock] = useState(0);
   const [remark, setRemark] = useState("");
@@ -47,7 +51,7 @@ export default function AdminStockPage() {
         }
 
         if (!cancelled) {
-          const list = Array.isArray(data) ? data as Product[] : [];
+          const list = Array.isArray(data) ? (data as Product[]) : [];
           setProducts(list);
           if (initialProductId && list.some((product) => product.id === initialProductId)) {
             setSelectedProductId(initialProductId);
@@ -146,17 +150,15 @@ export default function AdminStockPage() {
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-700">Updated Stock *</span>
                   <input
-  type="number"
-  min="0"
-  // If stock is 0, display an empty string, otherwise display the number
-  value={stock === 0 ? "" : stock}
-  onChange={(event) => {
-    const val = event.target.value;
-    // If the input is cleared, set to 0. Otherwise, parse the number.
-    setStock(val === "" ? 0 : Number.parseInt(val, 10));
-  }}
-  className="admin-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-/>
+                    type="number"
+                    min="0"
+                    value={stock === 0 ? "" : stock}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      setStock(val === "" ? 0 : Number.parseInt(val, 10));
+                    }}
+                    className="admin-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
                 </label>
               </div>
 
@@ -199,5 +201,13 @@ export default function AdminStockPage() {
         </section>
       </div>
     </AdminShell>
+  );
+}
+
+export default function AdminStockPage() {
+  return (
+    <Suspense fallback={<div className="rounded border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading stock update…</div>}>
+      <AdminStockPageContent />
+    </Suspense>
   );
 }

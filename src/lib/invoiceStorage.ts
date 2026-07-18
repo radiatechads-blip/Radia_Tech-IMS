@@ -7,8 +7,12 @@ export interface InvoiceRecord {
   invoiceDate: string;
   dueDate?: string | null;
   partyName: string;
+  contactPerson: string;
+  email: string;
   gstin: string;
   phone: string;
+  city: string;
+  pincode: string;
   state: string;
   address: string;
   poDate?: string | null;
