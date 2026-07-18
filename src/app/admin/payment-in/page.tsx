@@ -224,6 +224,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { matchesPaymentDateFilter, type PaymentDateFilter } from "@/lib/paymentInFilters";
 import { useEffect, useMemo, useState } from "react";
 
 type PaymentRecord = {
@@ -248,14 +249,6 @@ type InvoiceRow = {
   remaining: number;
   payments: PaymentRecord[];
 };
-
-type PaymentDateFilter =
-  | "all"
-  | "thisMonth"
-  | "lastMonth"
-  | "thisQuarter"
-  | "thisYear"
-  | "custom";
 
 export default function PaymentInPage() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
@@ -313,55 +306,23 @@ export default function PaymentInPage() {
   const filteredInvoices = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    const matchesDateFilter = (invoice: InvoiceRow) => {
-      if (dateFilter === "all") return true;
-
-      const invoiceDateValue = invoice.invoiceDate || invoice.dueDate || "";
-      if (!invoiceDateValue) return false;
-
-      const invoiceDate = new Date(`${invoiceDateValue}T00:00:00`);
-      if (Number.isNaN(invoiceDate.getTime())) return false;
-
-      const today = new Date();
-
-      if (dateFilter === "custom") {
-        if (!customStartDate || !customEndDate) return false;
-        const start = new Date(`${customStartDate}T00:00:00`);
-        const end = new Date(`${customEndDate}T23:59:59`);
-        return invoiceDate >= start && invoiceDate <= end;
-      }
-
-      if (dateFilter === "thisMonth") {
-        const start = new Date(today.getFullYear(), today.getMonth(), 1);
-        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
-        return invoiceDate >= start && invoiceDate <= end;
-      }
-
-      if (dateFilter === "lastMonth") {
-        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
-        return invoiceDate >= start && invoiceDate <= end;
-      }
-
-      if (dateFilter === "thisQuarter") {
-        const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
-        const start = new Date(today.getFullYear(), quarterStartMonth, 1);
-        const end = new Date(today.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59);
-        return invoiceDate >= start && invoiceDate <= end;
-      }
-
-      const start = new Date(today.getFullYear(), 0, 1);
-      const end = new Date(today.getFullYear(), 11, 31, 23, 59, 59);
-      return invoiceDate >= start && invoiceDate <= end;
-    };
-
     return invoices.filter((invoice) => {
       const haystack = [invoice.invoiceNumber, invoice.partyName, invoice.email]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       const matchesSearch = !term || haystack.includes(term);
-      return matchesSearch && matchesDateFilter(invoice);
+      const matchesDate = matchesPaymentDateFilter(
+        {
+          invoiceDate: invoice.invoiceDate ?? null,
+          dueDate: invoice.dueDate ?? null,
+        },
+        dateFilter,
+        customStartDate,
+        customEndDate,
+      );
+
+      return matchesSearch && matchesDate;
     });
   }, [invoices, searchTerm, dateFilter, customStartDate, customEndDate]);
 

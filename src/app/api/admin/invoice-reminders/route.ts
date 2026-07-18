@@ -9,6 +9,7 @@ type InvoiceReminderRow = {
   invoiceNumber: string;
   partyName: string;
   grandTotal: number;
+  invoiceDate: Date | null;
   dueDate: Date | null;
   email: string;
   remindersPaused: boolean;
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     `;
 
     const [invoice] = await prisma.$queryRaw<InvoiceReminderRow[]>`
-      SELECT "id", "invoiceNumber", "partyName", "grandTotal", "dueDate", "email", "remindersPaused"
+      SELECT "id", "invoiceNumber", "partyName", "grandTotal", "invoiceDate", "dueDate", "email", "remindersPaused"
       FROM "Invoice"
       WHERE "id" = ${invoiceId}
     `;
@@ -89,6 +90,7 @@ export async function GET() {
           invoiceNumber: true,
           partyName: true,
           grandTotal: true,
+          invoiceDate: true,
           dueDate: true,
           email: true,
           reminders: { select: { id: true, type: true, sentAt: true, meta: true }, orderBy: { sentAt: "desc" } },
@@ -115,7 +117,7 @@ export async function GET() {
         const invoices = await prisma.invoice.findMany({
           where: { email: { not: "" } },
           orderBy: { dueDate: "asc" },
-          select: { id: true, invoiceNumber: true, partyName: true, grandTotal: true, dueDate: true, email: true },
+          select: { id: true, invoiceNumber: true, partyName: true, grandTotal: true, invoiceDate: true, dueDate: true, email: true },
         });
 
         const pausedRows = await prisma.$queryRaw<Array<{ id: string; remindersPaused: boolean }>>`

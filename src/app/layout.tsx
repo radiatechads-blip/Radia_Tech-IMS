@@ -1,3 +1,155 @@
+// import type { Metadata } from "next";
+// import { Geist, Geist_Mono } from "next/font/google";
+// import "./globals.css";
+
+// const geistSans = Geist({
+//   variable: "--font-geist-sans",
+//   subsets: ["latin"],
+// });
+
+// const geistMono = Geist_Mono({
+//   variable: "--font-geist-mono",
+//   subsets: ["latin"],
+// });
+
+// export const metadata: Metadata = {
+//   title: {
+//     default:
+//       "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
+//     template: "%s | Radiatech Electra",
+//   },
+//   description:
+//     "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
+//   keywords: [
+//     "Fire Protection",
+//     "Fire Detection",
+//     "Hydrant Systems",
+//     "Sprinkler Systems",
+//     "Integrated Safety Solutions",
+//     "Radiatech Electra",
+//     "Fire Safety India",
+//     "Industrial Fire Safety",
+//     "Critical Infrastructure Protection",
+//     "Quality Fire Safety Solutions",
+//     "Reliable Fire Safety Equipment",
+//     "Fire Safety Company in Noida",
+// "Fire Safety Equipment Supplier in Noida",
+// "Fire Fighting Equipment Supplier",
+// "Fire Alarm System Supplier",
+// "Fire Hydrant System Supplier",
+// "Fire Protection Company Delhi NCR",
+// "Fire Safety Equipment Manufacturer India",
+// "Fire Safety Dealer Noida",
+// "Fire Safety Contractor Noida",
+// "Fire Safety Solutions India",
+//   ],
+//   authors: [{ name: "Radiatech Electra Private Limited" }],
+//   creator: "Radiatech Electra",
+//   publisher: "Radiatech Electra Private Limited",
+//   metadataBase: new URL(
+//     process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in",
+//   ),
+//   alternates: { canonical: "/" },
+//   icons: {
+//     icon: [{ url: "/favicon.png", type: "image/png" }],
+//     apple: [{ url: "/favicon.png", type: "image/png" }],
+//     shortcut: "/favicon.png",
+//   },
+//   openGraph: {
+//     type: "website",
+//     locale: "en_IN",
+//     siteName: "Radiatech Electra",
+//     title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
+//     description:
+//       "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
+//     images: [
+//       {
+//         url: "/LOGO.png",
+//         width: 512,
+//         height: 512,
+//         alt: "Radiatech Electra Logo",
+//       },
+//     ],
+//   },
+//   twitter: {
+//     card: "summary",
+//     title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
+//     description:
+//       "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
+//     images: ["/LOGO.png"],
+//   },
+//   robots: { index: true, follow: true },
+// };
+
+// const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in";
+
+// const jsonLd = {
+//   "@context": "https://schema.org",
+//   "@type": ["Organization", "LocalBusiness"],
+//   "@id": `${siteUrl}/#organization`,
+//   name: "Radiatech Electra Private Limited",
+//   url: siteUrl,
+//   logo: {
+//     "@type": "ImageObject",
+//     url: `${siteUrl}/LOGO.png`,
+//     width: 512,
+//     height: 512,
+//   },
+//   image: `${siteUrl}/LOGO.png`,
+//   description:
+//     "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
+//   foundingDate: "2026",
+//   telephone: "+91-8178850959",
+//   email: "radiatechelectra@gmail.com",
+//   priceRange: "$$",
+//   openingHours: "Mo-Sa 09:00-19:00",
+//   contactPoint: {
+//     "@type": "ContactPoint",
+//     telephone: "+91-8178850959",
+//     contactType: "sales",
+//     areaServed: "IN",
+//     availableLanguage: ["English", "Hindi"],
+//   },
+//   address: {
+//     "@type": "PostalAddress",
+//     streetAddress: "D block, D-93, D Block, Sector 10",
+//     addressLocality: "Noida",
+//     addressRegion: "Uttar Pradesh",
+//     postalCode: "201301",
+//     addressCountry: "IN",
+//   },
+//   geo: {
+//     "@type": "GeoCoordinates",
+//     latitude: 28.5706,
+//     longitude: 77.3219,
+//   },
+//   sameAs: [
+//     "https://www.facebook.com/Radiatechelectra/",
+//     "https://www.instagram.com/radia.tech?igsh=MTIwNzNkMG9tYmpvbg==",
+//     "https://www.indiamart.com/radiatechelectra/",
+//   ],
+// };
+
+// export default function RootLayout({
+//   children,
+// }: Readonly<{
+//   children: React.ReactNode;
+// }>) {
+//   void children;
+//   return (
+//     <html
+//       lang="en"
+//       className={`${geistSans.variable} ${geistMono.variable} h-full`}
+//     >
+//       <body className="min-h-full bg-white text-[#111] antialiased">
+//         {children}
+//       </body>
+//     </html>
+//   );
+// }
+
+
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -12,122 +164,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Private system metadata configuration
 export const metadata: Metadata = {
   title: {
-    default:
-      "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
-    template: "%s | Radiatech Electra",
+    default: "Inventory Management System | Radiatech Electra",
+    template: "%s | Radiatech Electra IMS",
   },
-  description:
-    "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
-  keywords: [
-    "Fire Protection",
-    "Fire Detection",
-    "Hydrant Systems",
-    "Sprinkler Systems",
-    "Integrated Safety Solutions",
-    "Radiatech Electra",
-    "Fire Safety India",
-    "Industrial Fire Safety",
-    "Critical Infrastructure Protection",
-    "Quality Fire Safety Solutions",
-    "Reliable Fire Safety Equipment",
-    "Fire Safety Company in Noida",
-"Fire Safety Equipment Supplier in Noida",
-"Fire Fighting Equipment Supplier",
-"Fire Alarm System Supplier",
-"Fire Hydrant System Supplier",
-"Fire Protection Company Delhi NCR",
-"Fire Safety Equipment Manufacturer India",
-"Fire Safety Dealer Noida",
-"Fire Safety Contractor Noida",
-"Fire Safety Solutions India",
-  ],
+  description: "Internal Inventory Management System for Radiatech Electra officials only.",
   authors: [{ name: "Radiatech Electra Private Limited" }],
-  creator: "Radiatech Electra",
-  publisher: "Radiatech Electra Private Limited",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in",
   ),
-  alternates: { canonical: "/" },
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
     apple: [{ url: "/favicon.png", type: "image/png" }],
     shortcut: "/favicon.png",
   },
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    siteName: "Radiatech Electra",
-    title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
-    description:
-      "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
-    images: [
-      {
-        url: "/LOGO.png",
-        width: 512,
-        height: 512,
-        alt: "Radiatech Electra Logo",
-      },
-    ],
+  // CRITICAL: Tells search engine bots completely to stay away from indexing this portal
+  robots: { 
+    index: false, 
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+    }
   },
-  twitter: {
-    card: "summary",
-    title: "Radiatech Electra – Leading Fire & Safety Solutions Provider in India",
-    description:
-      "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
-    images: ["/LOGO.png"],
-  },
-  robots: { index: true, follow: true },
-};
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in";
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": ["Organization", "LocalBusiness"],
-  "@id": `${siteUrl}/#organization`,
-  name: "Radiatech Electra Private Limited",
-  url: siteUrl,
-  logo: {
-    "@type": "ImageObject",
-    url: `${siteUrl}/LOGO.png`,
-    width: 512,
-    height: 512,
-  },
-  image: `${siteUrl}/LOGO.png`,
-  description:
-    "Radiatech Electra delivers advanced Fire Protection, Fire Detection, Hydrant, Sprinkler, and Integrated Safety Solutions designed to protect lives, property, and critical infrastructure with quality, reliability, and professional execution.",
-  foundingDate: "2026",
-  telephone: "+91-8178850959",
-  email: "radiatechelectra@gmail.com",
-  priceRange: "$$",
-  openingHours: "Mo-Sa 09:00-19:00",
-  contactPoint: {
-    "@type": "ContactPoint",
-    telephone: "+91-8178850959",
-    contactType: "sales",
-    areaServed: "IN",
-    availableLanguage: ["English", "Hindi"],
-  },
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "D block, D-93, D Block, Sector 10",
-    addressLocality: "Noida",
-    addressRegion: "Uttar Pradesh",
-    postalCode: "201301",
-    addressCountry: "IN",
-  },
-  geo: {
-    "@type": "GeoCoordinates",
-    latitude: 28.5706,
-    longitude: 77.3219,
-  },
-  sameAs: [
-    "https://www.facebook.com/Radiatechelectra/",
-    "https://www.instagram.com/radia.tech?igsh=MTIwNzNkMG9tYmpvbg==",
-    "https://www.indiamart.com/radiatechelectra/",
-  ],
 };
 
 export default function RootLayout({
@@ -135,12 +197,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  void children;
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full`}
     >
+      <head>
+        {/* Extra fallback protection to ensure privacy across browsers */}
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
       <body className="min-h-full bg-white text-[#111] antialiased">
         {children}
       </body>
