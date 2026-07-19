@@ -109,24 +109,30 @@ export async function GET(request: NextRequest) {
 
     let totalSoldProducts = 0;
     let totalAmount = 0;
+    let totalBills = 0;
     let recentTransactions: Array<{ id: string; invoiceNumber: string; partyName: string; grandTotal: number; invoiceDate: string; createdAt: string }> = [];
     let trendData: TrendPoint[] = [];
+    let taxInvoiceSeries: Array<{ invoiceDate: string; grandTotal: number }> = [];
 
     try {
-      const recentInvoices = await prisma.invoice.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 50,
-        select: {
-          id: true,
-          invoiceNumber: true,
-          partyName: true,
-          grandTotal: true,
-          invoiceDate: true,
-          createdAt: true,
-          items: { select: { qty: true } },
-        },
-      });
+      const [recentInvoices, invoiceCount] = await Promise.all([
+        prisma.invoice.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          select: {
+            id: true,
+            invoiceNumber: true,
+            partyName: true,
+            grandTotal: true,
+            invoiceDate: true,
+            createdAt: true,
+            items: { select: { qty: true } },
+          },
+        }),
+        prisma.invoice.count(),
+      ]);
 
+      totalBills = invoiceCount;
       totalSoldProducts = recentInvoices.reduce((sum, invoice) => sum + (Array.isArray(invoice.items) ? invoice.items.reduce((itemSum, item) => itemSum + Number((item as Record<string, unknown>).qty || 0), 0) : 0), 0);
       totalAmount = recentInvoices.reduce((sum, invoice) => sum + Number(invoice.grandTotal ?? 0), 0);
       recentTransactions = recentInvoices.slice(0, 5).map((invoice) => ({
@@ -137,6 +143,10 @@ export async function GET(request: NextRequest) {
         invoiceDate: invoice.invoiceDate?.toISOString() ?? "",
         createdAt: invoice.createdAt?.toISOString() ?? "",
       }));
+      taxInvoiceSeries = recentInvoices.map((invoice) => ({
+        invoiceDate: invoice.invoiceDate?.toISOString() ?? "",
+        grandTotal: Number(invoice.grandTotal ?? 0),
+      }));
       trendData = buildTrendData(recentInvoices as InvoiceLike[], period);
     } catch (invoiceError) {
       if (!isDatabaseUnavailableError(invoiceError)) {
@@ -144,6 +154,7 @@ export async function GET(request: NextRequest) {
       }
 
       const fallbackInvoices = await readInvoiceStore();
+      totalBills = fallbackInvoices.length;
       totalSoldProducts = fallbackInvoices.reduce((sum, invoice) => sum + (Array.isArray(invoice.items) ? invoice.items.reduce((itemSum, item) => itemSum + Number((item as Record<string, unknown>).qty || 0), 0) : 0), 0);
       totalAmount = fallbackInvoices.reduce((sum, invoice) => sum + Number(invoice.grandTotal || 0), 0);
       recentTransactions = fallbackInvoices.slice(0, 5).map((invoice) => ({
@@ -153,6 +164,10 @@ export async function GET(request: NextRequest) {
         grandTotal: Number(invoice.grandTotal || 0),
         invoiceDate: invoice.invoiceDate,
         createdAt: invoice.createdAt,
+      }));
+      taxInvoiceSeries = fallbackInvoices.map((invoice) => ({
+        invoiceDate: invoice.invoiceDate ?? "",
+        grandTotal: Number(invoice.grandTotal || 0),
       }));
       trendData = buildTrendData(fallbackInvoices as InvoiceLike[], period);
     }
@@ -168,12 +183,13 @@ export async function GET(request: NextRequest) {
       recentInquiries,
       recentTransactions,
       categoriesWithCounts: categoriesWithCounts.map((c) => ({ name: c.name, products: c._count.products })),
+      taxInvoiceSeries,
       businessSummary: {
         period,
         trend: trendData,
         totalRevenue: totalAmount,
-        totalBills: recentTransactions.length,
-        avgBillValue: recentTransactions.length ? totalAmount / recentTransactions.length : 0,
+        totalBills,
+        avgBillValue: totalBills ? totalAmount / totalBills : 0,
         totalSoldProducts,
       },
     });

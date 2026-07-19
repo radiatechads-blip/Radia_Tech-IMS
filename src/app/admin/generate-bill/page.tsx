@@ -5,6 +5,7 @@ import AnnexurePreview from "@/components/admin/AnnexurePreview";
 import InvoicePreview from "@/components/admin/InvoicePreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
+import { getConversionSourceLabel } from "@/lib/invoicePayload";
 import { getBillTypeLabel, getInvoiceEditRoute } from "@/lib/invoiceRoute";
 import jsPDF from "jspdf";
 import Link from "next/link";
@@ -38,6 +39,7 @@ type InvoiceWithDocType = InvoiceSummary & {
   convertedFromProforma?: boolean;
   sourceProformaNumber?: string;
   isDuplicate?: boolean;
+  convertedInvoiceNumber?: string;
 };
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -142,6 +144,7 @@ export default function GenerateBillPage() {
   const [convertModalInvoice, setConvertModalInvoice] =
     useState<InvoiceSummary | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [convertedInvoiceNumbers, setConvertedInvoiceNumbers] = useState<Record<string, string>>({});
   const [convertOptions, setConvertOptions] = useState<ConvertOptions>({
     invoiceDate: new Date().toISOString().split("T")[0],
     paymentTerms: "Due on Receipt",
@@ -149,12 +152,44 @@ export default function GenerateBillPage() {
     markOriginalConverted: true,
   });
 
+  const normalizeInvoiceRecord = (invoice: InvoiceSummary): InvoiceSummary => {
+    const meta = invoice as InvoiceWithDocType;
+    const normalized = { ...invoice } as InvoiceWithDocType;
+
+    if (typeof meta.convertedToTaxInvoice === "boolean") {
+      normalized.convertedToTaxInvoice = meta.convertedToTaxInvoice;
+    } else if (typeof invoice.convertedToTaxInvoice === "boolean") {
+      normalized.convertedToTaxInvoice = invoice.convertedToTaxInvoice;
+    }
+
+    if (typeof meta.convertedInvoiceNumber === "string") {
+      normalized.convertedInvoiceNumber = meta.convertedInvoiceNumber;
+    }
+
+    if (typeof meta.convertedInvoiceId === "string") {
+      normalized.convertedInvoiceId = meta.convertedInvoiceId;
+    }
+
+    if (typeof meta.convertedFromProforma === "boolean") {
+      normalized.convertedFromProforma = meta.convertedFromProforma;
+    }
+
+    if (typeof meta.sourceProformaNumber === "string") {
+      normalized.sourceProformaNumber = meta.sourceProformaNumber;
+    }
+
+    return normalized as InvoiceSummary;
+  };
+
   const loadInvoices = async () => {
     try {
       const response = await fetch("/api/invoices");
       if (!response.ok) return;
       const data = await response.json();
-      setInvoices(Array.isArray(data) ? data : []);
+      const nextInvoices = Array.isArray(data)
+        ? data.map((invoice) => normalizeInvoiceRecord(invoice as InvoiceSummary))
+        : [];
+      setInvoices(nextInvoices);
     } catch {
       setInvoices([]);
     } finally {
@@ -163,7 +198,10 @@ export default function GenerateBillPage() {
   };
 
   useEffect(() => {
-    void loadInvoices();
+    const load = async () => {
+      await loadInvoices();
+    };
+    void load();
   }, []);
 
   useEffect(() => {
@@ -247,7 +285,9 @@ export default function GenerateBillPage() {
         >
           {label}
         </span>
-        {Boolean(invoice.convertedToTaxInvoice) && (
+        {Boolean(
+          invoiceMeta.convertedToTaxInvoice || invoice.convertedToTaxInvoice,
+        ) && (
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
             <svg
               viewBox="0 0 24 24"
@@ -265,11 +305,16 @@ export default function GenerateBillPage() {
             Converted
           </span>
         )}
-        {invoiceMeta.convertedFromProforma && (
+        {Boolean(
+          invoiceMeta.convertedToTaxInvoice ||
+          invoice.convertedToTaxInvoice ||
+          invoiceMeta.convertedFromProforma ||
+          invoice.convertedFromProforma,
+        ) && (
           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/10">
-            From Proforma
-            {invoiceMeta.sourceProformaNumber
-              ? ` (${invoiceMeta.sourceProformaNumber})`
+            {getBillTypeLabel(invoice) === "Quotation" ? "From Quotation" : "From Proforma"}
+            {invoiceMeta.sourceProformaNumber || invoice.sourceProformaNumber
+              ? ` (${invoiceMeta.sourceProformaNumber || invoice.sourceProformaNumber})`
               : ""}
           </span>
         )}
@@ -321,7 +366,7 @@ export default function GenerateBillPage() {
           poNo={invoice.poNo}
           placeOfSupply={invoice.placeOfSupply}
           items={invoice.items}
-          taxType={invoice.taxType as any}
+          taxType={invoice.taxType as "cgst-sgst" | "igst" | "none" | undefined}
           notes={invoice.notes}
           terms={invoice.terms}
           extraDiscountAmount={invoice.extraDiscountAmount}
@@ -541,12 +586,13 @@ export default function GenerateBillPage() {
 
   const handleDuplicate = async (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
-    const {
-      id: _id,
-      convertedToTaxInvoice: _c,
-      convertedInvoiceId: _ci,
-      ...rest
-    } = invoice as InvoiceWithDocType;
+    const rest = (() => {
+      const { ...withoutMeta } = invoice as InvoiceWithDocType;
+      delete withoutMeta.id;
+      delete withoutMeta.convertedToTaxInvoice;
+      delete withoutMeta.convertedInvoiceId;
+      return withoutMeta;
+    })();
     const payload = {
       ...rest,
       invoiceNumber: `${invoice.invoiceNumber} (Duplicate)`,
@@ -709,11 +755,12 @@ export default function GenerateBillPage() {
 
   const openConvertModal = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
+    const sourceDocumentType = getBillTypeLabel(invoice) === "Quotation" ? "quotation" : "proforma";
     setConvertOptions({
       invoiceDate: new Date().toISOString().split("T")[0],
       paymentTerms: "Due on Receipt",
-      conversionNote: `Converted from Proforma Invoice ${invoice.invoiceNumber}`,
-      markOriginalConverted: true,
+      conversionNote: `Converted from ${getConversionSourceLabel(sourceDocumentType)} ${invoice.invoiceNumber}`,
+      markOriginalConverted: false,
     });
     setConvertModalInvoice(invoice);
   };
@@ -722,16 +769,18 @@ export default function GenerateBillPage() {
     if (!convertModalInvoice) return;
     setIsConverting(true);
 
-    const {
-      id: _id,
-      billType: _bt,
-      documentType: _dt,
-      convertedToTaxInvoice: _c,
-      convertedInvoiceId: _ci,
-      ...rest
-    } = convertModalInvoice as InvoiceWithDocType;
+    const rest = (() => {
+      const { ...withoutMeta } = convertModalInvoice as InvoiceWithDocType;
+      delete withoutMeta.id;
+      delete withoutMeta.billType;
+      delete withoutMeta.documentType;
+      delete withoutMeta.convertedToTaxInvoice;
+      delete withoutMeta.convertedInvoiceId;
+      return withoutMeta;
+    })();
 
     const sourceInvoiceNumber = convertModalInvoice.invoiceNumber ?? "";
+    const sourceDocumentType = getBillTypeLabel(convertModalInvoice) === "Quotation" ? "quotation" : "proforma";
     const taxInvoiceNumber = `TI-${sourceInvoiceNumber.replace(/^[A-Z]+-?/i, "")}`;
 
     const newTaxInvoice = {
@@ -747,8 +796,8 @@ export default function GenerateBillPage() {
       createdAt: new Date().toISOString(),
       status: "Active",
       convertedToTaxInvoice: false,
-      sourceProformaNumber: convertModalInvoice.invoiceNumber,
-      convertedFromProforma: true,
+      sourceProformaNumber: sourceInvoiceNumber,
+      convertedFromProforma: sourceDocumentType === "proforma",
     };
 
     try {
@@ -758,19 +807,58 @@ export default function GenerateBillPage() {
         body: JSON.stringify(newTaxInvoice),
       });
       if (!createRes.ok) throw new Error("Failed to create Tax Invoice");
-      await createRes.json();
+      const createdInvoice = (await createRes.json().catch(() => null)) as { id?: string; invoiceNumber?: string } | null;
+      const createdInvoiceNumber = String(createdInvoice?.invoiceNumber || taxInvoiceNumber);
 
-      if (convertOptions.markOriginalConverted) {
+      if (createdInvoice?.id) {
+        const rowKey = convertModalInvoice.id ?? convertModalInvoice.invoiceNumber ?? "";
+        const conversionPayload = {
+          ...convertModalInvoice,
+          convertedToTaxInvoice: true,
+          convertedInvoiceId: createdInvoice.id,
+          convertedInvoiceNumber: createdInvoiceNumber,
+          convertedFromProforma: sourceDocumentType === "proforma",
+          sourceProformaNumber: sourceInvoiceNumber,
+        };
+
         await fetch(
-          `/api/invoices?id=${encodeURIComponent(convertModalInvoice.id ?? "")}&documentType=proforma`,
-          { method: "DELETE" },
+          `/api/invoices?id=${encodeURIComponent(convertModalInvoice.id ?? "")}&documentType=${sourceDocumentType}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(conversionPayload),
+          },
+        );
+
+        setConvertedInvoiceNumbers((current) => ({
+          ...current,
+          [rowKey]: createdInvoiceNumber,
+        }));
+        setInvoices((current) =>
+          current.map((inv) => {
+            const invKey = inv.id ?? inv.invoiceNumber ?? "";
+            return invKey === rowKey
+              ? {
+                  ...inv,
+                  convertedToTaxInvoice: true,
+                  convertedInvoiceNumber: createdInvoiceNumber,
+                  convertedInvoiceId: createdInvoice.id,
+                  convertedFromProforma: sourceDocumentType === "proforma",
+                  sourceProformaNumber: sourceInvoiceNumber,
+                }
+              : inv;
+          }),
+        );
+        window.open(
+          `/admin/generate-bill/invoice?invoiceId=${encodeURIComponent(createdInvoice.id)}`,
+          "_blank",
+          "noopener,noreferrer",
         );
       }
 
-      await loadInvoices();
       setConvertModalInvoice(null);
       window.alert(
-        `Proforma Invoice successfully converted to Tax Invoice (${taxInvoiceNumber}).`,
+        `${getConversionSourceLabel(sourceDocumentType)} successfully converted to Tax Invoice (${createdInvoiceNumber}).`,
       );
     } catch {
       window.alert("Conversion failed. Please try again.");
@@ -1242,7 +1330,7 @@ export default function GenerateBillPage() {
                   No {selectedDocType} documents match your search:
                   <br />
                   <span className="font-semibold text-slate-800">
-                    {searchField === "date" ? "Date" : searchField === "invoiceNumber" ? "Invoice Number" : "Customer Name"}: "{searchTerm}"
+                    {searchField === "date" ? "Date" : searchField === "invoiceNumber" ? "Invoice Number" : "Customer Name"}: &quot;{searchTerm}&quot;
                   </span>
                 </p>
                 <button
@@ -1280,7 +1368,18 @@ export default function GenerateBillPage() {
                       getBillTypeLabel(invoice) !== "Tax Invoice";
                     const isProforma =
                       getBillTypeLabel(invoice) === "Proforma Invoice";
-                    const alreadyConverted = !!invoice.convertedToTaxInvoice;
+                    const isQuotation =
+                      getBillTypeLabel(invoice) === "Quotation";
+                    const rowKey = invoice.id ?? invoice.invoiceNumber ?? "";
+                    const invoiceMeta = invoice as InvoiceWithDocType;
+                    const convertedInvoiceNumber =
+                      convertedInvoiceNumbers[rowKey] ||
+                      invoiceMeta.convertedInvoiceNumber ||
+                      "";
+                    const alreadyConverted = Boolean(
+                      convertedInvoiceNumber ||
+                      invoiceMeta.convertedToTaxInvoice,
+                    );
 
                     return (
                       <tr
@@ -1312,58 +1411,41 @@ export default function GenerateBillPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            {isProforma && (
-                              <button
-                                type="button"
-                                disabled={alreadyConverted || isCancelled}
-                                onClick={() => openConvertModal(invoice)}
-                                title={
-                                  alreadyConverted
-                                    ? "Already converted to Tax Invoice"
-                                    : "Convert to Tax Invoice"
-                                }
-                                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                                  alreadyConverted || isCancelled
-                                    ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
-                                    : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
-                                }`}
-                              >
-                                {alreadyConverted ? (
-                                  <>
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      className="h-3.5 w-3.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2.5"
-                                    >
-                                      <path
-                                        d="M5 13l4 4L19 7"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                    Converted
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      className="h-3.5 w-3.5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
-                                      <path
-                                        d="M4 12h16M13 5l7 7-7 7"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                    Convert
-                                  </>
-                                )}
-                              </button>
+                            {(isProforma || isQuotation) && (
+                              alreadyConverted ? (
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
+                                    {convertedInvoiceNumber || "Converted"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={isCancelled}
+                                  onClick={() => openConvertModal(invoice)}
+                                  title="Convert to Tax Invoice"
+                                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                    isCancelled
+                                      ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
+                                      : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
+                                  }`}
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="h-3.5 w-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path
+                                      d="M4 12h16M13 5l7 7-7 7"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                  Convert
+                                </button>
+                              )
                             )}
 
                             <div
@@ -1755,12 +1837,10 @@ export default function GenerateBillPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-slate-800">
-                      Remove original Proforma Invoice
+                      Mark original document as converted
                     </p>
                     <p className="text-xs text-slate-500">
-                      The original Proforma Invoice will be deleted and no
-                      longer appear in the Proforma Invoice list after
-                      conversion.
+                      The original document will be marked as converted and no longer show the conversion action after this change.
                     </p>
                   </div>
                 </label>

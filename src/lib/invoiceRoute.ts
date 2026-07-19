@@ -28,6 +28,11 @@ export type InvoiceSummary = {
   terms?: string | null;
   bankDetails?: string | null;
   authorizedSignature?: string | null;
+  convertedToTaxInvoice?: boolean | null;
+  convertedInvoiceId?: string | null;
+  convertedInvoiceNumber?: string | null;
+  convertedFromProforma?: boolean | null;
+  sourceProformaNumber?: string | null;
   signatureImage?: string | null;
   extraDiscountAmount?: number | string | null;
   roundOff?: number | string | null;

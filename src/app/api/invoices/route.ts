@@ -1,5 +1,7 @@
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { resolveInvoiceDate, resolveInvoiceNumber } from "@/lib/invoicePayload";
+import { buildStockReductionPlan } from "@/lib/stockReduction";
 import { NextResponse } from "next/server";
 
 type DocumentType = "invoice" | "proforma" | "annexure" | "quotation";
@@ -12,17 +14,9 @@ function normalizeDocumentType(data: Record<string, unknown>): DocumentType {
   return "invoice";
 }
 
-function buildInvoicePayload(data: Record<string, unknown>, documentType: DocumentType) {
-  const invoiceNumber = String(data.invoiceNumber || data.annexureNumber || "").trim();
-  if (!invoiceNumber) {
-    throw new Error("Invoice number is required.");
-  }
-
-  const invoiceDateValue = String(data.invoiceDate || data.annexureDate || "").trim();
-  const invoiceDate = invoiceDateValue ? new Date(invoiceDateValue) : null;
-  if (!invoiceDate || Number.isNaN(invoiceDate.getTime())) {
-    throw new Error("Valid invoice date is required.");
-  }
+function buildInvoicePayload(data: Record<string, unknown>, documentType: DocumentType, invoiceNumberOverride?: string) {
+  const invoiceNumber = invoiceNumberOverride ?? resolveInvoiceNumber(data, documentType);
+  const invoiceDate = resolveInvoiceDate(data);
 
   const dueDateValue = String(data.dueDate || "").trim();
   const dueDate = dueDateValue ? new Date(dueDateValue) : null;
@@ -41,7 +35,7 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
           ? "Annexure"
           : documentType === "quotation"
             ? "Quotation"
-            : "Invoice",
+            : String(data.billType || "Invoice").trim() || "Invoice",
     invoiceNumber,
     invoiceDate,
     dueDate,
@@ -85,18 +79,118 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
   return payload;
 }
 
+function buildConversionMeta(data: Record<string, unknown>) {
+  return {
+    convertedToTaxInvoice: Boolean(data.convertedToTaxInvoice),
+    convertedInvoiceId: typeof data.convertedInvoiceId === "string" && data.convertedInvoiceId ? data.convertedInvoiceId : null,
+    convertedInvoiceNumber: typeof data.convertedInvoiceNumber === "string" && data.convertedInvoiceNumber ? data.convertedInvoiceNumber : null,
+    convertedFromProforma: Boolean(data.convertedFromProforma),
+    sourceProformaNumber: typeof data.sourceProformaNumber === "string" && data.sourceProformaNumber ? data.sourceProformaNumber : null,
+  };
+}
+
+function buildDocumentItems(data: Record<string, unknown>) {
+  if (!Array.isArray(data.items)) {
+    return [] as Array<Record<string, unknown>>;
+  }
+
+  return data.items.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const record = item as Record<string, unknown>;
+    return [
+      {
+        description: String(record.description || "").trim(),
+        hsn: String(record.hsn || "").trim(),
+        unit: String(record.unit || "").trim(),
+        qty: Number(record.qty || 0),
+        rate: Number(record.rate || 0),
+        taxPercent: Number(record.taxPercent || 0),
+        discountPercent: Number(record.discountPercent || 0),
+        taxablePerUnit: Number(record.taxablePerUnit || 0),
+        taxableAmount: Number(record.taxableAmount || 0),
+        gstAmount: Number(record.gstAmount || 0),
+        finalRatePerUnit: Number(record.finalRatePerUnit || 0),
+        rowAmount: Number(record.rowAmount || 0),
+      },
+    ];
+  });
+}
+
+async function applyStockReductionPlan(plan: Array<{ productId: string; qty: number }>) {
+  for (const change of plan) {
+    await prisma.product.update({
+      where: { id: change.productId },
+      data: { stock: { decrement: change.qty } },
+    });
+  }
+}
+
+async function ensureInvoiceConversionColumns() {
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "convertedToTaxInvoice" BOOLEAN NOT NULL DEFAULT false`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "convertedInvoiceId" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "convertedInvoiceNumber" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "convertedFromProforma" BOOLEAN NOT NULL DEFAULT false`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "sourceProformaNumber" TEXT`);
+}
+
+async function writeInvoiceConversionMeta(id: string, meta: ReturnType<typeof buildConversionMeta>) {
+  await ensureInvoiceConversionColumns();
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Invoice" SET "convertedToTaxInvoice" = $1, "convertedInvoiceId" = $2, "convertedInvoiceNumber" = $3, "convertedFromProforma" = $4, "sourceProformaNumber" = $5 WHERE "id" = $6`,
+    meta.convertedToTaxInvoice,
+    meta.convertedInvoiceId,
+    meta.convertedInvoiceNumber,
+    meta.convertedFromProforma,
+    meta.sourceProformaNumber,
+    id,
+  );
+}
+
 async function createDocumentRecord(data: Record<string, unknown>, documentType: DocumentType) {
-  const payload = buildInvoicePayload(data, documentType);
-  if (documentType === "proforma") {
-    const created = await prisma.proformaInvoice.create({
-      data: {
-        ...payload,
-        invoiceDate: payload.invoiceDate,
-        dueDate: payload.dueDate,
-        poDate: payload.poDate,
-        items: {
-          create: Array.isArray(data.items)
-            ? data.items.map((item: Record<string, unknown>) => ({
+  const documentItems = buildDocumentItems(data);
+  const stockReductionPlan =
+    documentType === "invoice" || documentType === "annexure"
+      ? buildStockReductionPlan(
+          documentItems.map((item) => ({
+            description: String(item.description || ""),
+            qty: Number(item.qty || 0),
+          })),
+          await prisma.product.findMany({ select: { id: true, name: true, stock: true } }),
+        )
+      : [];
+
+  const conversionMeta = buildConversionMeta(data);
+  const proformaConversionMeta = documentType === "proforma"
+    ? conversionMeta
+    : undefined;
+
+  const existingNumbers = new Set<string>(
+    (documentType === "proforma"
+      ? await prisma.proformaInvoice.findMany({ select: { invoiceNumber: true } })
+      : documentType === "annexure"
+        ? await prisma.annexure.findMany({ select: { invoiceNumber: true } })
+        : await prisma.invoice.findMany({ select: { invoiceNumber: true } }))
+      .map((record) => String(record.invoiceNumber || "").trim())
+      .filter(Boolean),
+  );
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const payload = buildInvoicePayload(data, documentType, resolveInvoiceNumber(data, documentType, existingNumbers));
+
+    try {
+      if (documentType === "proforma") {
+        const created = await prisma.proformaInvoice.create({
+          data: {
+            ...payload,
+            ...(proformaConversionMeta ?? {}),
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
                 description: String(item.description || "").trim(),
                 hsn: String(item.hsn || "").trim(),
                 unit: String(item.unit || "").trim(),
@@ -109,25 +203,23 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
                 gstAmount: Number(item.gstAmount || 0),
                 finalRatePerUnit: Number(item.finalRatePerUnit || 0),
                 rowAmount: Number(item.rowAmount || 0),
-              }))
-            : [],
-        },
-      },
-      include: { items: true },
-    });
-    return { ...created, items: created.items ?? [] };
-  }
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        return { ...created, items: created.items ?? [] };
+      }
 
-  if (documentType === "annexure") {
-    const created = await prisma.annexure.create({
-      data: {
-        ...payload,
-        invoiceDate: payload.invoiceDate,
-        dueDate: payload.dueDate,
-        poDate: payload.poDate,
-        items: {
-          create: Array.isArray(data.items)
-            ? data.items.map((item: Record<string, unknown>) => ({
+      if (documentType === "annexure") {
+        const created = await prisma.annexure.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
                 description: String(item.description || "").trim(),
                 hsn: String(item.hsn || "").trim(),
                 unit: String(item.unit || "").trim(),
@@ -140,25 +232,24 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
                 gstAmount: Number(item.gstAmount || 0),
                 finalRatePerUnit: Number(item.finalRatePerUnit || 0),
                 rowAmount: Number(item.rowAmount || 0),
-              }))
-            : [],
-        },
-      },
-      include: { items: true },
-    });
-    return { ...created, items: created.items ?? [] };
-  }
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        await applyStockReductionPlan(stockReductionPlan);
+        return { ...created, items: created.items ?? [] };
+      }
 
-  // For "invoice" and "quotation" we store in the Invoice table
-  const created = await prisma.invoice.create({
-    data: {
-      ...payload,
-      invoiceDate: payload.invoiceDate,
-      dueDate: payload.dueDate,
-      poDate: payload.poDate,
-      items: {
-        create: Array.isArray(data.items)
-          ? data.items.map((item: Record<string, unknown>) => ({
+      // For "invoice" and "quotation" we store in the Invoice table
+      const created = await prisma.invoice.create({
+        data: {
+          ...payload,
+          invoiceDate: payload.invoiceDate,
+          dueDate: payload.dueDate,
+          poDate: payload.poDate,
+          items: {
+            create: documentItems.map((item) => ({
               description: String(item.description || "").trim(),
               hsn: String(item.hsn || "").trim(),
               unit: String(item.unit || "").trim(),
@@ -171,39 +262,53 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
               gstAmount: Number(item.gstAmount || 0),
               finalRatePerUnit: Number(item.finalRatePerUnit || 0),
               rowAmount: Number(item.rowAmount || 0),
-            }))
-          : [],
-      },
-    },
-    include: { items: true },
-  });
-  return { ...created, items: created.items ?? [] };
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      if (documentType === "invoice" || documentType === "quotation") {
+        await writeInvoiceConversionMeta(created.id, conversionMeta);
+        const refreshed = await prisma.invoice.findUnique({
+          where: { id: created.id },
+          include: { items: true },
+        });
+        return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...created, items: created.items ?? [] };
+      }
+
+      await applyStockReductionPlan(stockReductionPlan);
+      return { ...created, items: created.items ?? [] };
+    } catch (error) {
+      const isUniqueConstraintError =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        String((error as { code?: unknown }).code) === "P2002";
+
+      if (isUniqueConstraintError && attempt < 4) {
+        existingNumbers.add(String(payload.invoiceNumber || "").trim());
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Failed to create invoice after retrying for unique invoice numbers.");
 }
 
 async function updateDocumentRecord(id: string, data: Record<string, unknown>, documentType: DocumentType) {
   const payload = buildInvoicePayload(data, documentType);
-  const itemPayload = Array.isArray(data.items)
-    ? data.items.map((item: Record<string, unknown>) => ({
-        description: String(item.description || "").trim(),
-        hsn: String(item.hsn || "").trim(),
-        unit: String(item.unit || "").trim(),
-        qty: Number(item.qty || 0),
-        rate: Number(item.rate || 0),
-        taxPercent: Number(item.taxPercent || 0),
-        discountPercent: Number(item.discountPercent || 0),
-        taxablePerUnit: Number(item.taxablePerUnit || 0),
-        taxableAmount: Number(item.taxableAmount || 0),
-        gstAmount: Number(item.gstAmount || 0),
-        finalRatePerUnit: Number(item.finalRatePerUnit || 0),
-        rowAmount: Number(item.rowAmount || 0),
-      }))
-    : [];
+  const itemPayload = buildDocumentItems(data);
+  const conversionMeta = buildConversionMeta(data);
 
   if (documentType === "proforma") {
     const updated = await prisma.proformaInvoice.update({
       where: { id },
       data: {
         ...payload,
+        ...(buildConversionMeta(data)),
         invoiceDate: payload.invoiceDate,
         dueDate: payload.dueDate,
         poDate: payload.poDate,
@@ -250,7 +355,12 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     },
     include: { items: true },
   });
-  return { ...updated, items: updated.items ?? [] };
+  await writeInvoiceConversionMeta(updated.id, conversionMeta);
+  const refreshed = await prisma.invoice.findUnique({
+    where: { id: updated.id },
+    include: { items: true },
+  });
+  return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...updated, items: updated.items ?? [] };
 }
 
 async function getAllDocumentRecords(documentType?: DocumentType) {
@@ -400,6 +510,10 @@ export async function POST(req: Request) {
       return NextResponse.json(invoice, { status: 201 });
     } catch (error) {
       logServerError("api.invoices.POST", error);
+      console.error("api.invoices.POST request body:", data);
+      if (error instanceof Error) {
+        console.error("api.invoices.POST error message:", error.message);
+      }
       const status = isDatabaseUnavailableError(error) ? 503 : 400;
       const message = status === 503 ? DATABASE_UNAVAILABLE_MESSAGE : error instanceof Error && error.message ? error.message : "Unable to create invoice.";
       return jsonError(message, status);

@@ -156,9 +156,14 @@ model Invoice {
   discountTotal       Float          @default(0)
   extraDiscountAmount Float          @default(0)
   taxableAmount       Float          @default(0)
-  taxAmount           Float          @default(0)
+  taxAmount            Float          @default(0)
   roundOff            Float          @default(0)
   grandTotal          Float          @default(0)
+  convertedToTaxInvoice Boolean       @default(false)
+  convertedInvoiceId  String?
+  convertedInvoiceNumber String?
+  convertedFromProforma Boolean       @default(false)
+  sourceProformaNumber String?
   items               InvoiceItem[]
   reminders           InvoiceReminder[]
   payments            Payment[]
@@ -191,6 +196,11 @@ model ProformaInvoice {
   documentType        String                @default("proforma")
   billType            String                @default("Proforma Invoice")
   invoiceNumber       String                @unique
+  convertedToTaxInvoice Boolean              @default(false)
+  convertedInvoiceId  String?
+  convertedInvoiceNumber String?
+  convertedFromProforma Boolean              @default(false)
+  sourceProformaNumber String?
   invoiceDate         DateTime
   dueDate             DateTime?
   partyName           String

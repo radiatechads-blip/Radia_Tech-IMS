@@ -50,4 +50,28 @@ Set a cron job to run the script daily (example runs at 9:00 AM):
 ## Notes & safety
 
 - The system only sends reminders for invoices with a non-empty `email` and a `dueDate` matching the target date range.
-- If you need to skip invoices that are already paid, add a `paid` flag or check payment records and update the `findInvoicesByDueDate` query accordingly.
+- If you need to skip invoices that are already paid, add a `paid` flag or check export function buildPaymentReceivedEmailHtml({
+  invoiceNumber,
+  partyName,
+  grandTotal,
+  remainingAmount,
+  dueDate,
+  amountReceived,
+  paymentMode,
+}: {
+  invoiceNumber: string;
+  partyName: string;
+  grandTotal: number;
+  remainingAmount: number;
+  dueDate?: Date | string | null;
+  amountReceived?: number;
+  await sendPaymentReceivedEmail({
+  email: invoice.email,
+  invoiceNumber: invoice.invoiceNumber,
+  partyName: invoice.partyName,
+  grandTotal: invoice.grandTotal,
+  remainingAmount: remainingAfterPayment,
+  amountReceived: amount,
+  paymentMode: paymentMode,
+  dueDate: invoice.dueDate,
+});cords and update the `findInvoicesByDueDate` query accordingly.

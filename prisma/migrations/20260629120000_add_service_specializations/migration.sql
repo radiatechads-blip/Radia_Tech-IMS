@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "ServiceSpecialization" (
+CREATE TABLE IF NOT EXISTS "ServiceSpecialization" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "shortDescription" TEXT NOT NULL,
