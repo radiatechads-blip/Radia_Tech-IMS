@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { sendPaymentReceivedEmail } from "@/lib/invoiceEmails";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -34,6 +35,16 @@ export async function POST(request: Request) {
         paymentMode,
         note,
       },
+    });
+
+    const remainingAfterPayment = invoice.grandTotal - (totalPaid + amount);
+    await sendPaymentReceivedEmail({
+      email: invoice.email,
+      invoiceNumber: invoice.invoiceNumber,
+      partyName: invoice.partyName,
+      grandTotal: invoice.grandTotal,
+      remainingAmount: remainingAfterPayment,
+      dueDate: invoice.dueDate,
     });
 
     return NextResponse.json({ ok: true, payment });

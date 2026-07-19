@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface Product {
   id: string;
@@ -35,6 +36,17 @@ interface PaginationState {
   totalPages: number;
 }
 
+interface InvoiceTransaction {
+  id: string;
+  billType: string;
+  invoiceNumber: string;
+  partyName: string;
+  invoiceDate: string;
+  qty: number;
+  rate: number;
+  status?: string;
+}
+
 type ProductsResponse = {
   items: Product[];
   pagination: PaginationState;
@@ -42,9 +54,10 @@ type ProductsResponse = {
 
 const pageSize = 10;
 
-async function fetchProductsPage(page: number, categorySlug: string): Promise<ProductsResponse> {
+async function fetchProductsPage(page: number, categorySlug: string, search: string = ""): Promise<ProductsResponse> {
   const params = new URLSearchParams({ admin: "true", page: String(page), pageSize: String(pageSize) });
   if (categorySlug) params.set("category", categorySlug);
+  if (search) params.set("search", search);
   const response = await fetch(`/api/products?${params.toString()}`);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "Unable to load products.");
@@ -67,7 +80,13 @@ export default function AdminProductsPage() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize, total: 0, totalPages: 1 });
+  
+  // Transaction modal state
+  const [transactionModal, setTransactionModal] = useState<{ productId: string; productName: string } | null>(null);
+  const [transactions, setTransactions] = useState<InvoiceTransaction[]>([]);
+  const [transactionLoading, setTransactionLoading] = useState(false);
 
   // Load categories once for filter dropdown
   useEffect(() => {
@@ -88,7 +107,7 @@ export default function AdminProductsPage() {
           return;
         }
 
-        const data = await fetchProductsPage(page, categoryFilter);
+        const data = await fetchProductsPage(page, categoryFilter, searchQuery);
         if (cancelled) return;
 
         setProducts(data.items || []);
@@ -104,7 +123,7 @@ export default function AdminProductsPage() {
 
     void loadProducts();
     return () => { cancelled = true; };
-  }, [page, categoryFilter, router]);
+  }, [page, categoryFilter, searchQuery, router]);
 
   const handleDelete = async (productId: string) => {
     if (!confirm("Delete this product?")) return;
@@ -126,6 +145,40 @@ export default function AdminProductsPage() {
     setLoading(true);
     setPage(1);
     setCategoryFilter(slug);
+  };
+
+  const openTransactionModal = async (productId: string, productName: string) => {
+    setTransactionModal({ productId, productName });
+    setTransactionLoading(true);
+    try {
+      console.log("[Client] Opening transaction modal for product:", { productId, productName });
+      const response = await fetch(`/api/products/${productId}/transactions?name=${encodeURIComponent(productName)}`);
+      console.log("[Client] API Response status:", response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Client] Transactions received:", data);
+        setTransactions(Array.isArray(data) ? data : []);
+      } else {
+        const errorData = await response.json();
+        const errorMsg = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ""}`;
+        console.error("[Client] API Error:", errorMsg);
+        alert(`Error fetching transactions: ${errorMsg}`);
+        setTransactions([]);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      console.error("[Client] Fetch error:", errorMsg);
+      alert(`Error: ${errorMsg}`);
+      setTransactions([]);
+    } finally {
+      setTransactionLoading(false);
+    }
+  };
+
+  const closeTransactionModal = () => {
+    setTransactionModal(null);
+    setTransactions([]);
   };
 
   return (
@@ -156,6 +209,30 @@ export default function AdminProductsPage() {
             {cat.name}
           </button>
         ))}
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4 flex gap-2">
+        <input
+          type="text"
+          placeholder="Search by product name..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setPage(1);
+          }}
+          className="admin-input flex-1"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setSearchQuery("");
+            setPage(1);
+          }}
+          className="inline-flex items-center justify-center rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Clear
+        </button>
       </div>
 
       {loading ? (
@@ -196,6 +273,12 @@ export default function AdminProductsPage() {
                   <button onClick={() => router.push(`/admin/stock?productId=${product.id}`)} className="inline-flex flex-1 min-w-27.5 items-center justify-center gap-2 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                     Stock
                   </button>
+                  <button 
+                    onClick={() => openTransactionModal(product.id, product.name)}
+                    className="inline-flex flex-1 min-w-27.5 items-center justify-center gap-2 border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+                  >
+                    📊 Transaction
+                  </button>
                 </div>
               </article>
             ))}
@@ -233,6 +316,12 @@ export default function AdminProductsPage() {
                         <Link href={`/admin/products/${product.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-dark"><Edit3 size={15} /> Edit</Link>
                         <button onClick={() => handleDelete(product.id)} className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700"><Trash2 size={15} /> Delete</button>
                         <button onClick={() => router.push(`/admin/stock?productId=${product.id}`)} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-slate-900">Stock</button>
+                        <button 
+                          onClick={() => openTransactionModal(product.id, product.name)}
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          📊 Transaction
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -242,6 +331,98 @@ export default function AdminProductsPage() {
           </div>
           <Pagination page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={handlePageChange} />
         </>
+      )}
+
+      {/* Transaction Modal */}
+      {transactionModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            {/* Modal Header */}
+            <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-950">Product Transactions</h2>
+                <p className="mt-1 text-sm text-slate-600">{transactionModal.productName}</p>
+              </div>
+              <button
+                onClick={closeTransactionModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+              {transactionLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-sm text-slate-500">Loading transactions...</div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+                  <p className="font-medium">No transactions found for this product</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full min-w-[800px] text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Bill Type</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Bill No.</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Customer Name</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700 text-right">Quantity</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700 text-right">Price/Unit</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {transactions.map((txn) => (
+                        <tr key={txn.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <span className="inline-flex rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                              {txn.billType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{txn.invoiceNumber}</td>
+                          <td className="px-4 py-3 text-slate-700">{txn.partyName}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {new Date(txn.invoiceDate).toLocaleDateString('en-IN')}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-slate-900">{txn.qty}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-accent">
+                            ₹{txn.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
+                              txn.status === 'paid' || txn.status === 'Paid'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {txn.status || 'Unpaid'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 flex items-center justify-end gap-3">
+              <button
+                onClick={closeTransactionModal}
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </AdminShell>
   );

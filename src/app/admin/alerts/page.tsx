@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { readJsonResponse } from "@/lib/fetchJson";
 import { useEffect, useState } from "react";
 
 type Reminder = {
@@ -46,7 +47,7 @@ export default function AlertsPage() {
         }
 
         const res = await fetch("/api/admin/invoice-reminders");
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         if (!res.ok) throw new Error(data?.error || "Unable to load alerts");
         if (!cancelled) setRows(data.invoices || []);
       } catch (err: unknown) {
@@ -72,13 +73,14 @@ export default function AlertsPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ invoiceId, type: "manual" }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (!res.ok || !data?.ok || !data?.result?.ok) {
         throw new Error(data?.error || data?.result?.error || "Send failed");
       }
       alert("Reminder sent successfully");
       // refresh
-      const refreshed = await (await fetch("/api/admin/invoice-reminders")).json();
+      const refreshedRes = await fetch("/api/admin/invoice-reminders");
+      const refreshed = await readJsonResponse(refreshedRes);
       setRows(refreshed.invoices || []);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Send failed';
@@ -95,9 +97,10 @@ export default function AlertsPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ invoiceId, status }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       if (!res.ok) throw new Error(data?.error || "Unable to update reminder status");
-      const refreshed = await (await fetch("/api/admin/invoice-reminders")).json();
+      const refreshedRes = await fetch("/api/admin/invoice-reminders");
+      const refreshed = await readJsonResponse(refreshedRes);
       setRows(refreshed.invoices || []);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unable to update reminder status";

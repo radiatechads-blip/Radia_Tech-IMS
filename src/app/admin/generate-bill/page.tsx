@@ -58,6 +58,7 @@ type InvoiceDateFilter =
   | "thisQuarter"
   | "thisYear"
   | "custom";
+type BillHistorySearchField = "date" | "invoiceNumber" | "customerName";
 
 const MENU_WIDTH = 192;
 const MENU_HEIGHT_ESTIMATE = 280; // Adjusted to a more realistic expectation
@@ -118,6 +119,10 @@ export default function GenerateBillPage() {
     "Tax Invoice",
   );
   const [dateFilter, setDateFilter] = useState<InvoiceDateFilter>("all");
+  const [searchField, setSearchField] = useState<BillHistorySearchField>(
+    "invoiceNumber",
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [customStartDate, setCustomStartDate] = useState<string>(
     new Date().toISOString().split("T")[0],
   );
@@ -838,7 +843,48 @@ export default function GenerateBillPage() {
     return invoiceDate >= range.start && invoiceDate < range.end;
   };
 
-  const baseFilteredInvoices = invoices.filter(matchesDateFilter);
+  const normalizeSearchText = (value?: string | null) =>
+    String(value ?? "").trim().toLowerCase();
+
+  const matchesSearchFilter = (invoice: InvoiceSummary) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return true;
+    }
+
+    if (searchField === "date") {
+      const rawDate = invoice.invoiceDate || invoice.createdAt;
+      if (!rawDate) {
+        return false;
+      }
+
+      const invoiceDate = new Date(rawDate);
+      if (Number.isNaN(invoiceDate.getTime())) {
+        return false;
+      }
+
+      const searchableValues = [
+        invoiceDate.toISOString().split("T")[0],
+        invoiceDate.toLocaleDateString("en-IN"),
+        invoiceDate.toLocaleDateString("en-US"),
+        invoiceDate.toLocaleDateString("en-GB"),
+      ];
+
+      return searchableValues.some((value) =>
+        normalizeSearchText(value).includes(term),
+      );
+    }
+
+    if (searchField === "invoiceNumber") {
+      return normalizeSearchText(invoice.invoiceNumber).includes(term);
+    }
+
+    return normalizeSearchText(invoice.partyName).includes(term);
+  };
+
+  const baseFilteredInvoices = invoices
+    .filter(matchesDateFilter)
+    .filter(matchesSearchFilter);
 
   const filteredInvoices = selectedDocType
     ? selectedDocType === "Cancelled"
@@ -959,6 +1005,70 @@ export default function GenerateBillPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className={`flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition ${
+              searchTerm.trim() 
+                ? "border-blue-300 bg-blue-50 text-blue-600" 
+                : "border-slate-200 bg-white text-slate-600"
+            }`}>
+              <svg
+                viewBox="0 0 24 24"
+                className={`h-4 w-4 flex-shrink-0 ${searchTerm.trim() ? "text-blue-500" : "text-slate-400"}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="font-medium">Search:</span>
+              <select
+                value={searchField}
+                onChange={(event) =>
+                  setSearchField(event.target.value as BillHistorySearchField)
+                }
+                className={`border-none bg-transparent font-medium outline-none ${
+                  searchTerm.trim() ? "text-blue-700" : "text-slate-700"
+                }`}
+              >
+                <option value="date">Date</option>
+                <option value="invoiceNumber">Invoice Number</option>
+                <option value="customerName">Customer Name</option>
+              </select>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder={
+                  searchField === "date"
+                    ? "e.g., 2026-01-15 or 15/01/2026"
+                    : searchField === "invoiceNumber"
+                      ? "e.g., TI-001 or QT-102"
+                      : "e.g., Acme Corp or John"
+                }
+                className={`min-w-[200px] border-none bg-transparent font-medium outline-none ${
+                  searchTerm.trim() ? "text-blue-700 placeholder:text-blue-300" : "text-slate-700 placeholder:text-slate-400"
+                }`}
+              />
+              {searchTerm.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  title="Clear search"
+                  className="ml-1 flex-shrink-0 rounded-lg p-1 transition hover:bg-white/50"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className={`h-4 w-4 ${searchTerm.trim() ? "text-blue-500" : "text-slate-400"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
               <span className="font-medium text-slate-700">Filter by</span>
               <select
@@ -999,7 +1109,7 @@ export default function GenerateBillPage() {
               </div>
             )}
 
-            <div className="relative" ref={docTypeMenuRef}>
+            <div className="relative self-start" ref={docTypeMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsDocTypeMenuOpen((open) => !open)}
@@ -1022,7 +1132,7 @@ export default function GenerateBillPage() {
               </button>
 
               {isDocTypeMenuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 z-20 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                   {DOCUMENT_TYPE_OPTIONS.map((option) => (
                     <button
                       key={option}
@@ -1125,7 +1235,27 @@ export default function GenerateBillPage() {
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-            No {selectedDocType} documents generated yet.
+            {searchTerm.trim() ? (
+              <div>
+                <p className="font-medium text-slate-700">No results found</p>
+                <p className="mt-2">
+                  No {selectedDocType} documents match your search:
+                  <br />
+                  <span className="font-semibold text-slate-800">
+                    {searchField === "date" ? "Date" : searchField === "invoiceNumber" ? "Invoice Number" : "Customer Name"}: "{searchTerm}"
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="mt-3 inline-flex rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              `No ${selectedDocType} documents generated yet.`
+            )}
           </div>
         ) : (
           <>

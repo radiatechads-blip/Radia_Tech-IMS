@@ -5,6 +5,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import Pagination from "@/components/admin/Pagination";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface Customer {
   id: string;
@@ -24,6 +25,15 @@ interface PaginationState {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+interface InvoiceTransaction {
+  id: string;
+  billType: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  grandTotal: number;
+  balance: number;
 }
 
 type CustomersResponse = {
@@ -56,12 +66,20 @@ export default function AdminCustomersPage() {
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize, total: 0, totalPages: 1 });
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Transaction modal state
+  const [transactionModal, setTransactionModal] = useState<{ customerId: string; customerName: string } | null>(null);
+  const [transactions, setTransactions] = useState<InvoiceTransaction[]>([]);
+  const [transactionLoading, setTransactionLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const fetchCustomers = async (pageNumber = 1, signal?: AbortSignal) => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams({ page: String(pageNumber), pageSize: String(pageSize) });
+      if (searchQuery) params.append("search", searchQuery);
       const response = await fetch(`/api/customers?${params.toString()}`, { signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to load customers.");
@@ -87,7 +105,7 @@ export default function AdminCustomersPage() {
     void loadCustomers();
 
     return () => controller.abort();
-  }, [page]);
+  }, [page, searchQuery]);
 
   const resetForm = () => {
     setForm(initialFormState);
@@ -130,6 +148,41 @@ export default function AdminCustomersPage() {
     } catch (deleteError) {
       alert(deleteError instanceof Error ? deleteError.message : "Unable to delete customer.");
     }
+  };
+
+  const openTransactionModal = async (customerId: string, customerName: string) => {
+    setTransactionModal({ customerId, customerName });
+    setTransactionLoading(true);
+    try {
+      console.log("[Client] Opening transaction modal for:", { customerId, customerName });
+      const response = await fetch(`/api/customers/${customerId}/invoices?name=${encodeURIComponent(customerName)}`);
+      console.log("[Client] API Response status:", response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Client] Transactions received:", data);
+        setTransactions(Array.isArray(data) ? data : []);
+      } else {
+        const errorData = await response.json();
+        const errorMsg = `${errorData.error}${errorData.details ? `: ${errorData.details}` : ""}`;
+        console.error("[Client] API Error:", errorMsg);
+        alert(`Error fetching invoices: ${errorMsg}`);
+        setTransactions([]);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      console.error("[Client] Fetch error:", errorMsg);
+      alert(`Error: ${errorMsg}`);
+      setTransactions([]);
+    } finally {
+      setTransactionLoading(false);
+    }
+  };
+
+  const closeTransactionModal = () => {
+    setTransactionModal(null);
+    setTransactions([]);
+    setOpenMenuId(null);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -241,11 +294,39 @@ export default function AdminCustomersPage() {
               <h2 className="text-lg font-semibold text-slate-950">Customer List</h2>
               <p className="mt-1 text-sm text-slate-500">Manage customer contacts and billing details.</p>
             </div>
-            {!showForm && (
-              <button type="button" onClick={() => { setShowForm(true); resetForm(); }} className="inline-flex items-center gap-2 rounded bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark">
-                <Plus size={16} /> Add Customer
-              </button>
-            )}
+          </div>
+
+          {/* Search Bar */}
+          <div className="mb-4 flex gap-2">
+            <input
+              type="text"
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              className="admin-input flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setPage(1);
+              }}
+              className="inline-flex items-center justify-center rounded bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setPage(1);
+              }}
+              className="inline-flex items-center justify-center rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Clear
+            </button>
           </div>
 
           {loading ? (
@@ -283,6 +364,14 @@ export default function AdminCustomersPage() {
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
+                            onClick={() => openTransactionModal(customer.id, customer.name)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                            title="View Transactions"
+                          >
+                            📊
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleEditClick(customer)}
                             className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                             title="Edit Customer"
@@ -308,6 +397,160 @@ export default function AdminCustomersPage() {
           )}
         </section>
       </div>
+
+      {/* Transaction Modal */}
+      {transactionModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl">
+            {/* Modal Header */}
+            <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-950">Customer Transactions</h2>
+                <p className="mt-1 text-sm text-slate-600">{transactionModal.customerName}</p>
+              </div>
+              <button
+                onClick={closeTransactionModal}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+              {transactionLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-sm text-slate-500">Loading transactions...</div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+                  <p className="font-medium">No transactions found for this customer</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Bill Type</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Bill No.</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700 text-right">Grand Total</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700 text-right">Balance</th>
+                        <th className="px-4 py-3 font-semibold text-slate-700 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {transactions.map((txn) => (
+                        <tr key={txn.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <span className="inline-flex rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                              {txn.billType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{txn.invoiceNumber}</td>
+                          <td className="px-4 py-3 text-slate-600">
+                            {new Date(txn.invoiceDate).toLocaleDateString('en-IN')}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                            ₹{txn.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-accent">
+                            ₹{txn.balance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="relative inline-block">
+                              <button
+                                onClick={() => setOpenMenuId(openMenuId === txn.id ? null : txn.id)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+                                title="More actions"
+                              >
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                                  <circle cx="12" cy="5" r="2" />
+                                  <circle cx="12" cy="12" r="2" />
+                                  <circle cx="12" cy="19" r="2" />
+                                </svg>
+                              </button>
+                              
+                              {openMenuId === txn.id && (
+                                <div className="absolute right-0 mt-2 w-40 rounded-lg border border-slate-200 bg-white shadow-lg z-10">
+                                  <button
+                                    onClick={async () => {
+                                      setOpenMenuId(null);
+                                      const previewWindow = window.open("", "_blank");
+                                      if (!previewWindow) {
+                                        alert("Please allow pop-ups to open preview.");
+                                        return;
+                                      }
+                                      previewWindow.document.write("<p>Loading preview...</p>");
+                                      // Preview action - will navigate to preview
+                                      window.location.href = `/admin/generate-bill?invoiceId=${txn.id}`;
+                                    }}
+                                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100"
+                                  >
+                                    👁️ Preview
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      // Edit/View action
+                                      window.location.href = `/admin/generate-bill/invoice?id=${txn.id}`;
+                                    }}
+                                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100"
+                                  >
+                                    ✏️ Edit/View
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      // Open PDF action
+                                      window.location.href = `/admin/generate-bill?openPdf=${txn.id}`;
+                                    }}
+                                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100"
+                                  >
+                                    📄 Open PDF
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      setOpenMenuId(null);
+                                      const url = `${window.location.origin}/admin/generate-bill?id=${txn.id}`;
+                                      try {
+                                        await navigator.clipboard.writeText(url);
+                                        alert("Link copied to clipboard!");
+                                      } catch {
+                                        alert(url);
+                                      }
+                                    }}
+                                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                  >
+                                    🔗 Copy Link
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 flex items-center justify-end gap-3">
+              <button
+                onClick={closeTransactionModal}
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </AdminShell>
   );
 }

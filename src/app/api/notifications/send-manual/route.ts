@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { sendInvoiceReminderEmail } from "@/lib/invoiceEmails";
+import { sendPaymentReceivedEmail } from "@/lib/invoiceEmails";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -16,10 +16,21 @@ export async function POST(request: Request) {
   if (!invoiceId) return NextResponse.json({ ok: false, error: "invoiceId is required" }, { status: 400 });
 
   try {
-    const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+    const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, include: { payments: true } });
     if (!invoice) return NextResponse.json({ ok: false, error: "Invoice not found" }, { status: 404 });
 
-    const result = await sendInvoiceReminderEmail(invoice as Parameters<typeof sendInvoiceReminderEmail>[0], type as Parameters<typeof sendInvoiceReminderEmail>[1]);
+    const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remainingAmount = Math.max(0, invoice.grandTotal - totalPaid);
+
+    const result = await sendPaymentReceivedEmail({
+      email: invoice.email,
+      invoiceNumber: invoice.invoiceNumber,
+      partyName: invoice.partyName,
+      grandTotal: invoice.grandTotal,
+      remainingAmount,
+      dueDate: invoice.dueDate,
+    });
+
     if (!result?.ok) {
       return NextResponse.json({ ok: false, error: result?.error || "Failed to send reminder" }, { status: 500 });
     }

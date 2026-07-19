@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get("category");
   const featured = searchParams.get("featured");
   const newArrivals = searchParams.get("newArrivals");
+  const search = searchParams.get("search") || "";
   const admin = searchParams.get("admin") === "true";
   const pageParam = searchParams.get("page");
   const pageSizeParam = searchParams.get("pageSize");
@@ -25,6 +26,13 @@ export async function GET(req: NextRequest) {
     if (category) where.category = { slug: category };
     if (featured === "true") where.isFeatured = true;
     if (newArrivals === "true") where.isNewArrival = true;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+        { hsn: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
     if (shouldPaginate) {
       const [items, total] = await prisma.$transaction([

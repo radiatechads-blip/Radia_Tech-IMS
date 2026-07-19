@@ -1,7 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 interface Product {
@@ -13,15 +13,28 @@ interface Product {
   category?: { name: string } | null;
 }
 
+interface StockSummaryItem {
+  productId: string;
+  productName: string;
+  soldStock: number;
+  totalAmount: number;
+}
+
+interface StockTransactionItem {
+  id: string;
+  invoiceDate: string | null;
+  invoiceNumber: string;
+  partyName: string;
+  qty: number;
+  rate: number;
+  billType?: string;
+}
+
 function AdminStockPageContent() {
   const router = useRouter();
-  const [initialProductId, setInitialProductId] = useState("");
+  const searchParams = useSearchParams();
+  const initialProductId = searchParams.get("productId") ?? "";
   const [products, setProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    setInitialProductId(query.get("productId") ?? "");
-  }, []);
   const [selectedProductId, setSelectedProductId] = useState(initialProductId);
   const [stock, setStock] = useState(0);
   const [remark, setRemark] = useState("");
@@ -29,6 +42,13 @@ function AdminStockPageContent() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [stockSummary, setStockSummary] = useState<StockSummaryItem[]>([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [selectedSummaryProductId, setSelectedSummaryProductId] = useState<string | null>(null);
+  const [showDirectUpdateForm, setShowDirectUpdateForm] = useState(false);
+  const [selectedSummaryTransactions, setSelectedSummaryTransactions] = useState<StockTransactionItem[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const selectedProduct = useMemo(() => products.find((product) => product.id === selectedProductId), [products, selectedProductId]);
 
@@ -53,11 +73,20 @@ function AdminStockPageContent() {
         if (!cancelled) {
           const list = Array.isArray(data) ? (data as Product[]) : [];
           setProducts(list);
-          if (initialProductId && list.some((product) => product.id === initialProductId)) {
-            setSelectedProductId(initialProductId);
-          } else if (list.length > 0 && !initialProductId) {
-            setSelectedProductId(list[0].id);
+
+          const targetProductId = initialProductId && list.some((product) => product.id === initialProductId)
+            ? initialProductId
+            : list[0]?.id || "";
+
+          if (targetProductId) {
+            const nextProduct = list.find((product) => product.id === targetProductId);
+            setSelectedProductId(targetProductId);
+            if (nextProduct) {
+              setStock(nextProduct.stock);
+              setRemark(nextProduct.stockRemark || "");
+            }
           }
+
           setError("");
         }
       } catch (loadError) {
@@ -74,11 +103,83 @@ function AdminStockPageContent() {
   }, [initialProductId, router]);
 
   useEffect(() => {
-    if (selectedProduct) {
-      setStock(selectedProduct.stock);
-      setRemark(selectedProduct.stockRemark || "");
+    if (products.length === 0) {
+      return;
     }
-  }, [selectedProduct]);
+
+    let cancelled = false;
+
+    async function loadStockSummary() {
+      setSummaryLoading(true);
+      try {
+        const summaries = await Promise.all(
+          products.map(async (product) => {
+            const response = await fetch(`/api/products/${product.id}/transactions?name=${encodeURIComponent(product.name)}`);
+            if (!response.ok) {
+              return { productId: product.id, productName: product.name, soldStock: 0, totalAmount: 0 };
+            }
+
+            const data = await response.json();
+            const transactions = Array.isArray(data) ? data : [];
+            const soldStock = transactions.reduce((total, item) => total + Number(item.qty || 0), 0);
+            const totalAmount = transactions.reduce((total, item) => total + Number(item.qty || 0) * Number(item.rate || 0), 0);
+
+            return { productId: product.id, productName: product.name, soldStock, totalAmount };
+          }),
+        );
+
+        if (!cancelled) setStockSummary(summaries);
+      } catch {
+        if (!cancelled) setStockSummary([]);
+      } finally {
+        if (!cancelled) setSummaryLoading(false);
+      }
+    }
+
+    void loadStockSummary();
+    return () => { cancelled = true; };
+  }, [products]);
+
+  const filteredStockSummary = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return stockSummary;
+
+    return stockSummary.filter((item) => item.productName.toLowerCase().includes(query));
+  }, [searchQuery, stockSummary]);
+
+  const formatCurrency = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+  const formatDate = (value: string | null | undefined) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN");
+  };
+
+  const handleTrackProduct = async (productId: string, productName: string) => {
+    if (selectedSummaryProductId === productId) {
+      setSelectedSummaryProductId(null);
+      setSelectedSummaryTransactions([]);
+      return;
+    }
+
+    setSelectedSummaryProductId(productId);
+    setDetailLoading(true);
+    setSelectedSummaryTransactions([]);
+
+    try {
+      const response = await fetch(`/api/products/${productId}/transactions?name=${encodeURIComponent(productName)}`);
+      if (!response.ok) {
+        setSelectedSummaryTransactions([]);
+        return;
+      }
+
+      const data = await response.json();
+      setSelectedSummaryTransactions(Array.isArray(data) ? (data as StockTransactionItem[]) : []);
+    } catch {
+      setSelectedSummaryTransactions([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const handleUpdateStock = async () => {
     if (!selectedProductId) {
@@ -115,16 +216,143 @@ function AdminStockPageContent() {
       title="Stock Update"
       description="Select a product, enter the updated stock quantity, and add a remark for the stock change."
       action={
-        <button onClick={() => router.push("/admin/products")} className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-          Back to Products
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDirectUpdateForm((value) => !value)}
+            className="inline-flex items-center justify-center rounded bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+          >
+            {showDirectUpdateForm ? "Hide Update Form" : "Open Direct Stock Update"}
+          </button>
+          <button onClick={() => router.push("/admin/products")} className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            Back to Products
+          </button>
+        </div>
       }
     >
       <div className="space-y-6">
         <section className="rounded border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-950">Direct Stock Update</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">Stock Status</h2>
+              <p className="mt-1 text-sm text-slate-500">Product-wise sold stock and total amount overview.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search product name"
+                className="rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
 
-          {fetching ? (
+          {summaryLoading ? (
+            <div className="h-24 animate-pulse rounded bg-slate-100" />
+          ) : filteredStockSummary.length === 0 ? (
+            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              {searchQuery ? "No products match your search." : "No stock summary available yet."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-slate-600">
+                    <th className="px-3 py-2 font-semibold">Product Name</th>
+                    <th className="px-3 py-2 font-semibold">Solded Stock</th>
+                    <th className="px-3 py-2 font-semibold">Total Amount</th>
+                    <th className="px-3 py-2 font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {filteredStockSummary.map((item) => (
+                    <>
+                      <tr key={item.productId} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium text-slate-900">{item.productName}</td>
+                        <td className="px-3 py-2 text-slate-700">{item.soldStock}</td>
+                        <td className="px-3 py-2 text-slate-700">{formatCurrency(item.totalAmount)}</td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleTrackProduct(item.productId, item.productName)}
+                            className="rounded border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/20"
+                          >
+                            {selectedSummaryProductId === item.productId ? "Tracking" : "Track"}
+                          </button>
+                        </td>
+                      </tr>
+                      {selectedSummaryProductId === item.productId ? (
+                        <tr key={`${item.productId}-details`}>
+                          <td colSpan={4} className="bg-slate-50 px-3 py-3">
+                            <div className="rounded border border-slate-200 bg-white p-3">
+                              <div className="mb-2 text-sm font-semibold text-slate-900">Stock Summary</div>
+                              {detailLoading ? (
+                                <div className="h-20 animate-pulse rounded bg-slate-100" />
+                              ) : selectedSummaryTransactions.length === 0 ? (
+                                <div className="text-sm text-slate-500">No transaction history found for this product.</div>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-slate-200 text-left text-slate-600">
+                                        <th className="px-2 py-2 font-semibold">Date</th>
+                                        <th className="px-2 py-2 font-semibold">Stock/Qty</th>
+                                        <th className="px-2 py-2 font-semibold">Bill No</th>
+                                        <th className="px-2 py-2 font-semibold">Customer</th>
+                                        <th className="px-2 py-2 font-semibold">Amount</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {selectedSummaryTransactions.map((transaction) => (
+                                        <tr key={transaction.id} className="border-b border-slate-100 last:border-0">
+                                          <td className="px-2 py-2 text-slate-700">{formatDate(transaction.invoiceDate)}</td>
+                                          <td className="px-2 py-2 text-slate-700">{transaction.qty}</td>
+                                          <td className="px-2 py-2 text-slate-700">{transaction.invoiceNumber || "-"}</td>
+                                          <td className="px-2 py-2 text-slate-700">{transaction.partyName || "-"}</td>
+                                          <td className="px-2 py-2 text-slate-700">{formatCurrency(transaction.qty * transaction.rate)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-950">Direct Stock Update</h2>
+            <button
+              type="button"
+              onClick={() => setShowDirectUpdateForm((value) => !value)}
+              className="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              {showDirectUpdateForm ? "Hide Form" : "Open Form"}
+            </button>
+          </div>
+
+          {!showDirectUpdateForm ? (
+            <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+              Click the button above to open the direct stock update form.
+            </div>
+          ) : fetching ? (
             <div className="h-40 animate-pulse rounded bg-slate-100" />
           ) : error ? (
             <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
@@ -137,7 +365,16 @@ function AdminStockPageContent() {
                   <span className="mb-2 block text-sm font-semibold text-slate-700">Product *</span>
                   <select
                     value={selectedProductId}
-                    onChange={(event) => setSelectedProductId(event.target.value)}
+                    onChange={(event) => {
+                      const nextProductId = event.target.value;
+                      setSelectedProductId(nextProductId);
+
+                      const nextProduct = products.find((product) => product.id === nextProductId);
+                      if (nextProduct) {
+                        setStock(nextProduct.stock);
+                        setRemark(nextProduct.stockRemark || "");
+                      }
+                    }}
                     className="admin-input w-full"
                   >
                     {products.map((product) => (

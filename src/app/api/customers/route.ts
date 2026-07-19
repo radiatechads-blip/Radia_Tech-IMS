@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const pageParam = searchParams.get("page");
   const pageSizeParam = searchParams.get("pageSize");
+  const searchParam = searchParams.get("search") || "";
   const shouldPaginate = pageParam !== null || pageSizeParam !== null;
   const page = Math.max(1, Number.parseInt(pageParam || "1", 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(pageSizeParam || "10", 10) || 10));
@@ -15,20 +16,35 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    // Build search filter
+    const searchFilter = searchParam
+      ? {
+          OR: [
+            { name: { contains: searchParam, mode: "insensitive" } },
+            { email: { contains: searchParam, mode: "insensitive" } },
+            { phone: { contains: searchParam, mode: "insensitive" } },
+          ],
+        }
+      : undefined;
+
     if (shouldPaginate) {
       const [items, total] = await prisma.$transaction([
         prisma.customer.findMany({
+          where: searchFilter,
           orderBy: { createdAt: "desc" },
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),
-        prisma.customer.count(),
+        prisma.customer.count({ where: searchFilter }),
       ]);
 
       return NextResponse.json({ items, pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } });
     }
 
-    const customers = await prisma.customer.findMany({ orderBy: { createdAt: "desc" } });
+    const customers = await prisma.customer.findMany({ 
+      where: searchFilter,
+      orderBy: { createdAt: "desc" } 
+    });
     return NextResponse.json(customers);
   } catch (error) {
     logServerError("api.customers.GET", error);
