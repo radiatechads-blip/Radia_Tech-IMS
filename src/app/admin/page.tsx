@@ -220,7 +220,7 @@ export default function AdminDashboard() {
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} />
                       <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
                       <Tooltip
-                        formatter={(value: number | string) => `₹${Number(value).toLocaleString("en-IN")}`}
+                        formatter={(value) => `₹${Number(value ?? 0).toLocaleString("en-IN")}`}
                         contentStyle={{ fontSize: 12, borderRadius: 0, border: "1px solid #e2e8f0" }}
                       />
                       <Line type="monotone" dataKey="amount" name="Tax Invoice Amount" stroke="#0f766e" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
