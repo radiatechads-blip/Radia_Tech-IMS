@@ -68,7 +68,7 @@ export default function AdminShell({
           </span>
           <span>
             <span className="block text-base font-bold leading-tight">Radiatech Electra</span>
-            <span className="mt-0.5 inline-flex bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">Admin</span>
+            <span className="mt-0.5 inline-flex bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">IMS</span>
           </span>
         </Link>
       </div>
@@ -110,9 +110,9 @@ export default function AdminShell({
             </span>
           </Link>
         )}
-        <Link href="/" className="mb-2 block px-3 py-2 text-xs font-medium text-white/55 hover:text-white">
+        {/* <Link href="/" className="mb-2 block px-3 py-2 text-xs font-medium text-white/55 hover:text-white">
           View public website
-        </Link>
+        </Link> */}
         {/* <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/72 transition-colors hover:bg-red-500/20 hover:text-red-100"

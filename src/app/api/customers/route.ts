@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -16,14 +17,23 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    // Build search filter
-    const searchFilter = searchParam
+    const normalizedSearch = searchParam.trim();
+    const nameSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
+    const emailSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
+    const phoneSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
+
+    const searchFilter: Prisma.CustomerWhereInput | undefined = normalizedSearch
       ? {
-          OR: [
-            { name: { contains: searchParam, mode: "insensitive" as const } },
-            { email: { contains: searchParam, mode: "insensitive" as const } },
-            { phone: { contains: searchParam, mode: "insensitive" as const } },
-          ],
+          OR: [{ name: nameSearch }, { email: emailSearch }, { phone: phoneSearch }],
         }
       : undefined;
 

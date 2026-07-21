@@ -266,7 +266,7 @@ function buildInvoiceEmailHtml({
       </div>
 
       <div style="margin-top:20px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e6eef8;text-align:center">
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://radiatech.in'}/admin/invoices" style="color:#0B3D91;font-weight:700;text-decoration:none">View Invoice in Portal</a>
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://radiatech.in'}/about" style="color:#0B3D91;font-weight:700;text-decoration:none">Visit Our Website</a>
       </div>
       <p style="color:#9ca3af;font-size:12px;margin-top:14px">${companyInfo.fullName} | ${companyInfo.contact.website}</p>
     </div>

@@ -2,6 +2,7 @@ import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, lo
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { readInvoiceStore } from "@/lib/invoiceStorage";
+import { buildLowStockAlerts } from "@/lib/lowStockAlerts";
 import { NextRequest, NextResponse } from "next/server";
 
 type Period = "day" | "month" | "year";
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
   const period = normalizePeriod(request.nextUrl.searchParams.get("period"));
 
   try {
-    const [productCount, categoryCount, totalInquiries, unreadInquiries, recentInquiries, categoriesWithCounts, stockAggregation, customerCount] = await Promise.all([
+    const [productCount, categoryCount, totalInquiries, unreadInquiries, recentInquiries, categoriesWithCounts, stockAggregation, customerCount, lowStockProducts] = await Promise.all([
       prisma.product.count({ where: { isActive: true } }),
       prisma.productCategory.count(),
       prisma.inquiry.count(),
@@ -103,9 +104,15 @@ export async function GET(request: NextRequest) {
       }),
       prisma.product.aggregate({ where: { isActive: true }, _sum: { stock: true } }),
       prisma.customer.count(),
+      prisma.product.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, stock: true },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
     const totalStock = Number(stockAggregation._sum.stock ?? 0);
+    const lowStockAlerts = buildLowStockAlerts(lowStockProducts);
 
     let totalSoldProducts = 0;
     let totalAmount = 0;
@@ -182,6 +189,7 @@ export async function GET(request: NextRequest) {
       inquiries: { total: totalInquiries, unread: unreadInquiries },
       recentInquiries,
       recentTransactions,
+      lowStockAlerts,
       categoriesWithCounts: categoriesWithCounts.map((c) => ({ name: c.name, products: c._count.products })),
       taxInvoiceSeries,
       businessSummary: {

@@ -6,7 +6,7 @@ import { DollarSign, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface Inquiry {
   id: string;
@@ -37,6 +37,12 @@ interface TaxInvoiceSeriesPoint {
   grandTotal: number;
 }
 
+interface LowStockAlert {
+  id: string;
+  name: string;
+  stock: number;
+}
+
 interface Stats {
   products: number;
   categories: number;
@@ -47,6 +53,7 @@ interface Stats {
   inquiries: { total: number; unread: number };
   recentInquiries: Inquiry[];
   recentTransactions?: TransactionBill[];
+  lowStockAlerts?: LowStockAlert[];
   categoriesWithCounts?: CategoryCount[];
   taxInvoiceSeries?: TaxInvoiceSeriesPoint[];
   businessSummary?: { totalBills?: number };
@@ -132,6 +139,19 @@ export default function AdminDashboard() {
   const totalTaxInvoiceAmount = useMemo(
     () => taxInvoiceChartData.reduce((sum, point) => sum + point.amount, 0),
     [taxInvoiceChartData]
+  );
+
+  const overviewChartData = useMemo(
+    () => [
+      { label: "Products", value: stats?.products ?? 0 },
+      { label: "Stock", value: stats?.stock ?? 0 },
+      { label: "Customers", value: stats?.customers ?? 0 },
+      { label: "Categories", value: stats?.categories ?? 0 },
+      { label: "Sold", value: stats?.totalSoldProducts ?? 0 },
+      { label: "Bills", value: totalInvoiceCount },
+      { label: "Amount", value: stats?.totalAmount ?? 0 },
+    ],
+    [stats?.categories, stats?.customers, stats?.products, stats?.stock, stats?.totalAmount, stats?.totalSoldProducts, totalInvoiceCount]
   );
 
   return (
@@ -234,6 +254,29 @@ export default function AdminDashboard() {
 
             <section className="border border-slate-200 bg-white shadow-sm lg:col-span-3">
               <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-lg font-semibold text-slate-950">Low Stock Alerts</h2>
+                <p className="text-sm text-slate-500">Products with stock below 50 units.</p>
+              </div>
+              <div className="max-h-80 overflow-y-auto px-3 py-4">
+                {stats?.lowStockAlerts && stats.lowStockAlerts.length > 0 ? (
+                  <ul className="space-y-2">
+                    {stats.lowStockAlerts.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                        <span className="ml-3 shrink-0 rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-amber-700">{item.stock}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
+                    No products are below the low stock threshold.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm lg:col-span-3">
+              <div className="border-b border-slate-100 px-5 py-4">
                 <h2 className="text-lg font-semibold text-slate-950">Category Overview</h2>
                 <p className="text-sm text-slate-500">Distribution of products across categories.</p>
               </div>
@@ -266,6 +309,28 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="flex h-60 items-center justify-center text-sm text-slate-400">No category data yet.</div>
                 )}
+              </div>
+            </section>
+
+            <section className="border border-slate-200 bg-white shadow-sm lg:col-span-7">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-lg font-semibold text-slate-950">Overview Graph</h2>
+                <p className="text-sm text-slate-500">Summary of dashboard card data</p>
+              </div>
+              <div className="px-2 py-5">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={overviewChartData} margin={{ top: 8, right: 8, left: -10, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
+                    <Tooltip
+                      cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
+                      formatter={(value) => [value, "Value"]}
+                      contentStyle={{ fontSize: 12, borderRadius: 0, border: "1px solid #e2e8f0" }}
+                    />
+                    <Bar dataKey="value" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </section>
           </div>
