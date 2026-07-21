@@ -141,6 +141,12 @@ function escapeHtml(value: string | number | null | undefined) {
     .replace(/'/g, '&#39;');
 }
 
+function normalizeInvoiceNumber(value: string | null | undefined) {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return '';
+  return trimmed.replace(/\s*\(Duplicate\)\s*$/i, '').trim();
+}
+
 type ReminderType = 'before3' | 'due' | 'after3' | 'after7' | 'manual';
 
 type InvoiceReminderInvoice = {
@@ -235,6 +241,8 @@ function buildInvoiceEmailHtml({
     remainingAmount: invoice.remainingAmount,
   });
 
+  const normalizedInvoiceNumber = normalizeInvoiceNumber(invoice.invoiceNumber);
+
   return `
   <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto">
     <div style="background:#0B3D91;padding:18px;border-radius:8px 8px 0 0;color:#fff">
@@ -246,7 +254,7 @@ function buildInvoiceEmailHtml({
       <p style="color:#374151">${intro}</p>
 
       <table style="width:100%;border-collapse:collapse;margin-top:12px">
-        <tr><td style="font-weight:600;padding:8px 0;width:180px">Invoice</td><td style="padding:8px 0">${escapeHtml(invoice.invoiceNumber)}</td></tr>
+        <tr><td style="font-weight:600;padding:8px 0;width:180px">Invoice</td><td style="padding:8px 0">${escapeHtml(normalizedInvoiceNumber)}</td></tr>
         <tr><td style="font-weight:600;padding:8px 0">Customer</td><td style="padding:8px 0">${escapeHtml(invoice.partyName)}</td></tr>
         <tr><td style="font-weight:600;padding:8px 0">Amount Received</td><td style="padding:8px 0">${currency(amountReceived ?? paymentSummary.paidAmount)}</td></tr>
         <tr><td style="font-weight:600;padding:8px 0">Payment Mode</td><td style="padding:8px 0">${escapeHtml(paymentMode || 'N/A')}</td></tr>
@@ -266,11 +274,7 @@ function buildInvoiceEmailHtml({
       </div>
 
       <div style="margin-top:20px;padding:12px;background:#f8fafc;border-radius:6px;border:1px solid #e6eef8;text-align:center">
-<<<<<<< HEAD
         <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://radiatech.in'}/about" style="color:#0B3D91;font-weight:700;text-decoration:none">Visit Our Website</a>
-=======
-         <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://radiatech.in'}/about" style="color:#0B3D91;font-weight:700;text-decoration:none">Visit Our Website</a>
->>>>>>> 6224573144bf53907eaff94aadabe98e814dbf9c
       </div>
       <p style="color:#9ca3af;font-size:12px;margin-top:14px">${companyInfo.fullName} | ${companyInfo.contact.website}</p>
     </div>
@@ -297,7 +301,8 @@ export function buildPaymentReceivedEmailHtml({
   paymentMode?: string | null;
   dueDate?: Date | string | null;
 }) {
-  const intro = `This is a Payment reminder from our team regarding Invoice <strong>#${escapeHtml(invoiceNumber)}</strong> for <strong>${currency(remainingAmount)}</strong> (Remaining Amount). Please review the outstanding amount at your earliest convenience.`;
+  const normalizedInvoiceNumber = normalizeInvoiceNumber(invoiceNumber);
+  const intro = `This is a Payment reminder from our team regarding Invoice <strong>#${escapeHtml(normalizedInvoiceNumber)}</strong> for <strong>${currency(remainingAmount)}</strong> (Remaining Amount). Please review the outstanding amount at your earliest convenience.`;
 
   return buildInvoiceEmailHtml({
     heading: 'Payment Confirmation',
@@ -336,7 +341,8 @@ export async function sendPaymentReceivedEmail(invoice: {
     paidAmount: invoice.paidAmount,
     remainingAmount: invoice.remainingAmount,
   });
-  const subject = paymentSummary.remainingAmount <= 0 ? `Payment Confirmation for Invoice #${invoice.invoiceNumber}` : `Payment Update for Invoice #${invoice.invoiceNumber}`;
+  const normalizedInvoiceNumber = normalizeInvoiceNumber(invoice.invoiceNumber);
+  const subject = paymentSummary.remainingAmount <= 0 ? `Payment Confirmation for Invoice #${normalizedInvoiceNumber}` : `Payment Update for Invoice #${normalizedInvoiceNumber}`;
   const html = buildPaymentReceivedEmailHtml({
     invoiceNumber: invoice.invoiceNumber,
     partyName: invoice.partyName,
@@ -380,31 +386,33 @@ export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, 
   let heading = '';
   let intro = '';
 
+  const normalizedInvoiceNumber = normalizeInvoiceNumber(invoice.invoiceNumber);
+
   switch (type) {
     case 'before3':
-      subject = `Reminder: Invoice Due in 3 Days - Invoice #${invoice.invoiceNumber}`;
+      subject = `Reminder: Invoice Due in 3 Days - Invoice #${normalizedInvoiceNumber}`;
       heading = 'Payment Reminder — Due in 3 Days';
-      intro = `This is a friendly reminder that Invoice <strong>#${invoice.invoiceNumber}</strong> for ${currency(invoice.grandTotal)} is due on <strong>${fmtDate(invoice.dueDate)}</strong>. We appreciate your prompt payment.`;
+      intro = `This is a friendly reminder that Invoice <strong>#${normalizedInvoiceNumber}</strong> for ${currency(invoice.grandTotal)} is due on <strong>${fmtDate(invoice.dueDate)}</strong>. We appreciate your prompt payment.`;
       break;
     case 'due':
-      subject = `Payment Due Today - Invoice #${invoice.invoiceNumber}`;
+      subject = `Payment Due Today - Invoice #${normalizedInvoiceNumber}`;
       heading = 'Payment Due Today';
-      intro = `Your Invoice <strong>#${invoice.invoiceNumber}</strong> for ${currency(invoice.grandTotal)} is due today (${fmtDate(invoice.dueDate)}). Please arrange payment at your earliest convenience.`;
+      intro = `Your Invoice <strong>#${normalizedInvoiceNumber}</strong> for ${currency(invoice.grandTotal)} is due today (${fmtDate(invoice.dueDate)}). Please arrange payment at your earliest convenience.`;
       break;
     case 'after3':
-      subject = `Overdue Payment Reminder - Invoice #${invoice.invoiceNumber}`;
+      subject = `Overdue Payment Reminder - Invoice #${normalizedInvoiceNumber}`;
       heading = 'Overdue Payment — 3 Days';
-      intro = `Our records show Invoice <strong>#${invoice.invoiceNumber}</strong> for ${currency(invoice.grandTotal)} is overdue by 3 days (due ${fmtDate(invoice.dueDate)}). Please clear the outstanding amount.`;
+      intro = `Our records show Invoice <strong>#${normalizedInvoiceNumber}</strong> for ${currency(invoice.grandTotal)} is overdue by 3 days (due ${fmtDate(invoice.dueDate)}). Please clear the outstanding amount.`;
       break;
     case 'after7':
-      subject = `Second Reminder - Outstanding Invoice #${invoice.invoiceNumber}`;
+      subject = `Second Reminder - Outstanding Invoice #${normalizedInvoiceNumber}`;
       heading = 'Second Reminder — Outstanding Invoice';
-      intro = `This is a second reminder for Invoice <strong>#${invoice.invoiceNumber}</strong> for ${currency(invoice.grandTotal)} which is now 7 days past due (${fmtDate(invoice.dueDate)}). Kindly arrange payment or contact us to discuss.`;
+      intro = `This is a second reminder for Invoice <strong>#${normalizedInvoiceNumber}</strong> for ${currency(invoice.grandTotal)} which is now 7 days past due (${fmtDate(invoice.dueDate)}). Kindly arrange payment or contact us to discuss.`;
       break;
     case 'manual':
-      subject = `Reminder - Invoice #${invoice.invoiceNumber}`;
+      subject = `Reminder - Invoice #${normalizedInvoiceNumber}`;
       heading = 'Reminder';
-      intro = `This is a Payment reminder from our team regarding Invoice <strong>#${invoice.invoiceNumber}</strong> for ${currency(invoice.grandTotal)}. Please review the outstanding amount at your earliest convenience.`;
+      intro = `This is a Payment reminder from our team regarding Invoice <strong>#${normalizedInvoiceNumber}</strong> for ${currency(invoice.grandTotal)}. Please review the outstanding amount at your earliest convenience.`;
       break;
   }
 
