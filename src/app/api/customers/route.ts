@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -17,12 +18,12 @@ export async function GET(req: NextRequest) {
 
   try {
     // Build search filter
-    const searchFilter = searchParam
+    const searchFilter: Prisma.CustomerWhereInput | undefined = searchParam
       ? {
           OR: [
-            { name: { contains: searchParam, mode: "insensitive" as const } },
-            { email: { contains: searchParam, mode: "insensitive" as const } },
-            { phone: { contains: searchParam, mode: "insensitive" as const } },
+            { name: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
+            { email: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
+            { phone: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
           ],
         }
       : undefined;
