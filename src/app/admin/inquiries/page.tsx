@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import {
     BarChart3,
     CalendarDays,
@@ -544,7 +545,7 @@ export default function BusinessInsightPage() {
                   <tbody className="divide-y divide-slate-100">
                     {stats.recentTransactions.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-slate-50">
-                        <td className="px-5 py-4 font-medium text-slate-950">{transaction.invoiceNumber}</td>
+                        <td className="px-5 py-4 font-medium text-slate-950">{getDuplicateCopyInvoiceNumber(transaction.invoiceNumber, false)}</td>
                         <td className="px-5 py-4 text-slate-600">{transaction.partyName || "-"}</td>
                         <td className="px-5 py-4 text-slate-500">{new Date(transaction.invoiceDate || transaction.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
                         <td className="px-5 py-4 font-semibold text-slate-950">{formatCurrency(Number(transaction.grandTotal || 0))}</td>

@@ -72,40 +72,6 @@ model Customer {
   updatedAt     DateTime @updatedAt
 }
 
-model BlogPost {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  excerpt     String
-  content     String
-  coverImage  String   @default("")
-  images      String   @default("[]") // JSON string
-  author      String   @default("R Singh")
-  tags        String   @default("[]") // JSON string
-  isPublished Boolean  @default(false)
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model ProjectImage {
-  id        String   @id @default(cuid())
-  title     String
-  image     String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model InfrastructureImage {
-  id        String   @id @default(cuid())
-  title     String
-  image     String
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model Inquiry {
   id          String   @id @default(cuid())
   name        String
@@ -235,6 +201,72 @@ model ProformaInvoice {
   items               ProformaInvoiceItem[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
+}
+
+model Quotation {
+  id                     String          @id @default(cuid())
+  documentType           String          @default("quotation")
+  billType               String          @default("Quotation")
+  invoiceNumber          String          @unique
+  convertedToTaxInvoice  Boolean         @default(false)
+  convertedInvoiceId     String?
+  convertedInvoiceNumber String?
+  convertedFromProforma  Boolean         @default(false)
+  sourceProformaNumber   String?
+  invoiceDate            DateTime
+  dueDate                DateTime?
+  partyName              String
+  contactPerson          String          @default("")
+  email                  String          @default("")
+  phone                  String          @default("")
+  city                   String          @default("")
+  pincode                String          @default("")
+  gstin                  String          @default("")
+  state                  String          @default("")
+  address                String          @default("")
+  poDate                 DateTime?
+  ewayBillNo             String          @default("")
+  poNo                   String          @default("")
+  placeOfSupply          String          @default("")
+  shipToAddress          String          @default("")
+  transportName          String          @default("")
+  vehicleNumber          String          @default("")
+  taxType                String          @default("cgst-sgst")
+  paymentMode            String          @default("")
+  notes                  String          @default("")
+  terms                  String          @default("")
+  bankDetails            String          @default("")
+  authorizedSignature    String          @default("")
+  subtotal               Float           @default(0)
+  discountTotal          Float           @default(0)
+  extraDiscountAmount    Float           @default(0)
+  taxableAmount          Float           @default(0)
+  taxAmount              Float           @default(0)
+  roundOff               Float           @default(0)
+  grandTotal             Float           @default(0)
+  items                  QuotationItem[]
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+}
+
+model QuotationItem {
+  id               String    @id @default(cuid())
+  quotationId      String
+  quotation        Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description      String
+  hsn              String    @default("")
+  unit             String    @default("")
+  qty              Int       @default(0)
+  rate             Float     @default(0)
+  taxPercent       Float     @default(0)
+  discountPercent  Float     @default(0)
+  taxablePerUnit   Float     @default(0)
+  taxableAmount    Float     @default(0)
+  gstAmount        Float     @default(0)
+  finalRatePerUnit Float     @default(0)
+  rowAmount        Float     @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model ProformaInvoiceItem {

@@ -94,65 +94,12 @@ export async function POST(request: Request) {
       });
     }
 
-    // Seed blog posts
-    const blogData = [
-      {
-        slug: "why-pprc-pipes-future-industrial-piping",
-        title: "Why PPR-C Pipes Are the Future of Industrial Piping",
-        excerpt: "Discover why PPR-C pipes are rapidly replacing traditional metal piping systems in industrial applications across India.",
-        content: "<h2>PPR-C Pipes: The Future of Industrial Piping</h2><p>PPR-C pipes have revolutionized the industrial piping landscape. With a service life exceeding 50 years and resistance to temperatures up to 95°C, these pipes offer unmatched durability and performance.</p><h3>Key Advantages</h3><ul><li><strong>Corrosion Resistance</strong></li><li><strong>Chemical Resistance</strong></li><li><strong>Thermal Insulation</strong></li><li><strong>Hygiene</strong></li><li><strong>Easy Installation</strong></li></ul>",
-        coverImage: "/images/projects/WhatsApp Image 2026-04-17 at 12.17.27 PM.jpeg",
-        author: "R Singh",
-        tags: ["PPR-C", "Industrial Piping", "Supply"],
-        isPublished: true,
-      },
-      {
-        slug: "understanding-uv-stabilized-pprc-pipes",
-        title: "Understanding UV Stabilized PPR-C Pipes",
-        excerpt: "Learn about UV stabilization in PPR-C pipes and why it matters for outdoor piping installations.",
-        content: "<h2>UV Stabilization in PPR-C Pipes</h2><p>UV stabilization is a critical feature for outdoor installations, protecting pipes from degradation caused by ultraviolet radiation.</p>",
-        coverImage: "/images/projects/WhatsApp Image 2026-04-17 at 12.17.28 PM.jpeg",
-        author: "R Singh",
-        tags: ["UV Stabilization", "PPR-C", "Technology"],
-        isPublished: true,
-      },
-      {
-        slug: "industrial-piping-applications-complete-guide",
-        title: "Industrial Piping Applications: Complete Guide",
-        excerpt: "A comprehensive guide to industrial applications of PPR-C piping systems.",
-        content: "<h2>Industrial Piping Applications</h2><p>PPR-C piping systems serve a wide range of industrial applications including hot/cold water supply, chemical supply, and compressed air systems.</p>",
-        coverImage: "/images/projects/WhatsApp Image 2026-04-17 at 12.17.24 PM.jpeg",
-        author: "R Singh",
-        tags: ["Applications", "Industrial", "Guide"],
-        isPublished: true,
-      },
-    ];
-
-    for (const b of blogData) {
-      await prisma.blogPost.upsert({
-        where: { slug: b.slug },
-        update: {},
-        create: {
-          slug: b.slug,
-          title: b.title,
-          excerpt: b.excerpt,
-          content: b.content,
-          coverImage: b.coverImage,
-          author: b.author,
-          tags: JSON.stringify(b.tags),
-          isPublished: b.isPublished,
-          publishedAt: b.isPublished ? new Date() : null,
-        },
-      });
-    }
-
     return NextResponse.json({
       success: true,
       message: "Database seeded successfully",
       counts: {
         categories: categoryData.length,
         products: productData.length,
-        blogs: blogData.length,
       },
     });
   } catch (error) {

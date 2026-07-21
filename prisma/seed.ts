@@ -492,65 +492,6 @@ async function main() {
   }
   console.log("✅ Products seeded");
 
-  // Seed blog posts
-  const blogData = [
-    {
-      slug: "why-pprc-pipes-future-industrial-piping",
-      title: "Why PPR-C Pipes Are the Future of Industrial Piping",
-      excerpt:
-        "Discover why PPR-C pipes are rapidly replacing traditional metal piping systems in industrial applications across India.",
-      content: `<h2>PPR-C Pipes: The Future of Industrial Piping</h2><p>PPR-C pipes have revolutionized the industrial piping landscape. With a service life exceeding 50 years and resistance to temperatures up to 95°C, these pipes offer unmatched durability and performance.</p><h3>Key Advantages of PPR-C Pipes</h3><ul><li><strong>Corrosion Resistance</strong> — Unlike metal pipes, PPR-C pipes are immune to corrosion.</li><li><strong>Chemical Resistance</strong> — PPR-C pipes can handle a wide range of chemicals.</li><li><strong>Thermal Insulation</strong> — Low thermal conductivity reduces heat loss.</li><li><strong>Hygiene</strong> — Anti-microbial inner layer prevents bacterial growth.</li><li><strong>Easy Installation</strong> — Fusion welding creates permanent, leak-proof joints.</li></ul><p>At Radiatech, we supply PPR-C pipes that comply with DIN 16962 standards, ensuring the highest quality for your industrial applications.</p>`,
-      coverImage:
-        "/images/projects/WhatsApp Image 2026-04-17 at 12.17.27 PM.jpeg",
-      author: "R Singh",
-      tags: ["PPR-C", "Industrial Piping", "Supply"],
-      isPublished: true,
-    },
-    {
-      slug: "understanding-uv-stabilized-pprc-pipes",
-      title: "Understanding UV Stabilized PPR-C Pipes",
-      excerpt:
-        "Learn about UV stabilization in PPR-C pipes and why it matters for outdoor piping installations.",
-      content: `<h2>UV Stabilization in PPR-C Pipes</h2><p>UV stabilization is a critical feature in PPR-C pipes, especially for outdoor installations. The UV stabilized outer layer protects the pipe from degradation caused by ultraviolet radiation.</p><h3>How UV Stabilization Works</h3><p>UV stabilizers provide protection from UV radiation through chemical processes. Colors like green and black offer some UV resistance, but adding stabilizers significantly enhances protection.</p><h3>Benefits</h3><ul><li>Extended product lifespan in outdoor installations</li><li>Maintained thermal stability over time</li><li>Long-term durability under direct sunlight</li><li>No need for additional UV protection coating</li></ul><p>Our Green Therm PPR Pipes feature a UV stabilized outer layer combined with an anti-microbial inner layer, providing dual protection.</p>`,
-      coverImage:
-        "/images/projects/WhatsApp Image 2026-04-17 at 12.17.28 PM.jpeg",
-      author: "R Singh",
-      tags: ["UV Stabilization", "PPR-C", "Technology"],
-      isPublished: true,
-    },
-    {
-      slug: "industrial-piping-applications-complete-guide",
-      title: "Industrial Piping Applications: Complete Guide",
-      excerpt:
-        "A comprehensive guide to industrial applications of PPR-C piping systems.",
-      content: `<h2>Industrial Piping Applications</h2><p>PPR-C piping systems serve a wide range of industrial applications.</p><h3>Hot & Cold Water Supply</h3><ul><li>Chilling plants, process cooling lines</li><li>Cooling towers, condenser units</li><li>Data center cooling systems</li></ul><h3>Clean Water Supply</h3><ul><li>Drinking water systems</li><li>DM water lines</li><li>Solar water heaters</li></ul><h3>Chemical Supply</h3><ul><li>Chemical plants</li><li>Effluent treatment plants</li><li>Water treatment plants</li></ul><h3>Air Applications</h3><ul><li>Compressed air systems</li><li>Nitrogen and oxygen air lines</li><li>Vacuum lines</li></ul><p>Radiatech provides turnkey piping solutions for all these applications, with over 5 years of experience and 1000+ completed projects.</p>`,
-      coverImage:
-        "/images/projects/WhatsApp Image 2026-04-17 at 12.17.24 PM.jpeg",
-      author: "R Singh",
-      tags: ["Applications", "Industrial", "Guide"],
-      isPublished: true,
-    },
-  ];
-
-  for (const b of blogData) {
-    await prisma.blogPost.upsert({
-      where: { slug: b.slug },
-      update: {},
-      create: {
-        slug: b.slug,
-        title: b.title,
-        excerpt: b.excerpt,
-        content: b.content,
-        coverImage: b.coverImage,
-        author: b.author,
-        tags: JSON.stringify(b.tags),
-        isPublished: b.isPublished,
-        publishedAt: b.isPublished ? new Date() : null,
-      },
-    });
-  }
-  console.log("✅ Blog posts seeded");
-
   console.log("🎉 Seeding complete!");
 }
 

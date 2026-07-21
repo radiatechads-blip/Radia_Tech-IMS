@@ -150,7 +150,7 @@ export async function sendAdminNotification(data: InquiryEmailData): Promise<Ema
           ${data.message ? `<tr><td style="padding:10px 12px;font-weight:600;color:#374151;vertical-align:top">Message</td><td style="padding:10px 12px;color:#374151;line-height:1.55">${escapeHtml(data.message).replace(/\n/g, "<br />")}</td></tr>` : ""}
         </table>
         <div style="margin-top:20px;padding:12px;background:#f0f9ff;border-radius:8px;text-align:center">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in"}/admin/inquiries" style="color:#0B3D91;font-weight:600;text-decoration:none">View in Admin Panel</a>
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://radiatechfire.in"}/admin/business-insight" style="color:#0B3D91;font-weight:600;text-decoration:none">View in Admin Panel</a>
         </div>
       </div>
     </div>

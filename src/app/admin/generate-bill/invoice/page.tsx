@@ -4,15 +4,15 @@ export const dynamic = "force-dynamic";
 import AdminShell from "@/components/admin/AdminShell";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
-  AlignLeft,
-  CalendarDays,
-  Camera,
-  Check,
-  ChevronDown,
-  FileText,
-  Plus,
-  Save,
-  Share2,
+    AlignLeft,
+    CalendarDays,
+    Camera,
+    Check,
+    ChevronDown,
+    FileText,
+    Plus,
+    Save,
+    Share2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -153,7 +153,7 @@ export default function InvoicePage() {
 
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [dueDateValue, setDueDateValue] = useState(dueDate);
-  const [invoiceNumber, setInvoiceNumber] = useState(() => `INV-${Date.now().toString().slice(-6)}`);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [poDate, setPoDate] = useState("");
   const [ewayBillNo, setEwayBillNo] = useState("");
   const [poNo, setPoNo] = useState("");
@@ -804,7 +804,7 @@ export default function InvoicePage() {
 
       setIsEditing(false);
       setEditingInvoiceId(null);
-      setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
+      setInvoiceNumber("");
       applyInvoiceData(data);
       setConvertedFromProforma(true);
       setSourceProformaNumber(String(data.invoiceNumber || ""));
@@ -824,10 +824,9 @@ export default function InvoicePage() {
           ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=invoice`
           : "/api/invoices";
 
-      const invoiceNumberToSend = getDuplicateCopyInvoiceNumber(
-        invoiceNumber.trim() || `INV-${Date.now().toString().slice(-6)}`,
-        isDuplicateCopy,
-      );
+      const invoiceNumberToSend = invoiceNumber.trim()
+        ? getDuplicateCopyInvoiceNumber(invoiceNumber.trim(), isDuplicateCopy)
+        : "";
       const invoiceDateToSend = invoiceDate || today;
 
       const response = await fetch(url, {

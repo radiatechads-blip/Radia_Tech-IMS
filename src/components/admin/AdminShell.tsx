@@ -16,7 +16,7 @@ const navItems = [
   { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Generate Bill", href: "/admin/generate-bill", icon: FileText },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
-  { label: "Business Insight", href: "/admin/inquiries", icon: Inbox },
+  { label: "Business Insight", href: "/admin/business-insight", icon: Inbox },
   { label: "My Profile", href: "/admin/profile", icon: UserCircle },
 ];
 

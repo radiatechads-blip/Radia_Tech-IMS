@@ -2,6 +2,7 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import { readJsonResponse } from "@/lib/fetchJson";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { useEffect, useState } from "react";
 
 type Reminder = {
@@ -280,7 +281,7 @@ export default function AlertsPage() {
                 {filteredRows.map((r) => (
                   <tr key={r.id} className="border-t bg-white">
                     <td className="px-3 py-2 text-sm">
-                      <div className="font-medium text-slate-900">{r.invoiceNumber}</div>
+                      <div className="font-medium text-slate-900">{getDuplicateCopyInvoiceNumber(r.invoiceNumber, false)}</div>
                       <div className="text-xs text-slate-400">
                         {formatDate(r.invoiceDate)}
                       </div>

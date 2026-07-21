@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { buildTaxInvoiceChartData, type InvoiceRange } from "@/lib/taxInvoiceChart";
 import { DollarSign, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
@@ -358,7 +359,7 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-slate-100">
                     {stats.recentTransactions?.map((transaction) => (
                       <tr key={transaction.id} className="hover:bg-slate-50">
-                        <td className="px-5 py-4 font-medium text-slate-950">{transaction.invoiceNumber}</td>
+                        <td className="px-5 py-4 font-medium text-slate-950">{getDuplicateCopyInvoiceNumber(transaction.invoiceNumber, false)}</td>
                         <td className="px-5 py-4 text-slate-600">{transaction.partyName || "-"}</td>
                         <td className="px-5 py-4 text-slate-500">{new Date(transaction.invoiceDate || transaction.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</td>
                         <td className="px-5 py-4 font-semibold text-slate-950">₹{Number(transaction.grandTotal || 0).toLocaleString("en-IN")}</td>

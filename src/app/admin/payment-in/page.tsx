@@ -224,6 +224,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { matchesPaymentDateFilter, type PaymentDateFilter } from "@/lib/paymentInFilters";
 import { useEffect, useMemo, useState } from "react";
 
@@ -458,7 +459,7 @@ export default function PaymentInPage() {
                       <tr key={invoice.id} className="hover:bg-slate-50/70 transition-colors">
                         {/* ID & Date */}
                         <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-semibold text-slate-900">{invoice.invoiceNumber}</div>
+                          <div className="font-semibold text-slate-900">{getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false)}</div>
                           <div className="text-xs text-slate-400">
                             {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString("en-US", { dateStyle: "medium" }) : "-"}
                           </div>
@@ -531,9 +532,9 @@ export default function PaymentInPage() {
               </div>
 
               <div className="mt-4 space-y-4">
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600 flex justify-between">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
                   <div>
-                    <span className="font-bold text-slate-700">Invoice:</span> {updateInvoice.invoiceNumber}
+                    <span className="font-bold text-slate-700">Invoice:</span> {getDuplicateCopyInvoiceNumber(updateInvoice.invoiceNumber, false)}
                   </div>
                   <div>
                     <span className="font-bold text-slate-700">Pending:</span> ₹{updateInvoice.remaining.toFixed(2)}
@@ -605,7 +606,7 @@ export default function PaymentInPage() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">Payment History</h3>
-                  <p className="text-xs text-slate-400">Records for {historyInvoice.invoiceNumber} — {historyInvoice.partyName}</p>
+                  <p className="text-xs text-slate-400">Records for {getDuplicateCopyInvoiceNumber(historyInvoice.invoiceNumber, false)} — {historyInvoice.partyName}</p>
                 </div>
                 <button 
                   onClick={() => setHistoryInvoice(null)} 

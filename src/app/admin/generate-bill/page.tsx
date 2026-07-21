@@ -342,10 +342,11 @@ export default function GenerateBillPage() {
 
   const getApiDocumentType = (
     invoice: InvoiceSummary,
-  ): "invoice" | "proforma" | "annexure" => {
+  ): "invoice" | "proforma" | "annexure" | "quotation" => {
     const label = getBillTypeLabel(invoice);
     if (label === "Proforma Invoice") return "proforma";
     if (label === "Annexure") return "annexure";
+    if (label === "Quotation") return "quotation";
     return "invoice";
   };
 
@@ -565,11 +566,8 @@ export default function GenerateBillPage() {
     setPdfBusyAction("save");
     try {
       const pdf = await buildPdfFromElement(previewContentRef.current);
-      const fileName =
-        `${selectedInvoice.invoiceNumber || "invoice"}.pdf`.replace(
-          /[\\/:*?"<>|]/g,
-          "-",
-        );
+      const invoiceNumberForFile = getDuplicateCopyInvoiceNumber(selectedInvoice.invoiceNumber, false) || "invoice";
+      const fileName = `${invoiceNumberForFile}.pdf`.replace(/[\\/:*?"<>|]/g, "-");
       pdf.save(fileName);
     } catch (err) {
       console.error("Save PDF failed:", err);
@@ -1398,7 +1396,7 @@ export default function GenerateBillPage() {
                       >
                         <td className="px-4 py-3">
                           <div className="font-semibold text-slate-900">
-                            {invoice.invoiceNumber || "—"}
+                            {getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false) || "—"}
                           </div>
                           <div className="text-xs text-slate-400">
                             #{invoice.id}

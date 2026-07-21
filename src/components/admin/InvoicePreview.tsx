@@ -2065,7 +2065,7 @@
 "use client";
 
 import type { InvoiceSummary } from "@/lib/invoiceRoute";
-import { getBillTypeLabel, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
+import { getBillTypeLabel, getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -2349,7 +2349,7 @@ export default function InvoicePreview({
               </p>
               <div className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] leading-4 text-slate-800">
                 <span className="font-semibold text-slate-900">Invoice No:</span>
-                <span>{invoice.invoiceNumber || "—"}</span>
+                <span>{getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false) || "—"}</span>
                 <span className="font-semibold text-slate-900">Date:</span>
                 <span>
                   {formatDate(invoice.invoiceDate || invoice.createdAt)}

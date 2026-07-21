@@ -1,21 +1,15 @@
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { prisma } from "@/lib/db";
+import { normalizeDocumentType } from "@/lib/invoiceApi";
 import { resolveInvoiceDate, resolveInvoiceNumber } from "@/lib/invoicePayload";
 import { buildStockReductionPlan } from "@/lib/stockReduction";
 import { NextResponse } from "next/server";
 
 type DocumentType = "invoice" | "proforma" | "annexure" | "quotation";
 
-function normalizeDocumentType(data: Record<string, unknown>): DocumentType {
-  const explicit = String(data.documentType || data.billType || "").trim().toLowerCase();
-  if (explicit.includes("proforma")) return "proforma";
-  if (explicit.includes("annexure") || explicit.includes("long")) return "annexure";
-  if (explicit.includes("quotation") || explicit.startsWith("qtn")) return "quotation";
-  return "invoice";
-}
-
 function buildInvoicePayload(data: Record<string, unknown>, documentType: DocumentType, invoiceNumberOverride?: string) {
-  const invoiceNumber = invoiceNumberOverride ?? resolveInvoiceNumber(data, documentType);
+  const override = String(invoiceNumberOverride || "").trim();
+  const invoiceNumber = override || resolveInvoiceNumber(data, documentType);
   const invoiceDate = resolveInvoiceDate(data);
 
   const dueDateValue = String(data.dueDate || "").trim();
@@ -175,6 +169,18 @@ async function writeInvoiceConversionMeta(id: string, meta: ReturnType<typeof bu
   );
 }
 
+async function writeQuotationConversionMeta(id: string, meta: ReturnType<typeof buildConversionMeta>) {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Quotation" SET "convertedToTaxInvoice" = $1, "convertedInvoiceId" = $2, "convertedInvoiceNumber" = $3, "convertedFromProforma" = $4, "sourceProformaNumber" = $5 WHERE "id" = $6`,
+    meta.convertedToTaxInvoice,
+    meta.convertedInvoiceId,
+    meta.convertedInvoiceNumber,
+    meta.convertedFromProforma,
+    meta.sourceProformaNumber,
+    id,
+  );
+}
+
 async function createDocumentRecord(data: Record<string, unknown>, documentType: DocumentType) {
   const documentItems = buildDocumentItems(data);
   const stockReductionPlan =
@@ -198,7 +204,9 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
       ? await prisma.proformaInvoice.findMany({ select: { invoiceNumber: true } })
       : documentType === "annexure"
         ? await prisma.annexure.findMany({ select: { invoiceNumber: true } })
-        : await prisma.invoice.findMany({ select: { invoiceNumber: true } }))
+        : documentType === "quotation"
+          ? await prisma.quotation.findMany({ select: { invoiceNumber: true } })
+          : await prisma.invoice.findMany({ select: { invoiceNumber: true } }))
       .map((record) => String(record.invoiceNumber || "").trim())
       .filter(Boolean),
   );
@@ -267,7 +275,41 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         return { ...created, items: created.items ?? [] };
       }
 
-      // For "invoice" and "quotation" we store in the Invoice table
+      if (documentType === "quotation") {
+        const created = await prisma.quotation.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
+                description: String(item.description || "").trim(),
+                hsn: String(item.hsn || "").trim(),
+                unit: String(item.unit || "").trim(),
+                qty: Number(item.qty || 0),
+                rate: Number(item.rate || 0),
+                taxPercent: Number(item.taxPercent || 0),
+                discountPercent: Number(item.discountPercent || 0),
+                taxablePerUnit: Number(item.taxablePerUnit || 0),
+                taxableAmount: Number(item.taxableAmount || 0),
+                gstAmount: Number(item.gstAmount || 0),
+                finalRatePerUnit: Number(item.finalRatePerUnit || 0),
+                rowAmount: Number(item.rowAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+
+        await writeQuotationConversionMeta(created.id, conversionMeta);
+        const refreshed = await prisma.quotation.findUnique({
+          where: { id: created.id },
+          include: { items: true },
+        });
+        return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...created, items: created.items ?? [] };
+      }
+
       const created = await prisma.invoice.create({
         data: {
           ...payload,
@@ -294,7 +336,7 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         include: { items: true },
       });
 
-      if (documentType === "invoice" || documentType === "quotation") {
+      if (documentType === "invoice") {
         await writeInvoiceConversionMeta(created.id, conversionMeta);
         const refreshed = await prisma.invoice.findUnique({
           where: { id: created.id },
@@ -366,7 +408,29 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     return { ...updated, items: updated.items ?? [] };
   }
 
-  // For "invoice" and "quotation" update the Invoice table
+  if (documentType === "quotation") {
+    const updated = await prisma.quotation.update({
+      where: { id },
+      data: {
+        ...payload,
+        invoiceDate: payload.invoiceDate,
+        dueDate: payload.dueDate,
+        poDate: payload.poDate,
+        items: {
+          deleteMany: {},
+          create: itemPayload,
+        },
+      },
+      include: { items: true },
+    });
+    await writeQuotationConversionMeta(updated.id, conversionMeta);
+    const refreshed = await prisma.quotation.findUnique({
+      where: { id: updated.id },
+      include: { items: true },
+    });
+    return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...updated, items: updated.items ?? [] };
+  }
+
   const updated = await prisma.invoice.update({
     where: { id },
     data: {
@@ -394,7 +458,7 @@ async function getAllDocumentRecords(documentType?: DocumentType) {
     return prisma.proformaInvoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
   }
   if (documentType === "quotation") {
-    return prisma.invoice.findMany({ where: { documentType: "quotation" }, orderBy: { createdAt: "desc" }, include: { items: true } });
+    return prisma.quotation.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
   }
   if (documentType === "annexure") {
     return prisma.annexure.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
@@ -403,16 +467,18 @@ async function getAllDocumentRecords(documentType?: DocumentType) {
     return prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
   }
 
-  const [invoices, proformas, annexures] = await Promise.all([
+  const [invoices, proformas, annexures, quotations] = await Promise.all([
     prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
     prisma.proformaInvoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
     prisma.annexure.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
+    prisma.quotation.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
   ]);
 
   return [
     ...invoices.map((invoice) => ({ ...invoice, documentType: "invoice" })),
     ...proformas.map((invoice) => ({ ...invoice, documentType: "proforma" })),
     ...annexures.map((invoice) => ({ ...invoice, documentType: "annexure" })),
+    ...quotations.map((invoice) => ({ ...invoice, documentType: "quotation" })),
   ].sort((left, right) => new Date(String(right.createdAt)).getTime() - new Date(String(left.createdAt)).getTime());
 }
 
@@ -421,7 +487,7 @@ async function getDocumentRecordById(id: string, documentType?: DocumentType) {
     return prisma.proformaInvoice.findUnique({ where: { id }, include: { items: true } });
   }
   if (documentType === "quotation") {
-    return prisma.invoice.findUnique({ where: { id }, include: { items: true } });
+    return prisma.quotation.findUnique({ where: { id }, include: { items: true } });
   }
   if (documentType === "annexure") {
     return prisma.annexure.findUnique({ where: { id }, include: { items: true } });
@@ -430,13 +496,14 @@ async function getDocumentRecordById(id: string, documentType?: DocumentType) {
     return prisma.invoice.findUnique({ where: { id }, include: { items: true } });
   }
 
-  const [invoice, proforma, annexure] = await Promise.all([
+  const [invoice, proforma, annexure, quotation] = await Promise.all([
     prisma.invoice.findUnique({ where: { id }, include: { items: true } }),
     prisma.proformaInvoice.findUnique({ where: { id }, include: { items: true } }),
     prisma.annexure.findUnique({ where: { id }, include: { items: true } }),
+    prisma.quotation.findUnique({ where: { id }, include: { items: true } }),
   ]);
 
-  return invoice ?? proforma ?? annexure;
+  return invoice ?? proforma ?? annexure ?? quotation;
 }
 
 async function deleteDocumentRecord(id: string, documentType: "invoice" | "proforma" | "annexure" | "quotation") {
@@ -448,7 +515,11 @@ async function deleteDocumentRecord(id: string, documentType: "invoice" | "profo
     await prisma.annexure.delete({ where: { id } });
     return true;
   }
-  // For "invoice" and "quotation" delete from Invoice table
+  if (documentType === "quotation") {
+    await prisma.quotation.delete({ where: { id } });
+    return true;
+  }
+
   await prisma.invoice.delete({ where: { id } });
   return true;
 }
@@ -463,7 +534,7 @@ async function ensureDocumentStatusColumn(tableName: string) {
   await prisma.$executeRawUnsafe(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Active'`);
 }
 
-async function updateDocumentStatus(id: string, documentType: "invoice" | "proforma" | "annexure", status: string) {
+async function updateDocumentStatus(id: string, documentType: "invoice" | "proforma" | "annexure" | "quotation", status: string) {
   if (documentType === "proforma") {
     await ensureDocumentStatusColumn("ProformaInvoice");
     await prisma.$executeRawUnsafe(`UPDATE "ProformaInvoice" SET "status" = $1 WHERE "id" = $2`, status, id);
@@ -474,6 +545,12 @@ async function updateDocumentStatus(id: string, documentType: "invoice" | "profo
     await ensureDocumentStatusColumn("Annexure");
     await prisma.$executeRawUnsafe(`UPDATE "Annexure" SET "status" = $1 WHERE "id" = $2`, status, id);
     const record = await prisma.annexure.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
+  }
+  if (documentType === "quotation") {
+    await ensureDocumentStatusColumn("Quotation");
+    await prisma.$executeRawUnsafe(`UPDATE "Quotation" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.quotation.findUnique({ where: { id }, include: { items: true } });
     return record ? { ...record, status } : null;
   }
   await ensureDocumentStatusColumn("Invoice");
@@ -496,7 +573,15 @@ export async function GET(req: Request) {
     const invoiceId = url.searchParams.get("id");
     const documentTypeParam = url.searchParams.get("documentType")?.toLowerCase();
     const documentType: DocumentType | undefined =
-      documentTypeParam === "proforma" ? "proforma" : documentTypeParam === "annexure" ? "annexure" : documentTypeParam === "invoice" ? "invoice" : undefined;
+      documentTypeParam === "proforma"
+        ? "proforma"
+        : documentTypeParam === "annexure"
+          ? "annexure"
+          : documentTypeParam === "invoice"
+            ? "invoice"
+            : documentTypeParam === "quotation"
+              ? "quotation"
+              : undefined;
 
     if (invoiceId) {
       const invoice = await getDocumentRecordById(invoiceId, documentType);
@@ -585,8 +670,14 @@ export async function PATCH(req: Request) {
     const url = new URL(req.url);
     const invoiceId = url.searchParams.get("id");
     const documentTypeParam = url.searchParams.get("documentType")?.toLowerCase();
-    const documentType: "invoice" | "proforma" | "annexure" =
-      documentTypeParam === "proforma" ? "proforma" : documentTypeParam === "annexure" ? "annexure" : "invoice";
+    const documentType: "invoice" | "proforma" | "annexure" | "quotation" =
+      documentTypeParam === "proforma"
+        ? "proforma"
+        : documentTypeParam === "annexure"
+          ? "annexure"
+          : documentTypeParam === "quotation"
+            ? "quotation"
+            : "invoice";
 
     if (!invoiceId) {
       return jsonError("Invoice ID is required.", 400);
@@ -627,8 +718,14 @@ export async function DELETE(req: Request) {
     const url = new URL(req.url);
     const invoiceId = url.searchParams.get("id");
     const documentTypeParam = url.searchParams.get("documentType")?.toLowerCase();
-    const documentType: "invoice" | "proforma" | "annexure" =
-      documentTypeParam === "proforma" ? "proforma" : documentTypeParam === "annexure" ? "annexure" : "invoice";
+    const documentType: "invoice" | "proforma" | "annexure" | "quotation" =
+      documentTypeParam === "proforma"
+        ? "proforma"
+        : documentTypeParam === "annexure"
+          ? "annexure"
+          : documentTypeParam === "quotation"
+            ? "quotation"
+            : "invoice";
 
     if (!invoiceId) {
       return jsonError("Invoice ID is required.", 400);
