@@ -11,7 +11,17 @@ export async function GET() {
 
   try {
     const invoices = await prisma.invoice.findMany({
-      where: { email: { not: "" } },
+      where: {
+        email: { not: "" },
+        OR: [
+          { documentType: { equals: "invoice" } },
+          { documentType: { equals: "Tax Invoice" } },
+          { documentType: { equals: "Tax-Invoice" } },
+          { documentType: { equals: "tax invoice" } },
+          { documentType: { equals: "tax-invoice" } },
+          { documentType: { equals: "" } },
+        ],
+      },
       orderBy: { dueDate: "asc" },
       include: { payments: true },
     });
