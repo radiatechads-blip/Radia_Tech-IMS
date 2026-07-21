@@ -17,13 +17,14 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    // Build search filter
-    const searchFilter: Prisma.CustomerWhereInput | undefined = searchParam
+    const normalizedSearch = searchParam.trim();
+
+    const searchFilter: Prisma.CustomerWhereInput | undefined = normalizedSearch
       ? {
           OR: [
-            { name: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
-            { email: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
-            { phone: { contains: searchParam, mode: Prisma.QueryMode.insensitive } },
+            { name: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
+            { email: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
+            { phone: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
           ],
         }
       : undefined;
