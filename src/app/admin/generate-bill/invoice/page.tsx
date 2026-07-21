@@ -2,19 +2,22 @@
 export const dynamic = "force-dynamic";
 
 import AdminShell from "@/components/admin/AdminShell";
+import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
-    AlignLeft,
-    CalendarDays,
-    Camera,
-    Check,
-    ChevronDown,
-    FileText,
-    Plus,
-    Save,
-    Share2,
+  AlignLeft,
+  CalendarDays,
+  Camera,
+  Check,
+  ChevronDown,
+  FileText,
+  Plus,
+  Save,
+  Share2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+import { getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 
 // ────────────────────────────────────────────────────────────────────────
 // Types — identical to invoice/page.tsx (file 1). The item shape/logic for
@@ -108,7 +111,18 @@ const emptyNewCustomerForm = {
   pincode: "",
 };
 
-const UNITS = ["Nos", "Pcs", "Kg", "L", "m", "Box", "Set"];
+const UNITS = [
+  { value: "MTR", label: "MTR" },
+  { value: "PCS", label: "PCS" },
+  { value: "FEET", label: "FEET" },
+  { value: "KG", label: "KG" },
+  { value: "PKT", label: "PKT" },
+  { value: "LOT", label: "LOT" },
+  { value: "NMR", label: "NOS" },
+  { value: "PAIR", label: "PAIR" },
+  { value: "LTR", label: "LTR" },
+  { value: "ROLLS", label: "ROLLS" },
+];
 
 export default function InvoicePage() {
   const router = useRouter();
@@ -181,6 +195,10 @@ export default function InvoicePage() {
   const [newCustomerError, setNewCustomerError] = useState("");
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [activeItemIdForNewProduct, setActiveItemIdForNewProduct] = useState<number | null>(null);
+
   // ---- Preview toggle: shows the exact printable/saved invoice (file 1 UI)
   // inline on screen. Regardless of this toggle, printing / PDF generation
   // always uses this same exact markup (see print CSS below).
@@ -246,7 +264,7 @@ export default function InvoicePage() {
 
     setConvertedFromProforma(Boolean(data.convertedFromProforma));
     setSourceProformaNumber(String(data.sourceProformaNumber || ""));
-    setIsDuplicateCopy(Boolean(data.isDuplicate));
+    setIsDuplicateCopy(Boolean(data.isDuplicate) || getInvoiceDuplicateFlag(data as Record<string, unknown>));
 
     const loadedItems = Array.isArray(data.items)
       ? (data.items as Record<string, unknown>[]).map((item, index) => ({
@@ -379,6 +397,57 @@ export default function InvoicePage() {
 
   const findProductByName = (name: string) =>
     productOptions.find((product) => product.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+  const openAddProductModal = (id: number, initialName = "") => {
+    setActiveItemIdForNewProduct(id);
+    setNewProductName(initialName);
+    setShowAddProductModal(true);
+  };
+
+  const handleProductCreated = ({
+    id,
+    name,
+    hsn,
+    unit,
+    price,
+  }: {
+    id: string;
+    name: string;
+    hsn: string;
+    unit: string;
+    price: number;
+  }) => {
+    setProductOptions((current) => [
+      ...current,
+      {
+        id,
+        name,
+        hsn,
+        unit,
+        rate: price,
+        taxPercent: 0,
+      },
+    ]);
+
+    if (activeItemIdForNewProduct !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id !== activeItemIdForNewProduct
+            ? item
+            : {
+                ...item,
+                description: name,
+                hsn: hsn || item.hsn,
+                unit: unit || item.unit,
+                rate: price || item.rate,
+              },
+        ),
+      );
+    }
+
+    setActiveItemIdForNewProduct(null);
+    setShowAddProductModal(false);
+  };
 
   const handleItemNameChange = (id: number, value: string) => {
     const matchedProduct = findProductByName(value);
@@ -755,7 +824,10 @@ export default function InvoicePage() {
           ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=invoice`
           : "/api/invoices";
 
-      const invoiceNumberToSend = invoiceNumber.trim() || `INV-${Date.now().toString().slice(-6)}`;
+      const invoiceNumberToSend = getDuplicateCopyInvoiceNumber(
+        invoiceNumber.trim() || `INV-${Date.now().toString().slice(-6)}`,
+        isDuplicateCopy,
+      );
       const invoiceDateToSend = invoiceDate || today;
 
       const response = await fetch(url, {
@@ -939,6 +1011,7 @@ export default function InvoicePage() {
 
   const hasAnyHsn = items.some((item) => item.hsn.trim() !== "");
   const hasAnyDiscount = items.some((item) => Number(item.discountPercent) > 0);
+  const previewPageLabels = getDuplicateCopyPageLabels(isDuplicateCopy);
 
   // ── file 2 style helpers ─────────────────────────────────────────────────
 
@@ -1080,6 +1153,13 @@ export default function InvoicePage() {
         </div>
       )}
 
+      <ProductCreateModal
+        open={showAddProductModal}
+        initialName={newProductName}
+        onClose={() => setShowAddProductModal(false)}
+        onProductCreated={handleProductCreated}
+      />
+
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
         {/* ══════════════════════════════════════════════════════════════
             DATA-ENTRY SCREEN — visual language from file 2. Hidden while
@@ -1148,13 +1228,13 @@ export default function InvoicePage() {
                 )}
               </div>
 
-              {/* <button
+              <button
                 type="button"
                 onClick={() => setShowPreview(true)}
                 className="rounded border border-gray-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:bg-gray-50"
               >
                 Preview
-              </button> */}
+              </button>
 
               <button
                 type="button"
@@ -1305,7 +1385,7 @@ export default function InvoicePage() {
                       className="h-4 w-4 accent-blue-600 cursor-pointer"
                     />
                     <label htmlFor="isDuplicateCopy" className="text-[12px] text-gray-600 cursor-pointer select-none">
-                      Mark as "Duplicate Copy" (unchecked = "Original for Recipient")
+                      Mark as “Duplicate Copy” (unchecked = “Original for Recipient”)
                     </label>
                   </div>
                 </div>
@@ -1347,13 +1427,22 @@ export default function InvoicePage() {
                         <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
                           <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-500 align-middle">{index + 1}</td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              list={PRODUCT_DATALIST_ID}
-                              value={item.description}
-                              onChange={(e) => handleItemNameChange(item.id, e.target.value)}
-                              placeholder="Item description"
-                              className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                list={PRODUCT_DATALIST_ID}
+                                value={item.description}
+                                onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                                placeholder="Item description"
+                                className="min-w-0 flex-1 bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => openAddProductModal(item.id, item.description)}
+                                className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 group-hover:pointer-events-auto pointer-events-none"
+                              >
+                                + New
+                              </button>
+                            </div>
                           </td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
                             <input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} placeholder="—" className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none" />
@@ -1375,7 +1464,11 @@ export default function InvoicePage() {
                                 className="w-full bg-transparent text-[13px] text-gray-700 focus:outline-none appearance-none cursor-pointer pr-4"
                               >
                                 <option value="">—</option>
-                                {UNITS.map((u) => <option key={u}>{u}</option>)}
+                                {UNITS.map((unit) => (
+                                  <option key={unit.value} value={unit.value}>
+                                    {unit.label}
+                                  </option>
+                                ))}
                               </select>
                               <ChevronDown size={11} className="absolute right-0.5 top-1.5 text-gray-400 pointer-events-none" />
                             </div>
@@ -1724,523 +1817,529 @@ export default function InvoicePage() {
 
           <div className="invoice-preview-shell mx-auto w-full">
             <div className="overflow-hidden rounded-2xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_8px_32px_rgba(15,23,42,0.07)] print:rounded-none print:shadow-none print:border-[1.2px]">
-
-              {/* ── top bar — heading centered ── */}
-              <div className="relative flex items-center justify-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3">
-                <h2 className="text-base font-semibold text-slate-900">Tax Invoice</h2>
-                <span className="absolute right-6 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  {isDuplicateCopy ? "Duplicate Copy" : "Original for Recipient"}
-                </span>
-              </div>
-
-              {/* ── Converted-from-Proforma note ── */}
-              {convertedFromProforma && (
-                <div className="border-b border-slate-300 bg-blue-50 px-6 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-700">
-                  Converted from Proforma Invoice {sourceProformaNumber || "—"}
-                </div>
-              )}
-
-              {/* ── company header (static) ── */}
-              <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-6 pb-4 pt-4">
-                <div className="flex items-start gap-3">
-                  <img src="/LOGO.png" alt="Radiatech Electra" className="h-12 w-12 rounded-md object-contain" />
-                  <div>
-                    <h3 className="text-xl font-bold tracking-wide text-slate-950">RADIATECH ELECTRA</h3>
-                    <p className="mt-1 text-[11px] text-slate-600">
-                      Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
-                    </p>
+              {previewPageLabels.map((label, index) => (
+                <div
+                  key={`${label}-${index}`}
+                  className={`invoice-preview-page ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`}
+                  style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}
+                >
+                  <div className="relative flex items-center justify-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3">
+                    <h2 className="text-base font-semibold text-slate-900">Tax Invoice</h2>
+                    <span className="absolute right-6 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      {label}
+                    </span>
                   </div>
-                </div>
-                <div className="text-right text-[11px] text-slate-600">
-                  <div>Phone: +91 81788 50959</div>
-                  <div>Email: sales@radiatech.in</div>
-                  <div>GSTIN: 09DDZPK0004H1ZF</div>
-                  <div>State: 09-Uttar Pradesh</div>
-                </div>
-              </div>
 
-              {/* ── Bill To | Invoice Details ── */}
-              <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
-                <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r">
-                  <div className="rounded-lg border border-slate-300 bg-white p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bill To:</p>
-                      <select
-                        value={selectedCustomerId}
-                        onChange={(e) => handleCustomerSelect(e.target.value)}
-                        className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 outline-none transition hover:border-slate-300 print:hidden cursor-pointer"
-                      >
-                        <option value="">Select customer…</option>
-                        <option value={ADD_NEW_CUSTOMER_OPTION}>+ Add New Customer</option>
-                        {customers.filter((c) => c.id).map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                  {/* ── Converted-from-Proforma note ── */}
+                  {convertedFromProforma && (
+                    <div className="border-b border-slate-300 bg-blue-50 px-6 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                      Converted from Proforma Invoice {sourceProformaNumber || "—"}
                     </div>
-                    <div className="space-y-0.5 text-[13px]">
-                      <input value={partyName} onChange={(e) => setPartyName(e.target.value)} placeholder="Party name" className="inv-field w-full font-semibold text-slate-900" />
-                      <div className={contactPerson ? "" : "print:hidden"}>
-                        <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="Contact person" className="inv-field w-full text-slate-700" />
-                      </div>
-                      <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className="inv-field w-full text-slate-700" />
-                      <div className="flex gap-1">
-                        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="inv-field min-w-0 flex-1 text-slate-700" />
-                        <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="inv-field min-w-0 flex-1 text-slate-700" />
-                        <input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="PIN" className="inv-field w-16 text-slate-700" />
-                      </div>
-                      <div className={`flex items-center gap-1 text-slate-700 ${phone ? "" : "print:hidden"}`}>
-                        <span className="shrink-0 text-slate-500">Contact No:</span>
-                        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
-                      </div>
-                      <div className={`flex items-center gap-1 text-slate-700 ${email ? "" : "print:hidden"}`}>
-                        <span className="shrink-0 text-slate-500">Email:</span>
-                        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
-                      </div>
-                      <div className={`flex items-center gap-1 text-slate-700 ${gstin ? "" : "print:hidden"}`}>
-                        <span className="shrink-0 text-slate-500">GSTIN:</span>
-                        <input value={gstin} onChange={(e) => setGstin(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                  )}
+
+                  {/* ── company header (static) ── */}
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-6 pb-4 pt-4">
+                    <div className="flex items-start gap-3">
+                      <img src="/LOGO.png" alt="Radiatech Electra" className="h-12 w-12 rounded-md object-contain" />
+                      <div>
+                        <h3 className="text-xl font-bold tracking-wide text-slate-950">RADIATECH ELECTRA</h3>
+                        <p className="mt-1 text-[11px] text-slate-600">
+                          Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4">
-                  <div className="rounded-lg border border-slate-300 bg-white p-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Invoice Details:</p>
-                    <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-[13px] text-slate-800">
-                      <span className="whitespace-nowrap font-semibold text-slate-900">Invoice No:</span>
-                      <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="inv-field w-full" />
-                      <span className="font-semibold text-slate-900">Date:</span>
-                      <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="inv-field w-full" />
-                      <span className="whitespace-nowrap font-semibold text-slate-900">Due Date:</span>
-                      <input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} className="inv-field w-full" />
-                      <span className={`whitespace-nowrap font-semibold text-slate-900 ${poDate ? "" : "print:hidden"}`}>PO Date:</span>
-                      <input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} className={`inv-field w-full ${poDate ? "" : "print:hidden"}`} />
-                      <span className={`whitespace-nowrap font-semibold text-slate-900 ${ewayBillNo ? "" : "print:hidden"}`}>E-way Bill No:</span>
-                      <input value={ewayBillNo} onChange={(e) => setEwayBillNo(e.target.value)} placeholder="—" className={`inv-field w-full ${ewayBillNo ? "" : "print:hidden"}`} />
-                      <span className={`whitespace-nowrap font-semibold text-slate-900 ${poNo ? "" : "print:hidden"}`}>PO No:</span>
-                      <input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="—" className={`inv-field w-full ${poNo ? "" : "print:hidden"}`} />
-                      <span className={`whitespace-nowrap font-semibold text-slate-900 ${placeOfSupply ? "" : "print:hidden"}`}>Reference No:</span>
-                      <input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} placeholder="—" className={`inv-field w-full ${placeOfSupply ? "" : "print:hidden"}`} />
+                    <div className="text-right text-[11px] text-slate-600">
+                      <div>Phone: +91 81788 50959</div>
+                      <div>Email: sales@radiatech.in</div>
+                      <div>GSTIN: 09DDZPK0004H1ZF</div>
+                      <div>State: 09-Uttar Pradesh</div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* ── Ship To | Transport ── */}
-              <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
-                <div className={`border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r ${shipToAddress ? "" : "print:hidden"}`}>
-                  <div className="rounded-lg border border-slate-300 bg-white p-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ship To:</p>
-                    <textarea
-                      value={shipToAddress}
-                      onChange={(e) => setShipToAddress(e.target.value)}
-                      rows={3}
-                      placeholder="Shipping address"
-                      className="inv-field w-full resize-none text-[13px] text-slate-800"
-                    />
-                  </div>
-                </div>
-                <div className={`bg-white p-4 ${transportName || vehicleNumber ? "" : "print:hidden"}`}>
-                  <div className="rounded-lg border border-slate-300 bg-white p-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Transportation Details:</p>
-                    <div className="space-y-1 text-[13px] text-slate-800">
-                      <div className={`flex items-center gap-1 ${transportName ? "" : "print:hidden"}`}>
-                        <span className="shrink-0 text-slate-500">Transport Name:</span>
-                        <input value={transportName} onChange={(e) => setTransportName(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                  {/* ── Bill To | Invoice Details ── */}
+                  <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
+                    <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r">
+                      <div className="rounded-lg border border-slate-300 bg-white p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bill To:</p>
+                          <select
+                            value={selectedCustomerId}
+                            onChange={(e) => handleCustomerSelect(e.target.value)}
+                            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 outline-none transition hover:border-slate-300 print:hidden cursor-pointer"
+                          >
+                            <option value="">Select customer…</option>
+                            <option value={ADD_NEW_CUSTOMER_OPTION}>+ Add New Customer</option>
+                            {customers.filter((c) => c.id).map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-0.5 text-[13px]">
+                          <input value={partyName} onChange={(e) => setPartyName(e.target.value)} placeholder="Party name" className="inv-field w-full font-semibold text-slate-900" />
+                          <div className={contactPerson ? "" : "print:hidden"}>
+                            <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="Contact person" className="inv-field w-full text-slate-700" />
+                          </div>
+                          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className="inv-field w-full text-slate-700" />
+                          <div className="flex gap-1">
+                            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="inv-field min-w-0 flex-1 text-slate-700" />
+                            <input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="inv-field min-w-0 flex-1 text-slate-700" />
+                            <input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="PIN" className="inv-field w-16 text-slate-700" />
+                          </div>
+                          <div className={`flex items-center gap-1 text-slate-700 ${phone ? "" : "print:hidden"}`}>
+                            <span className="shrink-0 text-slate-500">Contact No:</span>
+                            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                          </div>
+                          <div className={`flex items-center gap-1 text-slate-700 ${email ? "" : "print:hidden"}`}>
+                            <span className="shrink-0 text-slate-500">Email:</span>
+                            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                          </div>
+                          <div className={`flex items-center gap-1 text-slate-700 ${gstin ? "" : "print:hidden"}`}>
+                            <span className="shrink-0 text-slate-500">GSTIN:</span>
+                            <input value={gstin} onChange={(e) => setGstin(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                          </div>
+                        </div>
                       </div>
-                      <div className={`flex items-center gap-1 ${vehicleNumber ? "" : "print:hidden"}`}>
-                        <span className="shrink-0 text-slate-500">Vehicle Number:</span>
-                        <input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                    </div>
+
+                    <div className="bg-white p-4">
+                      <div className="rounded-lg border border-slate-300 bg-white p-3">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Invoice Details:</p>
+                        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-[13px] text-slate-800">
+                          <span className="whitespace-nowrap font-semibold text-slate-900">Invoice No:</span>
+                          <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="inv-field w-full" />
+                          <span className="font-semibold text-slate-900">Date:</span>
+                          <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="inv-field w-full" />
+                          <span className="whitespace-nowrap font-semibold text-slate-900">Due Date:</span>
+                          <input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} className="inv-field w-full" />
+                          <span className={`whitespace-nowrap font-semibold text-slate-900 ${poDate ? "" : "print:hidden"}`}>PO Date:</span>
+                          <input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} className={`inv-field w-full ${poDate ? "" : "print:hidden"}`} />
+                          <span className={`whitespace-nowrap font-semibold text-slate-900 ${ewayBillNo ? "" : "print:hidden"}`}>E-way Bill No:</span>
+                          <input value={ewayBillNo} onChange={(e) => setEwayBillNo(e.target.value)} placeholder="—" className={`inv-field w-full ${ewayBillNo ? "" : "print:hidden"}`} />
+                          <span className={`whitespace-nowrap font-semibold text-slate-900 ${poNo ? "" : "print:hidden"}`}>PO No:</span>
+                          <input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="—" className={`inv-field w-full ${poNo ? "" : "print:hidden"}`} />
+                          <span className={`whitespace-nowrap font-semibold text-slate-900 ${placeOfSupply ? "" : "print:hidden"}`}>Reference No:</span>
+                          <input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} placeholder="—" className={`inv-field w-full ${placeOfSupply ? "" : "print:hidden"}`} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* ── Items table ── */}
-              <div className="invoice-table-wrap border-b border-slate-300 overflow-x-auto">
-                <table className="w-full border-collapse text-[12px]" style={{ minWidth: "980px" }}>
-                  <thead>
-                    <tr className="bg-[#bec9d9] text-left text-slate-700">
-                      <th className="border border-slate-300 px-2 py-2 font-semibold">#</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold min-w-[160px]">Item name</th>
-                      <th className={`border border-slate-300 px-2 py-2 font-semibold ${hasAnyHsn ? "" : "print:hidden"}`}>HSN/SAC</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Qty</th>
-                      <th className="border border-slate-300 px-2 py-2 font-semibold">Unit</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Price/unit (Rs)</th>
-                      <th className={`border border-slate-300 px-2 py-2 text-right font-semibold ${hasAnyDiscount ? "" : "print:hidden"}`}>Disc %</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Tax %</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable/unit</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable Amt</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">GST</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Final Rate</th>
-                      <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Amount Total</th>
-                      <th className="border border-slate-300 px-1 py-2 print:hidden" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, index) => {
-                      const taxablePerUnit = item.rate * (1 - item.discountPercent / 100);
-                      const taxableAmount = item.qty * taxablePerUnit;
-                      const gstAmount = taxableAmount * (item.taxPercent / 100);
-                      const finalRate = taxablePerUnit * (1 + item.taxPercent / 100);
-                      const rowTotal = taxableAmount + gstAmount;
-
-                      return (
-                        <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
-                          <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-500 align-middle">{index + 1}</td>
-                          <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              list={PRODUCT_DATALIST_ID}
-                              value={item.description}
-                              onChange={(e) => handleItemNameChange(item.id, e.target.value)}
-                              placeholder="Item description"
-                              className="inv-field w-full"
-                            />
-                          </td>
-                          <td className={`border border-slate-300 px-1.5 py-1.5 align-middle ${hasAnyHsn ? "" : "print:hidden"}`}>
-                            <input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} placeholder="—" className="inv-field w-full" />
-                          </td>
-                          <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.qty}
-                              onChange={(e) => updateItem(item.id, "qty", e.target.value)}
-                              className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          </td>
-                          <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input value={item.unit} onChange={(e) => updateItem(item.id, "unit", e.target.value)} placeholder="Nos" className="inv-field w-full" />
-                          </td>
-                          <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.rate === 0 ? "" : item.rate}
-                              onChange={(e) => updateItem(item.id, "rate", e.target.value)}
-                              placeholder="0"
-                              className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          </td>
-                          <td className={`border border-slate-300 px-1.5 py-1.5 align-middle ${hasAnyDiscount ? "" : "print:hidden"}`}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={item.discountPercent === 0 ? "" : item.discountPercent}
-                              onChange={(e) => updateItem(item.id, "discountPercent", e.target.value)}
-                              placeholder="0"
-                              className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          </td>
-                          <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={item.taxPercent === 0 ? "" : item.taxPercent}
-                              onChange={(e) => updateItem(item.id, "taxPercent", e.target.value)}
-                              placeholder="0"
-                              className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          </td>
-                          <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(taxablePerUnit)}</td>
-                          <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(taxableAmount)}</td>
-                          <td className="border border-slate-300 px-2 py-1.5 text-right align-middle">{renderCompactMetricCell(gstAmount, item.taxPercent)}</td>
-                          <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(finalRate)}</td>
-                          <td className="border border-slate-300 px-2 py-1.5 text-right align-middle font-semibold text-slate-900">{formatCurrency(rowTotal)}</td>
-                          <td className="border border-slate-300 px-1 py-1.5 text-center align-middle print:hidden">
-                            <button
-                              type="button"
-                              onClick={() => removeItem(item.id)}
-                              className="rounded px-1.5 py-0.5 text-[12px] font-bold text-slate-300 transition hover:bg-red-50 hover:text-red-500"
-                            >
-                              ×
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="print:hidden">
-                      <td colSpan={14} className="border-t border-slate-100 px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={addItem}
-                          className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 transition hover:text-blue-800"
-                        >
-                          <span className="text-[15px] leading-none">+</span> Add Item
-                        </button>
-                      </td>
-                    </tr>
-                    <tr className="bg-slate-50 font-semibold text-slate-900 text-[12px]">
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className="border border-slate-300 px-2 py-2">Total</td>
-                      <td className={`border border-slate-300 px-2 py-2 ${hasAnyHsn ? "" : "print:hidden"}`} />
-                      <td className="border border-slate-300 px-2 py-2 text-right">{items.reduce((sum, item) => sum + item.qty, 0)}</td>
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className={`border border-slate-300 px-2 py-2 ${hasAnyDiscount ? "" : "print:hidden"}`} />
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
-                      <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
-                      <td className="border border-slate-300 px-2 py-2" />
-                      <td className="border border-slate-300 px-2 py-2 text-right">
-                        {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
-                      </td>
-                      <td className="border border-slate-300 px-2 py-2 print:hidden" />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* ── Tax Summary | Totals ── */}
-              <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2">
-                <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r">
-                  <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary:</p>
-                      <select
-                        value={taxType}
-                        onChange={(e) => setTaxType(e.target.value as TaxType)}
-                        className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 outline-none transition hover:border-slate-300 cursor-pointer"
-                      >
-                        <option value="cgst-sgst">CGST + SGST</option>
-                        <option value="igst">IGST</option>
-                        <option value="none">No Tax</option>
-                      </select>
+                  {/* ── Ship To | Transport ── */}
+                  <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
+                    <div className={`border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r ${shipToAddress ? "" : "print:hidden"}`}>
+                      <div className="rounded-lg border border-slate-300 bg-white p-3">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ship To:</p>
+                        <textarea
+                          value={shipToAddress}
+                          onChange={(e) => setShipToAddress(e.target.value)}
+                          rows={3}
+                          placeholder="Shipping address"
+                          className="inv-field w-full resize-none text-[13px] text-slate-800"
+                        />
+                      </div>
                     </div>
+                    <div className={`bg-white p-4 ${transportName || vehicleNumber ? "" : "print:hidden"}`}>
+                      <div className="rounded-lg border border-slate-300 bg-white p-3">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Transportation Details:</p>
+                        <div className="space-y-1 text-[13px] text-slate-800">
+                          <div className={`flex items-center gap-1 ${transportName ? "" : "print:hidden"}`}>
+                            <span className="shrink-0 text-slate-500">Transport Name:</span>
+                            <input value={transportName} onChange={(e) => setTransportName(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                          </div>
+                          <div className={`flex items-center gap-1 ${vehicleNumber ? "" : "print:hidden"}`}>
+                            <span className="shrink-0 text-slate-500">Vehicle Number:</span>
+                            <input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                    <table className="mt-2 w-full border-collapse text-[11px]">
+                  {/* ── Items table ── */}
+                  <div className="invoice-table-wrap border-b border-slate-300 overflow-x-auto">
+                    <table className="w-full border-collapse text-[12px]" style={{ minWidth: "980px" }}>
                       <thead>
-                        <tr className="bg-slate-100 text-left text-slate-600">
-                          <th className="border border-slate-300 px-2 py-1 font-semibold">Taxable</th>
-                          {taxType === "cgst-sgst" ? (
-                            <>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST Rate</th>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST Amt</th>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST Rate</th>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST Amt</th>
-                            </>
-                          ) : taxType === "igst" ? (
-                            <>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST Rate</th>
-                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST Amt</th>
-                            </>
-                          ) : null}
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+                        <tr className="bg-[#bec9d9] text-left text-slate-700">
+                          <th className="border border-slate-300 px-2 py-2 font-semibold">#</th>
+                          <th className="border border-slate-300 px-2 py-2 font-semibold min-w-[160px]">Item name</th>
+                          <th className={`border border-slate-300 px-2 py-2 font-semibold ${hasAnyHsn ? "" : "print:hidden"}`}>HSN/SAC</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Qty</th>
+                          <th className="border border-slate-300 px-2 py-2 font-semibold">Unit</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Price/unit (Rs)</th>
+                          <th className={`border border-slate-300 px-2 py-2 text-right font-semibold ${hasAnyDiscount ? "" : "print:hidden"}`}>Disc %</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Tax %</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable/unit</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable Amt</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">GST</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Final Rate</th>
+                          <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Amount Total</th>
+                          <th className="border border-slate-300 px-1 py-2 print:hidden" />
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="bg-[#fbfcfe]">
-                          <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
-                          {taxType === "cgst-sgst" ? (
-                            <>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                            </>
-                          ) : taxType === "igst" ? (
-                            <>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                            </>
-                          ) : null}
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                        </tr>
-                        <tr className="bg-[#ce9b24] font-semibold text-slate-900">
-                          <td className="border border-slate-300 px-2 py-1">TOTAL</td>
-                          {taxType === "cgst-sgst" ? (
-                            <>
-                              <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                            </>
-                          ) : taxType === "igst" ? (
-                            <>
-                              <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                            </>
-                          ) : null}
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                        </tr>
+                        {items.map((item, index) => {
+                          const taxablePerUnit = item.rate * (1 - item.discountPercent / 100);
+                          const taxableAmount = item.qty * taxablePerUnit;
+                          const gstAmount = taxableAmount * (item.taxPercent / 100);
+                          const finalRate = taxablePerUnit * (1 + item.taxPercent / 100);
+                          const rowTotal = taxableAmount + gstAmount;
+
+                          return (
+                            <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
+                              <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-500 align-middle">{index + 1}</td>
+                              <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
+                                <input
+                                  list={PRODUCT_DATALIST_ID}
+                                  value={item.description}
+                                  onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                                  placeholder="Item description"
+                                  className="inv-field w-full"
+                                />
+                              </td>
+                              <td className={`border border-slate-300 px-1.5 py-1.5 align-middle ${hasAnyHsn ? "" : "print:hidden"}`}>
+                                <input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} placeholder="—" className="inv-field w-full" />
+                              </td>
+                              <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.qty}
+                                  onChange={(e) => updateItem(item.id, "qty", e.target.value)}
+                                  className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </td>
+                              <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
+                                <input value={item.unit} onChange={(e) => updateItem(item.id, "unit", e.target.value)} placeholder="Nos" className="inv-field w-full" />
+                              </td>
+                              <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.rate === 0 ? "" : item.rate}
+                                  onChange={(e) => updateItem(item.id, "rate", e.target.value)}
+                                  placeholder="0"
+                                  className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </td>
+                              <td className={`border border-slate-300 px-1.5 py-1.5 align-middle ${hasAnyDiscount ? "" : "print:hidden"}`}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={item.discountPercent === 0 ? "" : item.discountPercent}
+                                  onChange={(e) => updateItem(item.id, "discountPercent", e.target.value)}
+                                  placeholder="0"
+                                  className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </td>
+                              <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={item.taxPercent === 0 ? "" : item.taxPercent}
+                                  onChange={(e) => updateItem(item.id, "taxPercent", e.target.value)}
+                                  placeholder="0"
+                                  className="inv-field w-full text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </td>
+                              <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(taxablePerUnit)}</td>
+                              <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(taxableAmount)}</td>
+                              <td className="border border-slate-300 px-2 py-1.5 text-right align-middle">{renderCompactMetricCell(gstAmount, item.taxPercent)}</td>
+                              <td className="border border-slate-300 px-2 py-1.5 text-right align-middle text-slate-700">{formatCurrency(finalRate)}</td>
+                              <td className="border border-slate-300 px-2 py-1.5 text-right align-middle font-semibold text-slate-900">{formatCurrency(rowTotal)}</td>
+                              <td className="border border-slate-300 px-1 py-1.5 text-center align-middle print:hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(item.id)}
+                                  className="rounded px-1.5 py-0.5 text-[12px] font-bold text-slate-300 transition hover:bg-red-50 hover:text-red-500"
+                                >
+                                  ×
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
+                      <tfoot>
+                        <tr className="print:hidden">
+                          <td colSpan={14} className="border-t border-slate-100 px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={addItem}
+                              className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 transition hover:text-blue-800"
+                            >
+                              <span className="text-[15px] leading-none">+</span> Add Item
+                            </button>
+                          </td>
+                        </tr>
+                        <tr className="bg-slate-50 font-semibold text-slate-900 text-[12px]">
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className="border border-slate-300 px-2 py-2">Total</td>
+                          <td className={`border border-slate-300 px-2 py-2 ${hasAnyHsn ? "" : "print:hidden"}`} />
+                          <td className="border border-slate-300 px-2 py-2 text-right">{items.reduce((sum, item) => sum + item.qty, 0)}</td>
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className={`border border-slate-300 px-2 py-2 ${hasAnyDiscount ? "" : "print:hidden"}`} />
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
+                          <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
+                          <td className="border border-slate-300 px-2 py-2" />
+                          <td className="border border-slate-300 px-2 py-2 text-right">
+                            {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
+                          </td>
+                          <td className="border border-slate-300 px-2 py-2 print:hidden" />
+                        </tr>
+                      </tfoot>
                     </table>
+                  </div>
 
-                    <div className="mt-3 text-[12px] text-slate-700">
-                      <span className="font-semibold text-slate-900">Invoice Amount in Words: </span>
-                      {numberToIndianWords(totals.grandTotal)}
+                  {/* ── Tax Summary | Totals ── */}
+                  <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2">
+                    <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r">
+                      <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary:</p>
+                          <select
+                            value={taxType}
+                            onChange={(e) => setTaxType(e.target.value as TaxType)}
+                            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 outline-none transition hover:border-slate-300 cursor-pointer"
+                          >
+                            <option value="cgst-sgst">CGST + SGST</option>
+                            <option value="igst">IGST</option>
+                            <option value="none">No Tax</option>
+                          </select>
+                        </div>
+
+                        <table className="mt-2 w-full border-collapse text-[11px]">
+                          <thead>
+                            <tr className="bg-slate-100 text-left text-slate-600">
+                              <th className="border border-slate-300 px-2 py-1 font-semibold">Taxable</th>
+                              {taxType === "cgst-sgst" ? (
+                                <>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST Rate</th>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST Amt</th>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST Rate</th>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST Amt</th>
+                                </>
+                              ) : taxType === "igst" ? (
+                                <>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST Rate</th>
+                                  <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST Amt</th>
+                                </>
+                              ) : null}
+                              <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="bg-[#fbfcfe]">
+                              <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
+                              {taxType === "cgst-sgst" ? (
+                                <>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                                </>
+                              ) : taxType === "igst" ? (
+                                <>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                                </>
+                              ) : null}
+                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                            </tr>
+                            <tr className="bg-[#ce9b24] font-semibold text-slate-900">
+                              <td className="border border-slate-300 px-2 py-1">TOTAL</td>
+                              {taxType === "cgst-sgst" ? (
+                                <>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                                </>
+                              ) : taxType === "igst" ? (
+                                <>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                                  <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                                </>
+                              ) : null}
+                              <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <div className="mt-3 text-[12px] text-slate-700">
+                          <span className="font-semibold text-slate-900">Invoice Amount in Words: </span>
+                          {numberToIndianWords(totals.grandTotal)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="bg-white p-4 text-[13px] text-slate-800">
-                  {totals.discountTotal > 0 && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">Item-wise Discount</span>
-                      <span>: {formatCurrency(totals.discountTotal)}</span>
-                    </div>
-                  )}
+                    <div className="bg-white p-4 text-[13px] text-slate-800">
+                      {totals.discountTotal > 0 && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-500">Item-wise Discount</span>
+                          <span>: {formatCurrency(totals.discountTotal)}</span>
+                        </div>
+                      )}
 
-                  <div className={`mt-1 flex items-center justify-between gap-2 ${extraDiscountAmount ? "" : "print:hidden"}`}>
-                    <span className="text-slate-500">Discount on Taxable Amount</span>
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-slate-500">: ₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={extraDiscountAmount === 0 ? "" : extraDiscountAmount}
-                        onChange={(e) => {
-                          const numericValue = Number(e.target.value);
-                          setExtraDiscountAmount(Number.isFinite(numericValue) ? numericValue : 0);
-                        }}
-                        placeholder="0"
-                        className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
+                      <div className={`mt-1 flex items-center justify-between gap-2 ${extraDiscountAmount ? "" : "print:hidden"}`}>
+                        <span className="text-slate-500">Discount on Taxable Amount</span>
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-slate-500">: ₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={extraDiscountAmount === 0 ? "" : extraDiscountAmount}
+                            onChange={(e) => {
+                              const numericValue = Number(e.target.value);
+                              setExtraDiscountAmount(Number.isFinite(numericValue) ? numericValue : 0);
+                            }}
+                            placeholder="0"
+                            className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      </div>
 
-                  {totals.extraDiscountAmount > 0 ? (
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <span className="text-slate-500">Taxable Amt (after extra disc.)</span>
-                      <span>: {formatCurrency(totals.taxable)}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-slate-500">Taxable Amount</span>
-                      <span>: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
-                    </div>
-                  )}
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Tax</span>
-                    <span>: {formatCurrency(totals.tax)}</span>
-                  </div>
-
-                  <div className={`mt-1 flex items-center justify-between gap-2 ${roundOffAmount ? "" : "print:hidden"}`}>
-                    <span className="text-slate-500">Round off</span>
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-slate-500">: ₹</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={roundOffAmount === 0 ? "" : roundOffAmount}
-                        onChange={(e) => {
-                          const numericValue = Number(e.target.value);
-                          setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);
-                        }}
-                        placeholder="0"
-                        className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-300 pt-2 text-[15px] font-semibold text-slate-950">
-                    <span>Grand Total</span>
-                    <span>: {formatCurrency(totals.grandTotal)}</span>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Payment Mode</span>
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-slate-500">:</span>
-                      <input value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="inv-field text-right" placeholder="Credit" />
-                    </div>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-2 font-semibold text-slate-900">
-                    <span>Balance</span>
-                    <span>: {formatCurrency(totals.grandTotal)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Notes & Terms ── */}
-              <div className={`border-b border-slate-300 bg-slate-50 p-4 text-[13px] text-slate-700 ${notes || terms || additionalDescription ? "" : "print:hidden"}`}>
-                <div className="rounded-lg border border-slate-300 bg-white p-3">
-                  <div className={additionalDescription ? "" : "print:hidden"}>
-                    <div className="font-semibold text-slate-900">Description</div>
-                    <textarea
-                      value={additionalDescription}
-                      onChange={(e) => setAdditionalDescription(e.target.value)}
-                      rows={2}
-                      placeholder="Extra details about this invoice…"
-                      className="inv-field mt-1 w-full resize-none"
-                    />
-                  </div>
-                  <div className={`${notes ? "" : "print:hidden"} ${additionalDescription ? "mt-3" : ""}`}>
-                    <div className="font-semibold text-slate-900">Notes</div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={2}
-                      placeholder="Thank you for your business."
-                      className="inv-field mt-1 w-full resize-none"
-                    />
-                  </div>
-                  <div className={terms ? "mt-3" : "mt-3 print:hidden"}>
-                    <div className="font-semibold text-slate-900">Terms &amp; Conditions</div>
-                    <textarea
-                      value={terms}
-                      onChange={(e) => setTerms(e.target.value)}
-                      rows={2}
-                      placeholder="Payment due within 7 days of invoice date."
-                      className="inv-field mt-1 w-full resize-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Bank Details | Signature ── */}
-              <div className="grid grid-cols-1 gap-4 bg-white p-4 sm:grid-cols-2">
-                <div>
-                  <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-                    <textarea
-                      value={bankDetails}
-                      onChange={(e) => setBankDetails(e.target.value)}
-                      rows={4}
-                      className="inv-field mt-2 w-full resize-none text-[12px] text-slate-700"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col items-end justify-end text-[13px] text-slate-700">
-                  <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3 text-center">
-                    <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
-                    <div className="mx-auto mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
-                      {signatureImage ? (
-                        <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
+                      {totals.extraDiscountAmount > 0 ? (
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <span className="text-slate-500">Taxable Amt (after extra disc.)</span>
+                          <span>: {formatCurrency(totals.taxable)}</span>
+                        </div>
                       ) : (
-                        "Signature"
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-500">Taxable Amount</span>
+                          <span>: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
+                        </div>
                       )}
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-slate-500">Tax</span>
+                        <span>: {formatCurrency(totals.tax)}</span>
+                      </div>
+
+                      <div className={`mt-1 flex items-center justify-between gap-2 ${roundOffAmount ? "" : "print:hidden"}`}>
+                        <span className="text-slate-500">Round off</span>
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-slate-500">: ₹</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={roundOffAmount === 0 ? "" : roundOffAmount}
+                            onChange={(e) => {
+                              const numericValue = Number(e.target.value);
+                              setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);
+                            }}
+                            placeholder="0"
+                            className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-300 pt-2 text-[15px] font-semibold text-slate-950">
+                        <span>Grand Total</span>
+                        <span>: {formatCurrency(totals.grandTotal)}</span>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <span className="text-slate-500">Payment Mode</span>
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-slate-500">:</span>
+                          <input value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} className="inv-field text-right" placeholder="Credit" />
+                        </div>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2 font-semibold text-slate-900">
+                        <span>Balance</span>
+                        <span>: {formatCurrency(totals.grandTotal)}</span>
+                      </div>
                     </div>
-                    <div className="mt-2 flex items-center justify-center gap-3 print:hidden">
-                      <label className="cursor-pointer text-[10px] font-semibold text-blue-500 transition hover:text-blue-700">
-                        {signatureImage ? "Replace" : "Upload image"}
-                        <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
-                      </label>
-                      {signatureImage && (
-                        <button type="button" onClick={removeSignatureImage} className="text-[10px] font-semibold text-red-400 transition hover:text-red-600">
-                          Remove
-                        </button>
-                      )}
+                  </div>
+
+                  {/* ── Notes & Terms ── */}
+                  <div className={`border-b border-slate-300 bg-slate-50 p-4 text-[13px] text-slate-700 ${notes || terms || additionalDescription ? "" : "print:hidden"}`}>
+                    <div className="rounded-lg border border-slate-300 bg-white p-3">
+                      <div className={additionalDescription ? "" : "print:hidden"}>
+                        <div className="font-semibold text-slate-900">Description</div>
+                        <textarea
+                          value={additionalDescription}
+                          onChange={(e) => setAdditionalDescription(e.target.value)}
+                          rows={2}
+                          placeholder="Extra details about this invoice…"
+                          className="inv-field mt-1 w-full resize-none"
+                        />
+                      </div>
+                      <div className={`${notes ? "" : "print:hidden"} ${additionalDescription ? "mt-3" : ""}`}>
+                        <div className="font-semibold text-slate-900">Notes</div>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          rows={2}
+                          placeholder="Thank you for your business."
+                          className="inv-field mt-1 w-full resize-none"
+                        />
+                      </div>
+                      <div className={terms ? "mt-3" : "mt-3 print:hidden"}>
+                        <div className="font-semibold text-slate-900">Terms &amp; Conditions</div>
+                        <textarea
+                          value={terms}
+                          onChange={(e) => setTerms(e.target.value)}
+                          rows={2}
+                          placeholder="Payment due within 7 days of invoice date."
+                          className="inv-field mt-1 w-full resize-none"
+                        />
+                      </div>
                     </div>
-                    <div className="mt-1">
-                      <input
-                        value={authorizedSignature}
-                        onChange={(e) => setAuthorizedSignature(e.target.value)}
-                        className="inv-field w-full text-center text-[11px] font-semibold text-slate-700"
-                        placeholder="Authorized Signatory"
-                      />
+                  </div>
+
+                  {/* ── Bank Details | Signature ── */}
+                  <div className="grid grid-cols-1 gap-4 bg-white p-4 sm:grid-cols-2">
+                    <div>
+                      <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
+                        <textarea
+                          value={bankDetails}
+                          onChange={(e) => setBankDetails(e.target.value)}
+                          rows={4}
+                          className="inv-field mt-2 w-full resize-none text-[12px] text-slate-700"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end justify-end text-[13px] text-slate-700">
+                      <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3 text-center">
+                        <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
+                        <div className="mx-auto mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
+                          {signatureImage ? (
+                            <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
+                          ) : (
+                            "Signature"
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-center justify-center gap-3 print:hidden">
+                          <label className="cursor-pointer text-[10px] font-semibold text-blue-500 transition hover:text-blue-700">
+                            {signatureImage ? "Replace" : "Upload image"}
+                            <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+                          </label>
+                          {signatureImage && (
+                            <button type="button" onClick={removeSignatureImage} className="text-[10px] font-semibold text-red-400 transition hover:text-red-600">
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          <input
+                            value={authorizedSignature}
+                            onChange={(e) => setAuthorizedSignature(e.target.value)}
+                            className="inv-field w-full text-center text-[11px] font-semibold text-slate-700"
+                            placeholder="Authorized Signatory"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -2276,6 +2375,14 @@ export default function InvoicePage() {
               .invoice-preview-shell .invoice-table-wrap {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+              }
+              .invoice-preview-page {
+                page-break-before: auto;
+                break-before: auto;
+              }
+              .invoice-preview-page + .invoice-preview-page {
+                page-break-before: always !important;
+                break-before: page !important;
               }
               .print\\:hidden {
                 display: none !important;

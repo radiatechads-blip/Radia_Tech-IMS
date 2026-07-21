@@ -39,11 +39,15 @@ export async function POST(request: Request) {
 
     const remainingAfterPayment = invoice.grandTotal - (totalPaid + amount);
     await sendPaymentReceivedEmail({
+      id: invoice.id,
       email: invoice.email,
       invoiceNumber: invoice.invoiceNumber,
       partyName: invoice.partyName,
       grandTotal: invoice.grandTotal,
       remainingAmount: remainingAfterPayment,
+      paidAmount: totalPaid + amount,
+      amountReceived: amount,
+      paymentMode,
       dueDate: invoice.dueDate,
     });
 

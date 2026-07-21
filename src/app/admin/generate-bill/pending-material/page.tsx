@@ -1,14 +1,15 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import { companyInfo } from "@/data/company";
 import {
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Plus,
-  Save,
-  Share2,
+    CalendarDays,
+    Check,
+    ChevronDown,
+    Plus,
+    Save,
+    Share2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -34,6 +35,8 @@ interface ProductOption {
   name: string;
   unit: string;
   price: number;
+  hsn?: string;
+  taxPercent?: number;
 }
 
 interface MaterialItem {
@@ -117,6 +120,9 @@ export default function PendingMaterialBillsPage() {
   // ---- UI Controls ----
   const [showPreview, setShowPreview] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [activeItemIdForNewProduct, setActiveItemIdForNewProduct] = useState<number | null>(null);
   const [newCustomerForm, setNewCustomerForm] = useState(emptyNewCustomerForm);
   const [newCustomerError, setNewCustomerError] = useState("");
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
@@ -268,6 +274,52 @@ export default function PendingMaterialBillsPage() {
     } finally {
       setIsSavingCustomer(false);
     }
+  };
+
+  const openAddProductModal = (id: number, initialName = "") => {
+    setActiveItemIdForNewProduct(id);
+    setNewProductName(initialName);
+    setShowAddProductModal(true);
+  };
+
+  const handleProductCreated = ({
+    id,
+    name,
+    unit,
+    price,
+  }: {
+    id: string;
+    name: string;
+    unit: string;
+    price: number;
+  }) => {
+    setProductOptions((current) => [
+      ...current,
+      {
+        id,
+        name,
+        unit,
+        price,
+      },
+    ]);
+
+    if (activeItemIdForNewProduct !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id !== activeItemIdForNewProduct
+            ? item
+            : {
+                ...item,
+                productName: name,
+                unit: unit || item.unit,
+                rate: price || item.rate,
+              },
+        ),
+      );
+    }
+
+    setActiveItemIdForNewProduct(null);
+    setShowAddProductModal(false);
   };
 
   const handleItemNameChange = (id: number, value: string) => {
@@ -510,6 +562,13 @@ export default function PendingMaterialBillsPage() {
         </div>
       )}
 
+      <ProductCreateModal
+        open={showAddProductModal}
+        initialName={newProductName}
+        onClose={() => setShowAddProductModal(false)}
+        onProductCreated={handleProductCreated}
+      />
+
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
         {/* DATA ENTRY SCREEN */}
         <div className={`${showPreview ? "hidden" : ""} print:hidden`}>
@@ -660,13 +719,22 @@ export default function PendingMaterialBillsPage() {
                         <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
                           <td className="border border-slate-300 px-3 py-2 text-center text-slate-500 align-middle">{index + 1}</td>
                           <td className="border border-slate-300 px-2 py-1 align-middle">
-                            <input
-                              list={PRODUCT_DATALIST_ID}
-                              value={item.productName}
-                              onChange={(e) => handleItemNameChange(item.id, e.target.value)}
-                              placeholder="Type to search or declare product item description..."
-                              className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                list={PRODUCT_DATALIST_ID}
+                                value={item.productName}
+                                onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                                placeholder="Type to search or declare product item description..."
+                                className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => openAddProductModal(item.id, item.productName)}
+                                className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 group-hover:pointer-events-auto pointer-events-none"
+                              >
+                                + New
+                              </button>
+                            </div>
                           </td>
                           <td className="border border-slate-300 px-2 py-1 align-middle">
                             <input

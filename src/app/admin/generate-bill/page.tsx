@@ -6,7 +6,7 @@ import InvoicePreview from "@/components/admin/InvoicePreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
 import { getConversionSourceLabel } from "@/lib/invoicePayload";
-import { getBillTypeLabel, getInvoiceEditRoute } from "@/lib/invoiceRoute";
+import { getBillTypeLabel, getDuplicateCopyInvoiceNumber, getInvoiceDuplicateFlag, getInvoiceEditRoute } from "@/lib/invoiceRoute";
 import jsPDF from "jspdf";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -178,6 +178,16 @@ export default function GenerateBillPage() {
       normalized.sourceProformaNumber = meta.sourceProformaNumber;
     }
 
+    const inferredDuplicate = getInvoiceDuplicateFlag(meta as InvoiceSummary);
+
+    if (typeof meta.isDuplicate === "boolean") {
+      normalized.isDuplicate = meta.isDuplicate;
+    } else if (typeof invoice.isDuplicate === "boolean") {
+      normalized.isDuplicate = invoice.isDuplicate;
+    } else if (inferredDuplicate) {
+      normalized.isDuplicate = inferredDuplicate;
+    }
+
     return normalized as InvoiceSummary;
   };
 
@@ -318,7 +328,7 @@ export default function GenerateBillPage() {
               : ""}
           </span>
         )}
-        {invoiceMeta.isDuplicate && (
+        {Boolean(invoiceMeta.isDuplicate || getInvoiceDuplicateFlag(invoiceMeta as InvoiceSummary)) && (
           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-400/20">
             Duplicate
           </span>
@@ -450,30 +460,30 @@ export default function GenerateBillPage() {
   };
 
   const buildPdfFromElement = async (element: HTMLElement) => {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    });
-    const imgData = canvas.toDataURL("image/png");
+    const pageElements = Array.from(element.querySelectorAll<HTMLElement>(".invoice-preview-page"));
+    const pages = pageElements.length > 0 ? pageElements : [element];
 
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+    for (let index = 0; index < pages.length; index += 1) {
+      const pageElement = pages[index];
+      const canvas = await html2canvas(pageElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+      const imgWidth = canvas.width * ratio;
+      const imgHeight = canvas.height * ratio;
 
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+      if (index > 0) {
+        pdf.addPage();
+      }
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "PNG", (pageWidth - imgWidth) / 2, 0, imgWidth, imgHeight);
     }
 
     return pdf;
@@ -595,7 +605,7 @@ export default function GenerateBillPage() {
     })();
     const payload = {
       ...rest,
-      invoiceNumber: `${invoice.invoiceNumber} (Duplicate)`,
+      invoiceNumber: getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, true),
       createdAt: new Date().toISOString(),
       status: "Active",
       convertedToTaxInvoice: false,

@@ -128,3 +128,34 @@ export function getInvoiceEditRoute(invoice?: InvoiceRouteLike | null) {
 
   return `/admin/generate-bill/invoice?invoiceId=${invoice.id}`;
 }
+
+export function getInvoiceDuplicateFlag(invoice?: { isDuplicate?: boolean | null; invoiceNumber?: string | null } | null) {
+  if (!invoice) return false;
+
+  if (typeof invoice.isDuplicate === "boolean") {
+    return invoice.isDuplicate;
+  }
+
+  const invoiceNumber = String(invoice.invoiceNumber ?? "").trim();
+  return invoiceNumber.toLowerCase().includes("duplicate");
+}
+
+export function getDuplicateCopyPageLabels(isDuplicateCopy?: boolean | null) {
+  return isDuplicateCopy ? ["Original for Recipient", "Duplicate Copy"] : ["Original for Recipient"];
+}
+
+export function getDuplicateCopyInvoiceNumber(invoiceNumber?: string | null, isDuplicateCopy?: boolean | null) {
+  const trimmed = String(invoiceNumber ?? "").trim();
+
+  if (!isDuplicateCopy) {
+    return trimmed.replace(/\s*\(Duplicate\)\s*$/i, "").trim();
+  }
+
+  if (!trimmed) {
+    return "Duplicate";
+  }
+
+  return trimmed.includes("(Duplicate)") || trimmed.toLowerCase().includes("duplicate")
+    ? trimmed
+    : `${trimmed} (Duplicate)`;
+}

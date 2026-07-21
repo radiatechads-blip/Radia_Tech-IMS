@@ -221,6 +221,7 @@ export default function AnnexurePreview({
   };
 
   const docLabel = getBillTypeLabel(invoice);
+  const signatureImageSrc = invoice.signatureImage?.trim() ? invoice.signatureImage : "/STAMP.jpeg";
   const annexureData = invoice as AnnexureLikeInvoice;
   const annexureNumber = String(annexureData.annexureNumber ?? invoice.invoiceNumber ?? "").trim();
   const annexureDate = String(annexureData.annexureDate ?? invoice.invoiceDate ?? "").trim();
@@ -539,9 +540,9 @@ export default function AnnexurePreview({
             <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
               <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
               <div className="mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
-                {invoice.signatureImage ? (
+                {signatureImageSrc ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={invoice.signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
+                  <img src={signatureImageSrc} alt="Authorized signature" className="h-full w-full object-contain" />
                 ) : (
                   "Signature"
                 )}

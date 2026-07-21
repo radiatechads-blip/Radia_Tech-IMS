@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { sendPaymentReceivedEmail } from "@/lib/invoiceEmails";
+import { sendInvoiceReminderEmail } from "@/lib/invoiceEmails";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -22,14 +22,19 @@ export async function POST(request: Request) {
     const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
     const remainingAmount = Math.max(0, invoice.grandTotal - totalPaid);
 
-    const result = await sendPaymentReceivedEmail({
-      email: invoice.email,
-      invoiceNumber: invoice.invoiceNumber,
-      partyName: invoice.partyName,
-      grandTotal: invoice.grandTotal,
-      remainingAmount,
-      dueDate: invoice.dueDate,
-    });
+    const result = await sendInvoiceReminderEmail(
+      {
+        id: invoice.id,
+        email: invoice.email,
+        invoiceNumber: invoice.invoiceNumber,
+        partyName: invoice.partyName,
+        grandTotal: invoice.grandTotal,
+        remainingAmount,
+        paidAmount: totalPaid,
+        dueDate: invoice.dueDate,
+      },
+      type === "manual" ? "manual" : "manual"
+    );
 
     if (!result?.ok) {
       return NextResponse.json({ ok: false, error: result?.error || "Failed to send reminder" }, { status: 500 });

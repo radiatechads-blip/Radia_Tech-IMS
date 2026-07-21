@@ -1,5 +1,6 @@
 "use client";
 import AdminShell from "@/components/admin/AdminShell";
+import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
     CalendarDays,
     Check,
@@ -10,6 +11,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+import { getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 
 // ────────────────────────────────────────────────────────────────────────
 // Types — identical to invoice/page.tsx, simplified where fields are omitted
@@ -97,12 +100,11 @@ const UNITS = ["Nos", "Pcs", "Kg", "L", "m", "Box", "Set"];
 
 export default function AnnexurePage() {
   const router = useRouter();
-  const [annexureId, setAnnexureId] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [annexureId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
     const query = new URLSearchParams(window.location.search);
-    setAnnexureId(query.get("annexureId") ?? query.get("invoiceId"));
-  }, []);
+    return query.get("annexureId") ?? query.get("invoiceId");
+  });
 
   // ---- Customers ----
   const [customers, setCustomers] = useState<Customer[]>(fallbackCustomerOptions);
@@ -133,7 +135,7 @@ export default function AnnexurePage() {
   const [authorizedSignature, setAuthorizedSignature] = useState("Authorized Signatory");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(() => Boolean(annexureId));
   const [editingAnnexureId, setEditingAnnexureId] = useState<string | null>(null);
 
   const [isDuplicateCopy, setIsDuplicateCopy] = useState(false);
@@ -143,6 +145,11 @@ export default function AnnexurePage() {
   const [newCustomerForm, setNewCustomerForm] = useState(emptyNewCustomerForm);
   const [newCustomerError, setNewCustomerError] = useState("");
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+
+  // ---- Add New Product popup ----
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [activeItemIdForNewProduct, setActiveItemIdForNewProduct] = useState<number | null>(null);
 
   // ---- Preview toggle ----
   const [showPreview, setShowPreview] = useState(false);
@@ -200,7 +207,7 @@ export default function AnnexurePage() {
         : null,
     );
 
-    setIsDuplicateCopy(Boolean(data.isDuplicate));
+    setIsDuplicateCopy(Boolean(data.isDuplicate) || getInvoiceDuplicateFlag(data as Record<string, unknown>));
 
     const loadedItems = Array.isArray(data.items)
       ? (data.items as Record<string, unknown>[]).map((item, index) => ({
@@ -327,6 +334,57 @@ export default function AnnexurePage() {
     } finally {
       setIsSavingCustomer(false);
     }
+  };
+
+  const openAddProductModal = (id: number, initialName = "") => {
+    setActiveItemIdForNewProduct(id);
+    setNewProductName(initialName);
+    setShowAddProductModal(true);
+  };
+
+  const handleProductCreated = ({
+    id,
+    name,
+    hsn,
+    unit,
+    price,
+  }: {
+    id: string;
+    name: string;
+    hsn: string;
+    unit: string;
+    price: number;
+  }) => {
+    setProductOptions((current) => [
+      ...current,
+      {
+        id,
+        name,
+        hsn,
+        unit,
+        rate: price,
+        taxPercent: 0,
+      },
+    ]);
+
+    if (activeItemIdForNewProduct !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id !== activeItemIdForNewProduct
+            ? item
+            : {
+                ...item,
+                description: name,
+                hsn: hsn || item.hsn,
+                unit: unit || item.unit,
+                rate: price || item.rate,
+              },
+        ),
+      );
+    }
+
+    setActiveItemIdForNewProduct(null);
+    setShowAddProductModal(false);
   };
 
   const findProductByName = (name: string) =>
@@ -575,8 +633,6 @@ export default function AnnexurePage() {
 
   useEffect(() => {
     if (!annexureId) {
-      setIsEditing(false);
-      setEditingAnnexureId(null);
       return;
     }
 
@@ -908,6 +964,13 @@ export default function AnnexurePage() {
         </div>
       )}
 
+      <ProductCreateModal
+        open={showAddProductModal}
+        initialName={newProductName}
+        onClose={() => setShowAddProductModal(false)}
+        onProductCreated={handleProductCreated}
+      />
+
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
         {/* DATA-ENTRY PANEL */}
         <div className={`${showPreview ? "hidden" : ""} print:hidden`}>
@@ -1028,16 +1091,7 @@ export default function AnnexurePage() {
                     <input value={gstin} onChange={(e) => setGstin(e.target.value)} placeholder="GSTIN" className={inputCls} />
                   </div>
                   <div className="flex items-center gap-2 pt-2">
-                    <input
-                      type="checkbox"
-                      id="isDuplicateCopy"
-                      checked={isDuplicateCopy}
-                      onChange={(e) => setIsDuplicateCopy(e.target.checked)}
-                      className="h-4 w-4 accent-blue-600 cursor-pointer"
-                    />
-                    <label htmlFor="isDuplicateCopy" className="text-[12px] text-gray-600 cursor-pointer select-none">
-                      Mark as "Duplicate Copy" (unchecked = "Original Document")
-                    </label>
+                 
                   </div>
                 </div>
               </div>
@@ -1077,13 +1131,22 @@ export default function AnnexurePage() {
                         <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
                           <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-500 align-middle">{index + 1}</td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              list={PRODUCT_DATALIST_ID}
-                              value={item.description}
-                              onChange={(e) => handleItemNameChange(item.id, e.target.value)}
-                              placeholder="Item details"
-                              className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                list={PRODUCT_DATALIST_ID}
+                                value={item.description}
+                                onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                                placeholder="Item details"
+                                className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => openAddProductModal(item.id, item.description)}
+                                className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 group-hover:pointer-events-auto pointer-events-none"
+                              >
+                                + New
+                              </button>
+                            </div>
                           </td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
                             <input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} placeholder="—" className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none" />

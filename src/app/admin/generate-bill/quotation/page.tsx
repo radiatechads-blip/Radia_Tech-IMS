@@ -2004,6 +2004,7 @@
 
 "use client";
 import AdminShell from "@/components/admin/AdminShell";
+import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
     AlignLeft,
     CalendarDays,
@@ -2100,14 +2101,14 @@ const UNITS = ["Nos", "Pcs", "Kg", "L", "m", "Box", "Set"];
 
 export default function InvoicePage() {
   const router = useRouter();
-  const [invoiceId, setInvoiceId] = useState<string | null>(null);
-  const [sourceInvoiceId, setSourceInvoiceId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    setInvoiceId(query.get("invoiceId"));
-    setSourceInvoiceId(query.get("fromProformaId"));
-  }, []);
+  const [invoiceId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("invoiceId");
+  });
+  const [sourceInvoiceId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("fromProformaId");
+  });
 
   const [customers, setCustomers] = useState<Customer[]>(fallbackCustomerOptions);
   const [selectedCustomerId, setSelectedCustomerId] = useState(fallbackCustomerOptions[0].id);
@@ -2156,6 +2157,10 @@ export default function InvoicePage() {
   const [newCustomerError, setNewCustomerError] = useState("");
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [activeItemIdForNewProduct, setActiveItemIdForNewProduct] = useState<number | null>(null);
+
   const [showPreview, setShowPreview] = useState(false);
   const [showDescriptionField, setShowDescriptionField] = useState(false);
   const [additionalDescription, setAdditionalDescription] = useState("");
@@ -2194,7 +2199,7 @@ export default function InvoicePage() {
 
     setConvertedFromProforma(Boolean(data.convertedFromProforma));
     setSourceProformaNumber(String(data.sourceProformaNumber || ""));
-    setIsDuplicateCopy(Boolean(data.isDuplicate));
+    setIsDuplicateCopy(Boolean(data.isDuplicate) || getInvoiceDuplicateFlag(data as Record<string, unknown>));
 
     const loadedItems = Array.isArray(data.items)
       ? (data.items as Record<string, unknown>[]).map((item, index) => ({
@@ -2325,6 +2330,57 @@ export default function InvoicePage() {
 
   const findProductByName = (name: string) =>
     productOptions.find((product) => product.name.trim().toLowerCase() === name.trim().toLowerCase());
+
+  const openAddProductModal = (id: number, initialName = "") => {
+    setActiveItemIdForNewProduct(id);
+    setNewProductName(initialName);
+    setShowAddProductModal(true);
+  };
+
+  const handleProductCreated = ({
+    id,
+    name,
+    hsn,
+    unit,
+    price,
+  }: {
+    id: string;
+    name: string;
+    hsn: string;
+    unit: string;
+    price: number;
+  }) => {
+    setProductOptions((current) => [
+      ...current,
+      {
+        id,
+        name,
+        hsn,
+        unit,
+        rate: price,
+        taxPercent: 0,
+      },
+    ]);
+
+    if (activeItemIdForNewProduct !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id !== activeItemIdForNewProduct
+            ? item
+            : {
+                ...item,
+                description: name,
+                hsn: hsn || item.hsn,
+                unit: unit || item.unit,
+                rate: price || item.rate,
+              },
+        ),
+      );
+    }
+
+    setActiveItemIdForNewProduct(null);
+    setShowAddProductModal(false);
+  };
 
   const handleItemNameChange = (id: number, value: string) => {
     const matchedProduct = findProductByName(value);
@@ -2927,6 +2983,13 @@ export default function InvoicePage() {
         </div>
       )}
 
+      <ProductCreateModal
+        open={showAddProductModal}
+        initialName={newProductName}
+        onClose={() => setShowAddProductModal(false)}
+        onProductCreated={handleProductCreated}
+      />
+
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
         <div className={`${showPreview ? "hidden" : ""} print:hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-300 bg-[#f4f5f8] px-4 py-2 shadow-sm">
@@ -3102,13 +3165,22 @@ export default function InvoicePage() {
                         <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
                           <td className="border border-slate-300 px-2 py-1.5 text-center text-slate-500 align-middle">{index + 1}</td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
-                            <input
-                              list={PRODUCT_DATALIST_ID}
-                              value={item.description}
-                              onChange={(e) => handleItemNameChange(item.id, e.target.value)}
-                              placeholder="Item description"
-                              className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
-                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                list={PRODUCT_DATALIST_ID}
+                                value={item.description}
+                                onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                                placeholder="Item description"
+                                className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none placeholder-gray-300"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => openAddProductModal(item.id, item.description)}
+                                className="opacity-0 transition-opacity duration-150 group-hover:opacity-100 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 group-hover:pointer-events-auto pointer-events-none"
+                              >
+                                + New
+                              </button>
+                            </div>
                           </td>
                           <td className="border border-slate-300 px-1.5 py-1.5 align-middle">
                             <input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} placeholder="—" className="w-full bg-transparent text-[13px] text-gray-800 focus:outline-none" />
