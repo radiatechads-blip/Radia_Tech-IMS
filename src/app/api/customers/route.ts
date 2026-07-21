@@ -18,14 +18,22 @@ export async function GET(req: NextRequest) {
 
   try {
     const normalizedSearch = searchParam.trim();
+    const nameSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
+    const emailSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
+    const phoneSearch: Prisma.StringFilter<"Customer"> = {
+      contains: normalizedSearch,
+      mode: Prisma.QueryMode.insensitive,
+    };
 
     const searchFilter: Prisma.CustomerWhereInput | undefined = normalizedSearch
       ? {
-          OR: [
-            { name: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
-            { email: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
-            { phone: { contains: normalizedSearch, mode: Prisma.QueryMode.insensitive } },
-          ],
+          OR: [{ name: nameSearch }, { email: emailSearch }, { phone: phoneSearch }],
         }
       : undefined;
 
