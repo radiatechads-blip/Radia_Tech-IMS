@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
     const searchFilter = searchParam
       ? {
           OR: [
-            { name: { contains: searchParam, mode: "insensitive" } },
-            { email: { contains: searchParam, mode: "insensitive" } },
-            { phone: { contains: searchParam, mode: "insensitive" } },
+            { name: { contains: searchParam, mode: "insensitive" as const } },
+            { email: { contains: searchParam, mode: "insensitive" as const } },
+            { phone: { contains: searchParam, mode: "insensitive" as const } },
           ],
         }
       : undefined;

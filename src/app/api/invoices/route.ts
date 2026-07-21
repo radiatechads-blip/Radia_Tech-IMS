@@ -91,12 +91,38 @@ function buildConversionMeta(data: Record<string, unknown>) {
 
 function buildDocumentItems(data: Record<string, unknown>) {
   if (!Array.isArray(data.items)) {
-    return [] as Array<Record<string, unknown>>;
+    return [] as Array<{
+      description: string;
+      hsn: string;
+      unit: string;
+      qty: number;
+      rate: number;
+      taxPercent: number;
+      discountPercent: number;
+      taxablePerUnit: number;
+      taxableAmount: number;
+      gstAmount: number;
+      finalRatePerUnit: number;
+      rowAmount: number;
+    }>;
   }
 
   return data.items.flatMap((item) => {
     if (!item || typeof item !== "object") {
-      return [];
+      return [] as Array<{
+        description: string;
+        hsn: string;
+        unit: string;
+        qty: number;
+        rate: number;
+        taxPercent: number;
+        discountPercent: number;
+        taxablePerUnit: number;
+        taxableAmount: number;
+        gstAmount: number;
+        finalRatePerUnit: number;
+        rowAmount: number;
+      }>;
     }
 
     const record = item as Record<string, unknown>;

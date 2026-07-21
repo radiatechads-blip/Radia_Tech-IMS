@@ -321,6 +321,7 @@ export async function sendPaymentReceivedEmail(invoice: {
   grandTotal: number;
   remainingAmount: number;
   paidAmount?: number;
+  amountReceived?: number;
   paymentMode?: string | null;
   dueDate?: Date | string | null;
 }) {
