@@ -19,7 +19,7 @@ export const companyInfo = {
     phone2: "+91 94578 93678",
     phoneHref: "+918178850959",
     whatsapp: "918178850959",
-    website: "www.radiatechfire.in",
+    website: "www.radiatech.in | www.radiatechfire.in",
   },
   
   addresses: [
