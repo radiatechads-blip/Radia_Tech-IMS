@@ -2648,8 +2648,13 @@ export default function InvoicePreview({
           <div>
             <div className="invoice-card rounded-md border border-slate-300 bg-slate-50 p-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-              <div className="mt-1 whitespace-pre-line text-[11px] text-slate-700">
-                {invoice.bankDetails || "—"}
+              <div className="mt-1 flex gap-2 items-start">
+                <div className="flex-1 whitespace-pre-line text-[11px] text-slate-700">
+                  {invoice.bankDetails || "—"}
+                </div>
+                <div className="flex-shrink-0">
+                  <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 object-contain" />
+                </div>
               </div>
             </div>
           </div>
