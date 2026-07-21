@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { Calendar, Info, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import EWayBillPreview from "./EWayBillPreview";
@@ -261,7 +262,7 @@ export default function EWayBillForm() {
                     ) : (
                       availableInvoices.map(inv => (
                         <option key={inv.id} value={inv.invoiceNumber}>
-                          {inv.invoiceNumber} - {inv.partyName} ({new Date(inv.invoiceDate).toLocaleDateString()})
+                          {getDuplicateCopyInvoiceNumber(inv.invoiceNumber, false)} - {inv.partyName} ({new Date(inv.invoiceDate).toLocaleDateString()})
                         </option>
                       ))
                     )}

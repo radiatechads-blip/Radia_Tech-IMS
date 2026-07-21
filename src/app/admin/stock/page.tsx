@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -315,7 +316,7 @@ function AdminStockPageContent() {
                                         <tr key={transaction.id} className="border-b border-slate-100 last:border-0">
                                           <td className="px-2 py-2 text-slate-700">{formatDate(transaction.invoiceDate)}</td>
                                           <td className="px-2 py-2 text-slate-700">{transaction.qty}</td>
-                                          <td className="px-2 py-2 text-slate-700">{transaction.invoiceNumber || "-"}</td>
+                                          <td className="px-2 py-2 text-slate-700">{getDuplicateCopyInvoiceNumber(transaction.invoiceNumber, false) || "-"}</td>
                                           <td className="px-2 py-2 text-slate-700">{transaction.partyName || "-"}</td>
                                           <td className="px-2 py-2 text-slate-700">{formatCurrency(transaction.qty * transaction.rate)}</td>
                                         </tr>

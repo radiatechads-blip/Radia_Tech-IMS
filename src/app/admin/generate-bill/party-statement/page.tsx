@@ -2,16 +2,12 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import { companyInfo } from "@/data/company";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import {
-  CalendarDays,
-  ChevronDown,
-  Plus,
-  Printer,
-  FileText,
-  User,
-  Activity,
-  ArrowRightLeft,
-  Trash2,
+    ChevronDown,
+    Plus,
+    Printer,
+    Trash2
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -212,7 +208,7 @@ export default function PendingMaterialBillsPage() {
           id: Number(invoice.id.replace(/[^0-9]/g, "")) || Date.now() + Math.random(),
           date: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().slice(0, 10) : today,
           tnxType: invoice.paymentMode ? `Invoice (${invoice.paymentMode})` : "Invoice",
-          refNo: invoice.invoiceNumber || "—",
+          refNo: getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false) || "—",
           paymentStatus: "Unpaid" as const,
           total: Number(invoice.grandTotal || 0),
           receivedPaid: 0,

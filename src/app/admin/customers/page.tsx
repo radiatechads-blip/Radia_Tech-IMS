@@ -3,6 +3,7 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import Pagination from "@/components/admin/Pagination";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -449,7 +450,7 @@ export default function AdminCustomersPage() {
                               {txn.billType}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">{txn.invoiceNumber}</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{getDuplicateCopyInvoiceNumber(txn.invoiceNumber, false)}</td>
                           <td className="px-4 py-3 text-slate-600">
                             {new Date(txn.invoiceDate).toLocaleDateString('en-IN')}
                           </td>

@@ -23,6 +23,8 @@ test("getDuplicateCopyInvoiceNumber appends or removes the duplicate suffix cons
   assert.equal(getDuplicateCopyInvoiceNumber("INV-100", true), "INV-100 (Duplicate)");
   assert.equal(getDuplicateCopyInvoiceNumber("INV-100 (Duplicate)", true), "INV-100 (Duplicate)");
   assert.equal(getDuplicateCopyInvoiceNumber("INV-100 (Duplicate)", false), "INV-100");
+  assert.equal(getDuplicateCopyInvoiceNumber("INV-100 Duplicate", false), "INV-100");
+  assert.equal(getDuplicateCopyInvoiceNumber("INV-100 DUPLICATE", false), "INV-100");
   assert.equal(getDuplicateCopyInvoiceNumber("", true), "Duplicate");
   assert.equal(getDuplicateCopyInvoiceNumber("", false), "");
 });

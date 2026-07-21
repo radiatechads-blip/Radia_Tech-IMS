@@ -148,7 +148,7 @@ export function getDuplicateCopyInvoiceNumber(invoiceNumber?: string | null, isD
   const trimmed = String(invoiceNumber ?? "").trim();
 
   if (!isDuplicateCopy) {
-    return trimmed.replace(/\s*\(Duplicate\)\s*$/i, "").trim();
+    return trimmed.replace(/\s*(?:\((?:duplicate)\)|duplicate)\s*$/i, "").trim();
   }
 
   if (!trimmed) {

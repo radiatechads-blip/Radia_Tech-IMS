@@ -2,6 +2,7 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import Pagination from "@/components/admin/Pagination";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { Edit3, Filter, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -385,7 +386,7 @@ export default function AdminProductsPage() {
                               {txn.billType}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">{txn.invoiceNumber}</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900">{getDuplicateCopyInvoiceNumber(txn.invoiceNumber, false)}</td>
                           <td className="px-4 py-3 text-slate-700">{txn.partyName}</td>
                           <td className="px-4 py-3 text-slate-600">
                             {new Date(txn.invoiceDate).toLocaleDateString('en-IN')}
