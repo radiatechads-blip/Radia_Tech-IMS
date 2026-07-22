@@ -257,7 +257,12 @@ export default function AdminProductsPage() {
                     {typeof product.price === "number" ? <p className="mt-1 text-sm font-semibold text-accent">₹{Number(product.price).toLocaleString("en-IN")}</p> : null}
                     <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
                       <span><span className="font-medium">HSN:</span> {product.hsn || "-"}</span>
-                      <span><span className="font-medium">Stock:</span> {typeof product.stock === "number" ? product.stock : 0}</span>
+                      <span>
+                        <span className="font-medium">Stock:</span>{" "}
+                        <span className={typeof product.stock === "number" && product.stock < 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>
+                          {typeof product.stock === "number" ? product.stock : 0}
+                        </span>
+                      </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <StatusPill active={product.isActive} label="Active" />
@@ -310,7 +315,11 @@ export default function AdminProductsPage() {
                     <td className="px-5 py-4 text-slate-600">{product.category?.name || "-"}</td>
                     <td className="px-5 py-4 font-semibold text-accent">{typeof product.price === "number" ? `₹${Number(product.price).toLocaleString("en-IN")}` : "-"}</td>
                     <td className="px-5 py-4 text-slate-600">{product.hsn || "-"}</td>
-                    <td className="px-5 py-4 text-slate-700">{typeof product.stock === "number" ? product.stock : 0}</td>
+                    <td className="px-5 py-4">
+                      <span className={typeof product.stock === "number" && product.stock < 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>
+                        {typeof product.stock === "number" ? product.stock : 0}
+                      </span>
+                    </td>
                     <td className="px-5 py-4"><StatusPill active={product.isActive} label="Active" /></td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap items-center gap-2">

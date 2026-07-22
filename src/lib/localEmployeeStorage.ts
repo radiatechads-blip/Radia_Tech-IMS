@@ -279,9 +279,12 @@ export async function saveSalaryPageData(data: SalaryPageData): Promise<SalaryPa
   const payload = buildSalaryPageDatabasePayload(data);
 
   try {
-    const endpoint = typeof window !== "undefined" && window.location.origin
-      ? `${window.location.origin}/api/admin/salary-page-data`
-      : "http://localhost:3000/api/admin/salary-page-data";
+    const baseUrl =
+      typeof window !== "undefined" && typeof window.location !== "undefined" && window.location.origin
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "http://localhost:3000";
+
+    const endpoint = new URL("/api/admin/salary-page-data", baseUrl).toString();
 
     const response = await fetch(endpoint, {
       method: "POST",

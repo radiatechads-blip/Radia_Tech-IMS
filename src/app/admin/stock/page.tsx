@@ -329,7 +329,11 @@ function AdminStockPageContent() {
                     <Fragment key={item.productId}>
                       <tr className="hover:bg-slate-50">
                         <td className="px-3 py-2 font-medium text-slate-900">{item.productName}</td>
-                        <td className="px-3 py-2 text-slate-700">{products.find((product) => product.id === item.productId)?.stock ?? 0}</td>
+                        <td className="px-3 py-2">
+                          <span className={(products.find((product) => product.id === item.productId)?.stock ?? 0) < 0 ? "font-semibold text-red-600" : "font-semibold text-green-600"}>
+                            {products.find((product) => product.id === item.productId)?.stock ?? 0}
+                          </span>
+                        </td>
                         <td className="px-3 py-2 text-slate-700">{item.soldStock}</td>
                         <td className="px-3 py-2 text-slate-700">{formatCurrency(item.totalAmount)}</td>
                         <td className="px-3 py-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { companyInfo } from "@/data/company";
-import { BarChart3, Bell, DollarSign, FileText, FolderTree, Inbox, IndianRupee, LogOut, Menu, Package, TrendingUp, UserCircle, Users, X } from "lucide-react";
+import { BarChart3, Bell, DollarSign, ExternalLink, FileText, FolderTree, Inbox, IndianRupee, LogOut, Menu, Package, TrendingUp, UserCircle, Users, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -59,6 +59,24 @@ export default function AdminShell({
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/admin/login");
   };
+
+  const buttonMotionStyles = (
+    <style jsx global>{`
+      @keyframes sweepMove {
+        0% {
+          left: -40%;
+          opacity: 0;
+        }
+        20% {
+          opacity: 0.9;
+        }
+        100% {
+          left: 140%;
+          opacity: 0;
+        }
+      }
+    `}</style>
+  );
 
   const sidebar = (
     <div className="flex h-full flex-col bg-[#081f49] text-white">
@@ -126,7 +144,9 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 lg:grid lg:grid-cols-[280px_1fr] print:block print:bg-white">
+    <>
+      {buttonMotionStyles}
+      <div className="min-h-screen bg-slate-50 text-slate-900 lg:grid lg:grid-cols-[280px_1fr] print:block print:bg-white">
       <aside className="sticky top-0 hidden h-screen overflow-y-auto lg:block print:hidden">{sidebar}</aside>
 
       {sidebarOpen && <button aria-label="Close menu overlay" className="fixed inset-0 z-40 bg-slate-900/45 lg:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -151,13 +171,51 @@ export default function AdminShell({
                 <p className="hidden truncate text-xs text-slate-500 sm:block">Radiatech Electra management console</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="hidden items-center gap-2 border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 sm:inline-flex"
-            >
-              <LogOut size={16} />
-              Logout
-            </button>
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link
+                href="https://www.radiatech.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative overflow-hidden rounded-full border border-green-200 bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(16,185,129,0.35)]"
+              >
+                <span
+                  className="pointer-events-none absolute inset-y-0 w-[40%] rotate-12 bg-white/35 blur-sm"
+                  style={{ animation: "sweepMove 1.4s linear infinite" }}
+                />
+                <span className="relative z-10 inline-flex items-center gap-2">
+                  <ExternalLink size={16} />
+                  PPR-C Pipes & Fitting
+                </span>
+              </Link>
+              <Link
+                href="https://www.radiatechfire.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative overflow-hidden rounded-full border border-red-200 bg-gradient-to-r from-red-500 to-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(239,68,68,0.25)] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(239,68,68,0.35)]"
+              >
+                <span
+                  className="pointer-events-none absolute inset-y-0 w-[40%] rotate-12 bg-white/35 blur-sm"
+                  style={{ animation: "sweepMove 1.4s linear infinite" }}
+                />
+                <span className="relative z-10 inline-flex items-center gap-2">
+                  <ExternalLink size={16} />
+                  Fire & Safety
+                </span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="group relative overflow-hidden rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-100"
+              >
+                <span
+                  className="pointer-events-none absolute inset-y-0 w-[40%] rotate-12 bg-slate-200/80 blur-sm"
+                  style={{ animation: "sweepMove 1.4s linear infinite" }}
+                />
+                <span className="relative z-10 inline-flex items-center gap-2">
+                  <LogOut size={16} />
+                  Logout
+                </span>
+              </button>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="sr-only"
@@ -180,5 +238,6 @@ export default function AdminShell({
         </main>
       </div>
     </div>
+  </>
   );
 }

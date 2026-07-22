@@ -9,24 +9,35 @@ export type StockReductionItem = {
   qty?: number | null;
 };
 
+export function shouldApplyStockReduction(documentType: string) {
+  return documentType === "invoice" || documentType === "annexure";
+}
+
+function normalizeStockMatchValue(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 export function buildStockReductionPlan(items: StockReductionItem[], products: StockReductionCandidate[]) {
   const plan: Array<{ productId: string; qty: number }> = [];
 
   for (const item of items) {
-    const description = String(item.description || "").trim().toLowerCase();
+    const description = normalizeStockMatchValue(item.description);
     const qty = Number(item.qty || 0);
 
     if (!description || qty <= 0) {
       continue;
     }
 
-    const matchedProduct = products.find((product) => String(product.name || "").trim().toLowerCase() === description);
+    const matchedProduct = products.find((product) => {
+      const candidateName = normalizeStockMatchValue(product.name);
+      return candidateName === description || candidateName.includes(description) || description.includes(candidateName);
+    });
+
     if (!matchedProduct?.id) {
       continue;
-    }
-
-    if (Number(matchedProduct.stock || 0) < qty) {
-      throw new Error(`Insufficient stock for product ${matchedProduct.name || matchedProduct.id}`);
     }
 
     plan.push({ productId: matchedProduct.id, qty });

@@ -2,7 +2,7 @@ import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, lo
 import { prisma } from "@/lib/db";
 import { normalizeDocumentType } from "@/lib/invoiceApi";
 import { resolveInvoiceDate, resolveInvoiceNumber } from "@/lib/invoicePayload";
-import { buildStockReductionPlan } from "@/lib/stockReduction";
+import { buildStockReductionPlan, shouldApplyStockReduction } from "@/lib/stockReduction";
 import { NextResponse } from "next/server";
 
 type DocumentType = "invoice" | "proforma" | "annexure" | "quotation";
@@ -183,16 +183,15 @@ async function writeQuotationConversionMeta(id: string, meta: ReturnType<typeof 
 
 async function createDocumentRecord(data: Record<string, unknown>, documentType: DocumentType) {
   const documentItems = buildDocumentItems(data);
-  const stockReductionPlan =
-    documentType === "invoice" || documentType === "annexure"
-      ? buildStockReductionPlan(
-          documentItems.map((item) => ({
-            description: String(item.description || ""),
-            qty: Number(item.qty || 0),
-          })),
-          await prisma.product.findMany({ select: { id: true, name: true, stock: true } }),
-        )
-      : [];
+  const stockReductionPlan = shouldApplyStockReduction(documentType)
+    ? buildStockReductionPlan(
+        documentItems.map((item) => ({
+          description: String(item.description || ""),
+          qty: Number(item.qty || 0),
+        })),
+        await prisma.product.findMany({ select: { id: true, name: true, stock: true } }),
+      )
+    : [];
 
   const conversionMeta = buildConversionMeta(data);
   const proformaConversionMeta = documentType === "proforma"
@@ -337,6 +336,7 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
       });
 
       if (documentType === "invoice") {
+        await applyStockReductionPlan(stockReductionPlan);
         await writeInvoiceConversionMeta(created.id, conversionMeta);
         const refreshed = await prisma.invoice.findUnique({
           where: { id: created.id },
