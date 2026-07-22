@@ -14,6 +14,46 @@ export interface EmployeeRecord {
   createdAt?: string;
 }
 
+export interface SalaryPageDatabaseEmployee {
+  id: string;
+  empId: string;
+  name: string;
+  email?: string | null;
+  mobile?: string | null;
+  address?: string | null;
+  aadhaar?: string | null;
+  pan?: string | null;
+  jobRole?: string | null;
+  department?: string | null;
+  salary: number;
+  photoUrl?: string | null;
+  createdAt?: string | null;
+}
+
+export interface SalaryPageDatabaseSalaryRecord {
+  id: string;
+  employeeId: string;
+  amount: number;
+  remark: string;
+  paidAt: string;
+}
+
+export interface SalaryPageDatabaseOtherPayment {
+  id: string;
+  name: string;
+  amount: number;
+  paidAt: string;
+  transactionType: string;
+  mode: string;
+  remark: string;
+}
+
+export interface SalaryPageDatabasePayload {
+  employees: SalaryPageDatabaseEmployee[];
+  salaryRecords: SalaryPageDatabaseSalaryRecord[];
+  otherPayments: SalaryPageDatabaseOtherPayment[];
+}
+
 export interface SalaryRecord {
   id: string;
   employee_id: string;
@@ -38,7 +78,11 @@ export interface SalaryPageData {
   otherPayments: OtherPaymentRecord[];
 }
 
-const STORAGE_KEY = "radia-tech-salary-page-data";
+const SALARY_PAGE_DATA_EVENT = "radia-tech-salary-page-data-updated";
+let memoryData: SalaryPageData = createDefaultData();
+let hydrationPromise: Promise<void> | null = null;
+let hasHydrated = false;
+
 const DUMMY_EMPLOYEE_IDS = new Set([
   "EMP001",
   "EMP002",
@@ -58,6 +102,42 @@ const DUMMY_EMPLOYEE_NAMES = new Set([
   "Sandeep Yadav",
 ]);
 
+export function buildSalaryPageDatabasePayload(data: SalaryPageData): SalaryPageDatabasePayload {
+  return {
+    employees: data.employees.map((employee) => ({
+      id: employee.id,
+      empId: employee.emp_id,
+      name: employee.name,
+      email: employee.email ?? null,
+      mobile: employee.mobile ?? null,
+      address: employee.address ?? null,
+      aadhaar: employee.aadhaar ?? null,
+      pan: employee.pan ?? null,
+      jobRole: employee.job_role ?? null,
+      department: employee.department ?? null,
+      salary: employee.salary,
+      photoUrl: employee.photo_url ?? null,
+      createdAt: employee.createdAt ?? null,
+    })),
+    salaryRecords: data.salaryRecords.map((record) => ({
+      id: record.id,
+      employeeId: record.employee_id,
+      amount: record.amount,
+      remark: record.remark,
+      paidAt: record.paid_at,
+    })),
+    otherPayments: data.otherPayments.map((record) => ({
+      id: record.id,
+      name: record.name,
+      amount: record.amount,
+      paidAt: record.paid_at,
+      transactionType: record.transaction_type,
+      mode: record.mode,
+      remark: record.remark,
+    })),
+  };
+}
+
 function createDefaultData(): SalaryPageData {
   return {
     employees: [],
@@ -70,51 +150,162 @@ function isDummyEmployee(employee: EmployeeRecord): boolean {
   return DUMMY_EMPLOYEE_IDS.has(employee.emp_id) || DUMMY_EMPLOYEE_NAMES.has(employee.name);
 }
 
-function readStorage(): SalaryPageData {
-  if (typeof window === "undefined") {
-    return createDefaultData();
+function normalizeRemotePayload(payload: unknown): SalaryPageData | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
   }
 
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const data = createDefaultData();
-      writeStorage(data);
-      return data;
-    }
+  const parsed = payload as {
+    employees?: Array<Record<string, unknown>>;
+    salaryRecords?: Array<Record<string, unknown>>;
+    otherPayments?: Array<Record<string, unknown>>;
+  };
 
-    const parsed = JSON.parse(raw) as Partial<SalaryPageData>;
-    const employees = Array.isArray(parsed.employees) ? (parsed.employees as EmployeeRecord[]) : [];
-    const salaryRecords = Array.isArray(parsed.salaryRecords) ? (parsed.salaryRecords as SalaryRecord[]) : [];
-    const otherPayments = Array.isArray(parsed.otherPayments) ? (parsed.otherPayments as OtherPaymentRecord[]) : [];
-    const sanitizedEmployees = employees.filter((employee) => !isDummyEmployee(employee));
+  const employees = (parsed.employees ?? []).map((employee) => ({
+    id: String(employee.id ?? ""),
+    emp_id: String(employee.empId ?? employee.emp_id ?? ""),
+    name: String(employee.name ?? ""),
+    email: typeof employee.email === "string" ? employee.email : undefined,
+    mobile: typeof employee.mobile === "string" ? employee.mobile : undefined,
+    address: typeof employee.address === "string" ? employee.address : undefined,
+    aadhaar: typeof employee.aadhaar === "string" ? employee.aadhaar : undefined,
+    pan: typeof employee.pan === "string" ? employee.pan : undefined,
+    job_role: typeof employee.jobRole === "string" ? employee.jobRole : undefined,
+    department: typeof employee.department === "string" ? employee.department : undefined,
+    salary: Number(employee.salary ?? 0),
+    photo_url: typeof employee.photoUrl === "string" ? employee.photoUrl : undefined,
+    createdAt: typeof employee.createdAt === "string" ? employee.createdAt : undefined,
+  }));
 
-    if (sanitizedEmployees.length !== employees.length) {
-      const cleanedData = { employees: sanitizedEmployees, salaryRecords, otherPayments };
-      writeStorage(cleanedData);
-      return cleanedData;
-    }
+  const salaryRecords = (parsed.salaryRecords ?? []).map((record) => ({
+    id: String(record.id ?? ""),
+    employee_id: String(record.employeeId ?? record.employee_id ?? ""),
+    amount: Number(record.amount ?? 0),
+    remark: String(record.remark ?? ""),
+    paid_at: String(record.paidAt ?? record.paid_at ?? new Date().toISOString()),
+  }));
 
-    return {
-      employees: sanitizedEmployees,
-      salaryRecords,
-      otherPayments,
-    };
-  } catch {
-    return createDefaultData();
+  const otherPayments = (parsed.otherPayments ?? []).map((record) => ({
+    id: String(record.id ?? ""),
+    name: String(record.name ?? ""),
+    amount: Number(record.amount ?? 0),
+    paid_at: String(record.paidAt ?? record.paid_at ?? new Date().toISOString()),
+    transaction_type: String(record.transactionType ?? record.transaction_type ?? ""),
+    mode: String(record.mode ?? ""),
+    remark: String(record.remark ?? ""),
+  }));
+
+  return {
+    employees: employees.filter((employee) => !isDummyEmployee(employee)),
+    salaryRecords,
+    otherPayments,
+  };
+}
+
+function emitDataUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SALARY_PAGE_DATA_EVENT));
   }
 }
 
-function writeStorage(data: SalaryPageData) {
+function setMemoryData(data: SalaryPageData) {
+  memoryData = {
+    employees: data.employees.filter((employee) => !isDummyEmployee(employee)),
+    salaryRecords: data.salaryRecords,
+    otherPayments: data.otherPayments,
+  };
+  emitDataUpdated();
+}
+
+async function hydrateFromDatabase(force = false) {
   if (typeof window === "undefined") {
     return;
   }
 
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // Ignore storage write failures.
+  if (!force && hasHydrated) {
+    return;
   }
+
+  if (!force && hydrationPromise) {
+    await hydrationPromise;
+    return;
+  }
+
+  hydrationPromise = (async () => {
+    try {
+      const response = await fetch("/api/admin/salary-page-data");
+      if (!response.ok) {
+        return;
+      }
+
+      const result = (await response.json()) as { payload?: unknown };
+      const remoteData = normalizeRemotePayload(result.payload);
+      if (remoteData) {
+        setMemoryData(remoteData);
+        hasHydrated = true;
+      }
+    } catch {
+      // Ignore hydrate failures.
+    }
+  })();
+
+  await hydrationPromise;
+  hydrationPromise = null;
+}
+
+function readStorage(): SalaryPageData {
+  if (typeof window === "undefined") {
+    return memoryData;
+  }
+
+  if (!hasHydrated) {
+    void hydrateFromDatabase();
+  }
+
+  return memoryData;
+}
+
+function writeStorage(data: SalaryPageData) {
+  setMemoryData(data);
+  void saveSalaryPageData(data);
+}
+
+export async function refreshSalaryPageData(): Promise<SalaryPageData> {
+  await hydrateFromDatabase(true);
+  return memoryData;
+}
+
+export async function saveSalaryPageData(data: SalaryPageData): Promise<SalaryPageData> {
+  const payload = buildSalaryPageDatabasePayload(data);
+
+  try {
+    const endpoint = typeof window !== "undefined" && window.location.origin
+      ? `${window.location.origin}/api/admin/salary-page-data`
+      : "http://localhost:3000/api/admin/salary-page-data";
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save salary page data");
+    }
+
+    const result = (await response.json()) as { ok?: boolean };
+    if (result.ok !== true) {
+      throw new Error("Failed to save salary page data");
+    }
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Failed to save salary page data");
+  }
+
+  setMemoryData(data);
+  if (typeof window !== "undefined") {
+    void hydrateFromDatabase(true);
+  }
+  return data;
 }
 
 export function getStoredEmployees(): EmployeeRecord[] {
@@ -130,7 +321,7 @@ export function getStoredSalaryRecords(employeeId?: string): SalaryRecord[] {
   return data.salaryRecords.filter((record) => record.employee_id === employeeId);
 }
 
-export function addStoredEmployee(input: Omit<EmployeeRecord, "id" | "createdAt">): EmployeeRecord {
+export async function addStoredEmployee(input: Omit<EmployeeRecord, "id" | "createdAt">): Promise<EmployeeRecord> {
   const data = readStorage();
   const employee: EmployeeRecord = {
     ...input,
@@ -139,7 +330,9 @@ export function addStoredEmployee(input: Omit<EmployeeRecord, "id" | "createdAt"
   };
 
   const updatedEmployees = [employee, ...data.employees];
-  writeStorage({ employees: updatedEmployees, salaryRecords: data.salaryRecords, otherPayments: data.otherPayments });
+  const updatedData = { employees: updatedEmployees, salaryRecords: data.salaryRecords, otherPayments: data.otherPayments };
+  setMemoryData(updatedData);
+  await saveSalaryPageData(updatedData);
   return employee;
 }
 

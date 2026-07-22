@@ -48,7 +48,7 @@ export default function AddEmployeeModal({ onClose, onSuccess }: Props) {
     setLoading(true);
 
     try {
-      addStoredEmployee({
+      await addStoredEmployee({
         emp_id: form.emp_id.trim(),
         name: form.name.trim(),
         email: form.email.trim(),

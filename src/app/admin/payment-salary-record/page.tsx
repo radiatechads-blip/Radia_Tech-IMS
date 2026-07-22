@@ -5,7 +5,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import EditEmployeeModal from "@/components/admin/EditEmployeeModal";
 import SalaryUpdateModal from "@/components/admin/SalaryUpdateModal";
 import ViewDetailsModal from "@/components/admin/ViewDetailsModal";
-import { addStoredOtherPayment, deleteStoredOtherPayment, getStoredEmployees, getStoredOtherPayments, getStoredSalaryRecords, updateStoredOtherPayment } from "@/lib/localEmployeeStorage";
+import { addStoredOtherPayment, deleteStoredOtherPayment, getStoredEmployees, getStoredOtherPayments, getStoredSalaryRecords, refreshSalaryPageData, updateStoredOtherPayment } from "@/lib/localEmployeeStorage";
 import {
   BadgeCheck,
   Eye,
@@ -17,7 +17,7 @@ import {
   Users
 } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const sharedAvatar = "/EMP IMG.png";
 
@@ -49,9 +49,7 @@ export default function PaymentSalaryPage() {
   const [recentViewMode, setRecentViewMode] = useState<"summary" | "history">("summary");
   const [showRecentFilter, setShowRecentFilter] = useState(false);
   const [recentSearch, setRecentSearch] = useState("");
-  const [recentMonth, setRecentMonth] = useState("all");
-  const [recentFrom, setRecentFrom] = useState("");
-  const [recentTo, setRecentTo] = useState("");
+  const [recentFilter, setRecentFilter] = useState<"all" | "this" | "last" | "half" | "year" | "jan" | "feb" | "mar" | "apr" | "may" | "jun" | "jul" | "aug" | "sep" | "oct" | "nov" | "dec">("all");
   const [otherPaymentName, setOtherPaymentName] = useState("");
   const [otherPaymentAmount, setOtherPaymentAmount] = useState("");
   const [otherPaymentDate, setOtherPaymentDate] = useState("");
@@ -71,6 +69,18 @@ export default function PaymentSalaryPage() {
       }
     | null
   >(null);
+
+  useEffect(() => {
+    const sync = () => {
+      void refreshSalaryPageData().then(() => {
+        setRefreshKey((value) => value + 1);
+      });
+    };
+
+    sync();
+    window.addEventListener("focus", sync);
+    return () => window.removeEventListener("focus", sync);
+  }, []);
 
   const employeesData = useMemo(() => {
     void refreshKey;
@@ -122,22 +132,43 @@ export default function PaymentSalaryPage() {
 
     return salaryHistoryEntries.filter((entry) => {
       const paid = new Date(entry.paid_at);
+      const now = new Date();
 
-      if (recentFrom) {
-        const from = new Date(recentFrom);
-        from.setHours(0, 0, 0, 0);
-        if (paid < from) return false;
+      if (recentFilter === "this") {
+        return paid.getMonth() === now.getMonth() && paid.getFullYear() === now.getFullYear();
+      }
+      if (recentFilter === "last") {
+        const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return paid.getMonth() === last.getMonth() && paid.getFullYear() === last.getFullYear();
+      }
+      if (recentFilter === "half") {
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        return paid >= sixMonthsAgo;
+      }
+      if (recentFilter === "year") {
+        const twelveMonthsAgo = new Date(now);
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        return paid >= twelveMonthsAgo;
       }
 
-      if (recentTo) {
-        const to = new Date(recentTo);
-        to.setHours(23, 59, 59, 999);
-        if (paid > to) return false;
-      }
+      const monthMap: Record<string, number> = {
+        jan: 0,
+        feb: 1,
+        mar: 2,
+        apr: 3,
+        may: 4,
+        jun: 5,
+        jul: 6,
+        aug: 7,
+        sep: 8,
+        oct: 9,
+        nov: 10,
+        dec: 11,
+      };
 
-      if (recentMonth && recentMonth !== "all") {
-        const [year, month] = recentMonth.split("-").map(Number);
-        if (!(paid.getFullYear() === year && paid.getMonth() === month)) return false;
+      if (recentFilter in monthMap) {
+        return paid.getMonth() === monthMap[recentFilter];
       }
 
       if (!term) return true;
@@ -149,10 +180,10 @@ export default function PaymentSalaryPage() {
         name.includes(term) ||
         String(entry.amount).includes(term) ||
         remark.includes(term) ||
-        new Date(entry.paid_at).toLocaleDateString("en-IN").toLowerCase().includes(term)
+        paid.toLocaleDateString("en-IN").toLowerCase().includes(term)
       );
     });
-  }, [salaryHistoryEntries, recentSearch, recentMonth, recentFrom, recentTo]);
+  }, [salaryHistoryEntries, recentSearch, recentFilter]);
 
   const groupedSalaryHistoryEntries = useMemo(() => {
     const groups = new Map<string, typeof filteredSalaryHistoryEntries[number][]>();
@@ -181,11 +212,36 @@ export default function PaymentSalaryPage() {
     for (let i = 0; i < 12; i++) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
-      const label = d.toLocaleString("en-IN", { month: "short", year: "numeric" });
-      opts.push({ label, value: `${d.getFullYear()}-${d.getMonth()}` });
+      opts.push({
+        label: d.toLocaleString("en-IN", { month: "short", year: "numeric" }),
+        value: `${d.getFullYear()}-${d.getMonth()}`,
+      });
     }
     return opts;
   }, []);
+
+  const FILTER_LABELS: { key: typeof recentFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "this", label: "This Month" },
+    { key: "last", label: "Last Month" },
+    { key: "half", label: "Half Yearly" },
+    { key: "year", label: "12 Months" },
+  ];
+
+  const MONTH_FILTERS: { key: Exclude<typeof recentFilter, "all" | "this" | "last" | "half" | "year">; label: string }[] = [
+    { key: "jan", label: "Jan" },
+    { key: "feb", label: "Feb" },
+    { key: "mar", label: "Mar" },
+    { key: "apr", label: "Apr" },
+    { key: "may", label: "May" },
+    { key: "jun", label: "Jun" },
+    { key: "jul", label: "Jul" },
+    { key: "aug", label: "Aug" },
+    { key: "sep", label: "Sep" },
+    { key: "oct", label: "Oct" },
+    { key: "nov", label: "Nov" },
+    { key: "dec", label: "Dec" },
+  ];
 
   const filteredOtherPayments = useMemo(() => {
     const term = otherSearch.trim().toLowerCase();
@@ -252,8 +308,8 @@ export default function PaymentSalaryPage() {
       setOtherPaymentName("");
       setOtherPaymentAmount("");
       setOtherPaymentDate("");
-      setOtherPaymentType("Expense");
-      setOtherPaymentMode("Cash");
+      setOtherPaymentType("");
+      setOtherPaymentMode("");
       setOtherPaymentRemark("");
       setShowOtherPaymentForm(false);
       setOtherEditingId(null);
@@ -412,27 +468,39 @@ export default function PaymentSalaryPage() {
               </div>
 
               {showRecentFilter && (
-                <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-4">
-                  <select
-                    value={recentMonth}
-                    onChange={(e) => setRecentMonth(e.target.value)}
-                    className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
-                  >
-                    <option value="all">All months</option>
-                    {monthOptions.map((month) => (
-                      <option key={month.value} value={month.value}>
-                        {month.label}
-                      </option>
+                <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center md:gap-3">
+                  <div className="flex flex-wrap gap-2 flex-1">
+                    {FILTER_LABELS.map((filter) => (
+                      <button
+                        key={filter.key}
+                        type="button"
+                        onClick={() => setRecentFilter(filter.key)}
+                        className={`rounded-lg px-3 py-1.5 text-sm font-medium ${recentFilter === filter.key ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
+                      >
+                        {filter.label}
+                      </button>
                     ))}
-                  </select>
-                  <input type="date" value={recentFrom} onChange={(e) => setRecentFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700" />
-                  <input type="date" value={recentTo} onChange={(e) => setRecentTo(e.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700" />
-                  <input
-                    value={recentSearch}
-                    onChange={(e) => setRecentSearch(e.target.value)}
-                    placeholder="Search name or note"
-                    className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
-                  />
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <select
+                      value={recentFilter}
+                      onChange={(e) => setRecentFilter(e.target.value as typeof recentFilter)}
+                      className="min-w-40 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
+                    >
+                      <option value="all">All months</option>
+                      {MONTH_FILTERS.map((month) => (
+                        <option key={month.key} value={month.key}>
+                          {month.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={recentSearch}
+                      onChange={(e) => setRecentSearch(e.target.value)}
+                      placeholder="Search name or note"
+                      className="min-w-50 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -443,14 +511,18 @@ export default function PaymentSalaryPage() {
                   ) : (
                     <div className="divide-y divide-slate-200">
                       {filteredSalaryHistoryEntries.map((entry) => (
-                        <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div key={entry.id} className="grid grid-cols-1 gap-2 px-4 py-3 text-sm sm:grid-cols-[1.5fr_1fr_1fr_2fr] sm:items-center">
                           <div>
                             <p className="font-medium text-slate-800">{entry.employee?.name || entry.employee_id}</p>
-                            <p className="text-xs text-slate-500">{entry.remark || "Salary payment"}</p>
                           </div>
-                          <div className="text-right">
+                          <div>
+                            <p className="font-medium text-slate-800">{new Date(entry.paid_at).toLocaleDateString("en-IN")}</p>
+                          </div>
+                          <div>
                             <p className="font-semibold text-slate-900">₹{entry.amount.toLocaleString("en-IN")}</p>
-                            <p className="text-xs text-slate-500">{new Date(entry.paid_at).toLocaleDateString("en-IN")}</p>
+                          </div>
+                          <div className="truncate text-slate-600">
+                            {entry.remark || "Salary payment"}
                           </div>
                         </div>
                       ))}
@@ -500,36 +572,38 @@ export default function PaymentSalaryPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {employeesData.map((employee) => (
-            <EmployeeCard
-              key={employee.id}
-              employee={employee}
-              onEdit={() => {
-                setEditingEmployee({
-                  id: employee.id,
-                  emp_id: employee.emp_id,
-                  name: employee.name,
-                  email: employee.email,
-                  mobile: employee.mobile,
-                  address: employee.address,
-                  aadhaar: employee.aadhaar,
-                  pan: employee.pan,
-                  job_role: employee.role,
-                  department: employee.department,
-                  salary: employee.salaryValue,
-                  photo_url: employee.avatar,
-                });
-                setShowEditModal(true);
-              }}
-              onViewDetails={() =>
-                setSelectedEmployee({
-                  ...employee,
-                  emp_id: employee.emp_id,
-                })
-              }
-            />
-          ))}
+        <div className="max-h-[60vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {employeesData.map((employee) => (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                onEdit={() => {
+                  setEditingEmployee({
+                    id: employee.id,
+                    emp_id: employee.emp_id,
+                    name: employee.name,
+                    email: employee.email,
+                    mobile: employee.mobile,
+                    address: employee.address,
+                    aadhaar: employee.aadhaar,
+                    pan: employee.pan,
+                    job_role: employee.role,
+                    department: employee.department,
+                    salary: employee.salaryValue,
+                    photo_url: employee.avatar,
+                  });
+                  setShowEditModal(true);
+                }}
+                onViewDetails={() =>
+                  setSelectedEmployee({
+                    ...employee,
+                    emp_id: employee.emp_id,
+                  })
+                }
+              />
+            ))}
+          </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -578,7 +652,7 @@ export default function PaymentSalaryPage() {
               <span className="text-xs text-slate-500">{filteredOtherPayments.length} entries</span>
             </div>
           </div>
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="max-h-[50vh] overflow-x-auto overflow-y-auto rounded-lg border border-slate-200">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
@@ -632,7 +706,8 @@ export default function PaymentSalaryPage() {
       {showAddModal && (
         <AddEmployeeModal
           onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
+            await refreshSalaryPageData();
             setRefreshKey((value) => value + 1);
             setShowAddModal(false);
           }}
