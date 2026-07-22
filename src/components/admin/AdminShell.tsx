@@ -1,7 +1,7 @@
 "use client";
 
 import { companyInfo } from "@/data/company";
-import { BarChart3, DollarSign, FileText, FolderTree, Inbox, LogOut, Menu, Package, UserCircle, Users, X } from "lucide-react";
+import { BarChart3, Bell, DollarSign, FileText, FolderTree, Inbox, IndianRupee, LogOut, Menu, Package, TrendingUp, UserCircle, Users, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,13 +9,13 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
-  { label: "Payment IN", href: "/admin/payment-in", icon: DollarSign },
-  { label: "Payment/Salary Record", href: "/admin/payment-salary-record", icon: DollarSign },
-  { label: "Alerts", href: "/admin/alerts", icon: Inbox },
-  { label: "Products", href: "/admin/products", icon: Package },
-  { label: "Stock", href: "/admin/stock", icon: Package },
-  { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Generate Bill", href: "/admin/generate-bill", icon: FileText },
+  { label: "Payment IN", href: "/admin/payment-in", icon: DollarSign },
+  { label: "Alerts", href: "/admin/alerts", icon: Bell },
+  { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Payment/Salary Record", href: "/admin/payment-salary-record", icon: IndianRupee },
+  { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Stock", href: "/admin/stock", icon: TrendingUp },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
   { label: "Business Insight", href: "/admin/business-insight", icon: Inbox },
   { label: "My Profile", href: "/admin/profile", icon: UserCircle },

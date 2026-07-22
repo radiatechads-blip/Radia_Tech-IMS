@@ -3,7 +3,7 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 
 interface Product {
   id: string;
@@ -47,6 +47,10 @@ function AdminStockPageContent() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [selectedSummaryProductId, setSelectedSummaryProductId] = useState<string | null>(null);
   const [showDirectUpdateForm, setShowDirectUpdateForm] = useState(false);
+  const [showBulkUpdateForm, setShowBulkUpdateForm] = useState(false);
+  const [bulkStock, setBulkStock] = useState(0);
+  const [bulkRemark, setBulkRemark] = useState("");
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([]);
   const [selectedSummaryTransactions, setSelectedSummaryTransactions] = useState<StockTransactionItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -212,6 +216,45 @@ function AdminStockPageContent() {
     }
   };
 
+  const handleBulkUpdateStock = async () => {
+    if (bulkSelectedIds.length === 0) {
+      setError("Please select at least one product to update.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const updates = await Promise.all(
+        bulkSelectedIds.map(async (productId) => {
+          const response = await fetch(`/api/products/${productId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stock: bulkStock, stockRemark: bulkRemark }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || `Unable to update ${productId}.`);
+          }
+          return productId;
+        }),
+      );
+
+      setProducts((current) => current.map((product) => (updates.includes(product.id) ? { ...product, stock: bulkStock, stockRemark: bulkRemark } : product)));
+      setBulkSelectedIds([]);
+      setBulkStock(0);
+      setBulkRemark("");
+      setShowBulkUpdateForm(false);
+      setSuccessMessage(`Stock updated for ${updates.length} product${updates.length === 1 ? "" : "s"}.`);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update stock in bulk.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AdminShell
       title="Stock Update"
@@ -223,7 +266,14 @@ function AdminStockPageContent() {
             onClick={() => setShowDirectUpdateForm((value) => !value)}
             className="inline-flex items-center justify-center rounded bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
           >
-            {showDirectUpdateForm ? "Hide Update Form" : "Open Direct Stock Update"}
+            {showDirectUpdateForm ? "Hide Update Form" : "Stock Update"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowBulkUpdateForm((value) => !value)}
+            className="inline-flex items-center justify-center rounded border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20"
+          >
+            {showBulkUpdateForm ? "Hide Bulk Update" : "Bulk Update"}
           </button>
           <button onClick={() => router.push("/admin/products")} className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Back to Products
@@ -268,6 +318,7 @@ function AdminStockPageContent() {
                 <thead>
                   <tr className="bg-slate-50 text-left text-slate-600">
                     <th className="px-3 py-2 font-semibold">Product Name</th>
+                    <th className="px-3 py-2 font-semibold">Current Stock</th>
                     <th className="px-3 py-2 font-semibold">Solded Stock</th>
                     <th className="px-3 py-2 font-semibold">Total Amount</th>
                     <th className="px-3 py-2 font-semibold">Action</th>
@@ -275,9 +326,10 @@ function AdminStockPageContent() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
                   {filteredStockSummary.map((item) => (
-                    <>
-                      <tr key={item.productId} className="hover:bg-slate-50">
+                    <Fragment key={item.productId}>
+                      <tr className="hover:bg-slate-50">
                         <td className="px-3 py-2 font-medium text-slate-900">{item.productName}</td>
+                        <td className="px-3 py-2 text-slate-700">{products.find((product) => product.id === item.productId)?.stock ?? 0}</td>
                         <td className="px-3 py-2 text-slate-700">{item.soldStock}</td>
                         <td className="px-3 py-2 text-slate-700">{formatCurrency(item.totalAmount)}</td>
                         <td className="px-3 py-2">
@@ -291,8 +343,8 @@ function AdminStockPageContent() {
                         </td>
                       </tr>
                       {selectedSummaryProductId === item.productId ? (
-                        <tr key={`${item.productId}-details`}>
-                          <td colSpan={4} className="bg-slate-50 px-3 py-3">
+                        <tr>
+                          <td colSpan={5} className="bg-slate-50 px-3 py-3">
                             <div className="rounded border border-slate-200 bg-white p-3">
                               <div className="mb-2 text-sm font-semibold text-slate-900">Stock Summary</div>
                               {detailLoading ? (
@@ -329,7 +381,7 @@ function AdminStockPageContent() {
                           </td>
                         </tr>
                       ) : null}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -338,105 +390,203 @@ function AdminStockPageContent() {
         </section>
 
         <section className="rounded border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold text-slate-950">Direct Stock Update</h2>
-            <button
-              type="button"
-              onClick={() => setShowDirectUpdateForm((value) => !value)}
-              className="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              {showDirectUpdateForm ? "Hide Form" : "Open Form"}
-            </button>
-          </div>
-
-          {!showDirectUpdateForm ? (
-            <div className="rounded border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-              Click the button above to open the direct stock update form.
-            </div>
-          ) : fetching ? (
-            <div className="h-40 animate-pulse rounded bg-slate-100" />
-          ) : error ? (
-            <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-          ) : products.length === 0 ? (
-            <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">No products available yet. Add products first from the Products section.</div>
-          ) : (
-            <div className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">Product *</span>
-                  <select
-                    value={selectedProductId}
-                    onChange={(event) => {
-                      const nextProductId = event.target.value;
-                      setSelectedProductId(nextProductId);
-
-                      const nextProduct = products.find((product) => product.id === nextProductId);
-                      if (nextProduct) {
-                        setStock(nextProduct.stock);
-                        setRemark(nextProduct.stockRemark || "");
-                      }
-                    }}
-                    className="admin-input w-full"
-                  >
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} ({product.sku})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">Updated Stock *</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={stock === 0 ? "" : stock}
-                    onChange={(event) => {
-                      const val = event.target.value;
-                      setStock(val === "" ? 0 : Number.parseInt(val, 10));
-                    }}
-                    className="admin-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Remark</span>
-                <textarea
-                  rows={4}
-                  value={remark}
-                  onChange={(event) => setRemark(event.target.value)}
-                  className="admin-input w-full min-h-28 resize-none"
-                  placeholder="Enter a stock update reason or note"
-                />
-              </label>
-
-              {selectedProduct && (
-                <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                  <div className="mb-2 font-semibold text-slate-900">Selected product</div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div>SKU: {selectedProduct.sku}</div>
-                    <div>Current stock: {selectedProduct.stock}</div>
-                    <div>Category: {selectedProduct.category?.name || "Uncategorized"}</div>
-                    <div>Previous remark: {selectedProduct.stockRemark || "None"}</div>
+          {showDirectUpdateForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+              <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-950">Direct Stock Update</h3>
+                    <p className="mt-1 text-sm text-slate-500">Update product stock directly from this popup.</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectUpdateForm(false)}
+                    className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
                 </div>
-              )}
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="button"
-                  onClick={handleUpdateStock}
-                  disabled={loading}
-                  className="inline-flex items-center justify-center rounded bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
-                >
-                  {loading ? "Updating..." : "Update Stock"}
-                </button>
-                {successMessage && <span className="text-sm font-medium text-emerald-700">{successMessage}</span>}
+                {fetching ? (
+                  <div className="h-40 animate-pulse rounded bg-slate-100" />
+                ) : error ? (
+                  <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+                ) : products.length === 0 ? (
+                  <div className="rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">No products available yet. Add products first from the Products section.</div>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-slate-700">Product *</span>
+                        <select
+                          value={selectedProductId}
+                          onChange={(event) => {
+                            const nextProductId = event.target.value;
+                            setSelectedProductId(nextProductId);
+
+                            const nextProduct = products.find((product) => product.id === nextProductId);
+                            if (nextProduct) {
+                              setStock(nextProduct.stock);
+                              setRemark(nextProduct.stockRemark || "");
+                            }
+                          }}
+                          className="admin-input w-full"
+                        >
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} ({product.sku})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-semibold text-slate-700">Updated Stock *</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={stock === 0 ? "" : stock}
+                          onChange={(event) => {
+                            const val = event.target.value;
+                            setStock(val === "" ? 0 : Number.parseInt(val, 10));
+                          }}
+                          className="admin-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </label>
+                    </div>
+
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-semibold text-slate-700">Remark</span>
+                      <textarea
+                        rows={4}
+                        value={remark}
+                        onChange={(event) => setRemark(event.target.value)}
+                        className="admin-input w-full min-h-28 resize-none"
+                        placeholder="Enter a stock update reason or note"
+                      />
+                    </label>
+
+                    {selectedProduct && (
+                      <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                        <div className="mb-2 font-semibold text-slate-900">Selected product</div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>SKU: {selectedProduct.sku}</div>
+                          <div>Current stock: {selectedProduct.stock}</div>
+                          <div>Category: {selectedProduct.category?.name || "Uncategorized"}</div>
+                          <div>Previous remark: {selectedProduct.stockRemark || "None"}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={handleUpdateStock}
+                        disabled={loading}
+                        className="inline-flex items-center justify-center rounded bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
+                      >
+                        {loading ? "Updating..." : "Update Stock"}
+                      </button>
+                      {successMessage && <span className="text-sm font-medium text-emerald-700">{successMessage}</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </section>
+
+        {showBulkUpdateForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-950">Bulk Stock Update</h3>
+                  <p className="mt-1 text-sm text-slate-500">Update stock for up to 20 products at once.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkUpdateForm(false)}
+                  className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Updated Stock *</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={bulkStock === 0 ? "" : bulkStock}
+                      onChange={(event) => {
+                        const val = event.target.value;
+                        setBulkStock(val === "" ? 0 : Number.parseInt(val, 10));
+                      }}
+                      className="admin-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">Remark</span>
+                    <textarea
+                      rows={3}
+                      value={bulkRemark}
+                      onChange={(event) => setBulkRemark(event.target.value)}
+                      className="admin-input w-full min-h-24 resize-none"
+                      placeholder="Enter a common remark for all selected products"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-sm font-semibold text-slate-900">Select products (max 20)</div>
+                  <div className="max-h-72 overflow-auto rounded border border-slate-200 p-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {products.map((product) => {
+                        const isSelected = bulkSelectedIds.includes(product.id);
+                        return (
+                          <label key={product.id} className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={bulkSelectedIds.length >= 20 && !isSelected}
+                              onChange={() => {
+                                setBulkSelectedIds((current) => {
+                                  if (current.includes(product.id)) {
+                                    return current.filter((id) => id !== product.id);
+                                  }
+                                  if (current.length >= 20) {
+                                    return current;
+                                  }
+                                  return [...current, product.id];
+                                });
+                              }}
+                            />
+                            <span>{product.name} ({product.sku})</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">Selected: {bulkSelectedIds.length}/20</p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={handleBulkUpdateStock}
+                    disabled={loading || bulkSelectedIds.length === 0}
+                    className="inline-flex items-center justify-center rounded bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
+                  >
+                    {loading ? "Updating..." : `Update ${bulkSelectedIds.length} Product${bulkSelectedIds.length === 1 ? "" : "s"}`}
+                  </button>
+                  {successMessage && <span className="text-sm font-medium text-emerald-700">{successMessage}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminShell>
   );

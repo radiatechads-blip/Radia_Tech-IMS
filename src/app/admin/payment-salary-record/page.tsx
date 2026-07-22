@@ -7,13 +7,16 @@ import SalaryUpdateModal from "@/components/admin/SalaryUpdateModal";
 import ViewDetailsModal from "@/components/admin/ViewDetailsModal";
 import { addStoredOtherPayment, deleteStoredOtherPayment, getStoredEmployees, getStoredOtherPayments, getStoredSalaryRecords, updateStoredOtherPayment } from "@/lib/localEmployeeStorage";
 import {
-    BadgeCheck,
-    Eye,
-    IndianRupee,
-    Pencil,
-    Plus,
-    Users
+  BadgeCheck,
+  Eye,
+  Filter,
+  History,
+  IndianRupee,
+  Pencil,
+  Plus,
+  Users
 } from "lucide-react";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 const sharedAvatar = "/EMP IMG.png";
@@ -42,6 +45,13 @@ export default function PaymentSalaryPage() {
   >(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOtherPaymentForm, setShowOtherPaymentForm] = useState(false);
+  const [showRecentPaymentsModal, setShowRecentPaymentsModal] = useState(false);
+  const [recentViewMode, setRecentViewMode] = useState<"summary" | "history">("summary");
+  const [showRecentFilter, setShowRecentFilter] = useState(false);
+  const [recentSearch, setRecentSearch] = useState("");
+  const [recentMonth, setRecentMonth] = useState("all");
+  const [recentFrom, setRecentFrom] = useState("");
+  const [recentTo, setRecentTo] = useState("");
   const [otherPaymentName, setOtherPaymentName] = useState("");
   const [otherPaymentAmount, setOtherPaymentAmount] = useState("");
   const [otherPaymentDate, setOtherPaymentDate] = useState("");
@@ -93,7 +103,73 @@ export default function PaymentSalaryPage() {
     });
   }, [refreshKey]);
 
-  const otherPayments = useMemo(() => getStoredOtherPayments(), [refreshKey]);
+  const otherPayments = getStoredOtherPayments();
+  const salaryHistoryEntries = useMemo(() => {
+    void refreshKey;
+    const storedEmployees = getStoredEmployees();
+    const employeeMap = new Map(storedEmployees.map((employee) => [employee.id, employee]));
+
+    return getStoredSalaryRecords()
+      .map((record) => ({
+        ...record,
+        employee: employeeMap.get(record.employee_id),
+      }))
+      .sort((a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
+  }, [refreshKey]);
+
+  const filteredSalaryHistoryEntries = useMemo(() => {
+    const term = recentSearch.trim().toLowerCase();
+
+    return salaryHistoryEntries.filter((entry) => {
+      const paid = new Date(entry.paid_at);
+
+      if (recentFrom) {
+        const from = new Date(recentFrom);
+        from.setHours(0, 0, 0, 0);
+        if (paid < from) return false;
+      }
+
+      if (recentTo) {
+        const to = new Date(recentTo);
+        to.setHours(23, 59, 59, 999);
+        if (paid > to) return false;
+      }
+
+      if (recentMonth && recentMonth !== "all") {
+        const [year, month] = recentMonth.split("-").map(Number);
+        if (!(paid.getFullYear() === year && paid.getMonth() === month)) return false;
+      }
+
+      if (!term) return true;
+
+      const name = entry.employee?.name?.toLowerCase() || "";
+      const remark = (entry.remark || "").toLowerCase();
+
+      return (
+        name.includes(term) ||
+        String(entry.amount).includes(term) ||
+        remark.includes(term) ||
+        new Date(entry.paid_at).toLocaleDateString("en-IN").toLowerCase().includes(term)
+      );
+    });
+  }, [salaryHistoryEntries, recentSearch, recentMonth, recentFrom, recentTo]);
+
+  const groupedSalaryHistoryEntries = useMemo(() => {
+    const groups = new Map<string, typeof filteredSalaryHistoryEntries[number][]>();
+
+    filteredSalaryHistoryEntries.forEach((entry) => {
+      const key = entry.employee?.name || entry.employee_id;
+      const existing = groups.get(key) || [];
+      existing.push(entry);
+      groups.set(key, existing);
+    });
+
+    return Array.from(groups.entries()).map(([name, entries]) => ({
+      name,
+      entries,
+    }));
+  }, [filteredSalaryHistoryEntries]);
+
   const [otherEditingId, setOtherEditingId] = useState<string | null>(null);
   const [otherSearch, setOtherSearch] = useState("");
   const [otherMonth, setOtherMonth] = useState("all");
@@ -301,11 +377,127 @@ export default function PaymentSalaryPage() {
           </div>
         )}
 
-        
+        {showRecentPaymentsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Recent payment history</h3>
+                  <p className="mt-1 text-sm text-slate-600">Review recent salary payments with name, amount, and date.</p>
+                </div>
+                <button type="button" onClick={() => setShowRecentPaymentsModal(false)} className="text-sm text-slate-500 hover:text-slate-700">Close</button>
+              </div>
 
-        <div className="flex items-center gap-2 pt-2 text-lg font-semibold text-slate-800">
-          <Users className="h-5 w-5 text-blue-600" />
-          <span>Existing Employees</span>
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRecentViewMode((value) => (value === "summary" ? "history" : "summary"))}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${recentViewMode === "summary" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    <History size={15} />
+                    {recentViewMode === "summary" ? "History" : "Summary"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRecentFilter((value) => !value)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${showRecentFilter ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Filter size={15} />
+                    Filter
+                  </span>
+                </button>
+              </div>
+
+              {showRecentFilter && (
+                <div className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-4">
+                  <select
+                    value={recentMonth}
+                    onChange={(e) => setRecentMonth(e.target.value)}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
+                  >
+                    <option value="all">All months</option>
+                    {monthOptions.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                  <input type="date" value={recentFrom} onChange={(e) => setRecentFrom(e.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700" />
+                  <input type="date" value={recentTo} onChange={(e) => setRecentTo(e.target.value)} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700" />
+                  <input
+                    value={recentSearch}
+                    onChange={(e) => setRecentSearch(e.target.value)}
+                    placeholder="Search name or note"
+                    className="rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-700 outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="max-h-[60vh] overflow-auto rounded-xl border border-slate-200">
+                {recentViewMode === "summary" ? (
+                  filteredSalaryHistoryEntries.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-slate-500">No salary payment found for the selected filters.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-200">
+                      {filteredSalaryHistoryEntries.map((entry) => (
+                        <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div>
+                            <p className="font-medium text-slate-800">{entry.employee?.name || entry.employee_id}</p>
+                            <p className="text-xs text-slate-500">{entry.remark || "Salary payment"}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-slate-900">₹{entry.amount.toLocaleString("en-IN")}</p>
+                            <p className="text-xs text-slate-500">{new Date(entry.paid_at).toLocaleDateString("en-IN")}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : groupedSalaryHistoryEntries.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-slate-500">No salary history available.</div>
+                ) : (
+                  <div className="space-y-3 p-3">
+                    {groupedSalaryHistoryEntries.map(({ name, entries }) => (
+                      <div key={name} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <h4 className="font-semibold text-slate-800">{name}</h4>
+                          <span className="text-xs text-slate-500">{entries.length} payments</span>
+                        </div>
+                        <div className="space-y-2">
+                          {entries.map((entry) => (
+                            <div key={entry.id} className="flex items-center justify-between rounded-md bg-white px-3 py-2 text-sm">
+                              <div>
+                                <p className="font-medium text-slate-700">{entry.remark || "Salary payment"}</p>
+                                <p className="text-xs text-slate-500">{new Date(entry.paid_at).toLocaleDateString("en-IN")}</p>
+                              </div>
+                              <div className="font-semibold text-slate-900">₹{entry.amount.toLocaleString("en-IN")}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-2 text-lg font-semibold text-slate-800">
+            <Users className="h-5 w-5 text-blue-600" />
+            <span>Existing Employees</span>
+          </div>
+          <button
+            onClick={() => setShowRecentPaymentsModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-[#0F766E] px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700"
+          >
+            <History size={16} />
+            Recent Payment
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -536,9 +728,11 @@ function EmployeeCard({
       <div className="absolute inset-x-0 top-0 z-0 h-12 rounded-t-xl bg-linear-to-b from-slate-50 to-white" />
 
       <div className="relative z-10 mb-2 mt-1">
-        <img
+        <Image
           src={employee.avatar}
           alt={employee.name}
+          width={56}
+          height={56}
           className="h-14 w-14 rounded-full object-cover ring-3 ring-white shadow-sm"
         />
       </div>
