@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
   { label: "Payment IN", href: "/admin/payment-in", icon: DollarSign },
+  { label: "Payment/Salary Record", href: "/admin/payment-salary-record", icon: DollarSign },
   { label: "Alerts", href: "/admin/alerts", icon: Inbox },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Stock", href: "/admin/stock", icon: Package },
