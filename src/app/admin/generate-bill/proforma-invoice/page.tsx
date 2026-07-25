@@ -136,6 +136,9 @@ export default function ProformaInvoicePage() {
   const [paymentMode, setPaymentMode] = useState("Credit");
   const [extraDiscountAmount, setExtraDiscountAmount] = useState(0);
   const [roundOffAmount, setRoundOffAmount] = useState(0);
+  const [roundOffInput, setRoundOffInput] = useState("0");
+  const normalizedExtraDiscountAmount = Number.isFinite(extraDiscountAmount) ? extraDiscountAmount : 0;
+  const normalizedRoundOffAmount = Number.isFinite(roundOffAmount) ? roundOffAmount : 0;
   const [bankDetails, setBankDetails] = useState(
     "Name: Punjab and Sind Bank, Plot No C1A, Sector 63, Noida\nAccount No: 15111180000370\nIFSC code: PSIB0021511\nAccount holder's name: Radiatech Electra",
   );
@@ -182,7 +185,10 @@ export default function ProformaInvoicePage() {
 
     const parsedExtraDiscount = Number(data.extraDiscountAmount);
     setExtraDiscountAmount(Number.isFinite(parsedExtraDiscount) ? parsedExtraDiscount : 0);
-    setRoundOffAmount(Number(data.roundOff || 0));
+    const incomingRoundOff = Number(data.roundOff);
+    const normalizedIncomingRoundOff = Number.isFinite(incomingRoundOff) ? incomingRoundOff : 0;
+    setRoundOffAmount(normalizedIncomingRoundOff);
+    setRoundOffInput(String(data.roundOff ?? "0"));
     setBankDetails(String(data.bankDetails || ""));
     setAuthorizedSignature(String(data.authorizedSignature || ""));
     setSignatureImage(null);
@@ -427,16 +433,24 @@ export default function ProformaInvoicePage() {
       return sum + (lineTotal * item.discountPercent) / 100;
     }, 0);
     const taxableBeforeExtraDiscount = Math.max(subtotal - discountTotal, 0);
-    const extraDiscount = Number(extraDiscountAmount || 0);
+    const extraDiscount = normalizedExtraDiscountAmount;
     const taxable = Math.max(taxableBeforeExtraDiscount - extraDiscount, 0);
-    const roundOff = Number(roundOffAmount || 0);
+    const roundOff = normalizedRoundOffAmount;
+
     const taxBeforeExtraDiscount = items.reduce((sum, item) => {
       const lineTotal = item.qty * item.rate;
       const discountValue = (lineTotal * item.discountPercent) / 100;
       const discountedValue = lineTotal - discountValue;
       return sum + (discountedValue * item.taxPercent) / 100;
     }, 0);
-    const tax = taxableBeforeExtraDiscount > 0 ? (taxBeforeExtraDiscount / taxableBeforeExtraDiscount) * taxable : 0;
+    const tax = items.reduce((sum, item) => {
+      const lineTotal = item.qty * item.rate;
+      const discountValue = (lineTotal * item.discountPercent) / 100;
+      const discountedValue = lineTotal - discountValue;
+      const itemTax = (discountedValue * item.taxPercent) / 100;
+      if (taxableBeforeExtraDiscount <= 0) return sum + itemTax;
+      return sum + itemTax * (taxable / taxableBeforeExtraDiscount);
+    }, 0);
 
     let cgst = 0;
     let sgst = 0;
@@ -686,7 +700,7 @@ export default function ProformaInvoicePage() {
           extraDiscountAmount: totals.extraDiscountAmount,
           taxableAmount: totals.taxable,
           taxAmount: totals.tax,
-          roundOff: totals.roundOff,
+          roundOff: normalizedRoundOffAmount,
           grandTotal: totals.grandTotal,
           items: items.map((item) => {
             const taxablePerUnit = item.rate * (1 - item.discountPercent / 100);
@@ -1330,8 +1344,13 @@ export default function ProformaInvoicePage() {
                     <input
                       type="number"
                       step="0.01"
-                      value={roundOffAmount === 0 ? "" : roundOffAmount}
-                      onChange={(e) => setRoundOffAmount(Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0)}
+                      value={roundOffInput}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setRoundOffInput(value);
+                        const numericValue = value === "" ? 0 : Number(value);
+                        setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);
+                      }}
                       placeholder="0"
                       className={`${inputCls} text-right`}
                     />
@@ -1728,16 +1747,18 @@ export default function ProformaInvoicePage() {
                     <span>: {formatCurrency(totals.tax)}</span>
                   </div>
 
-                  <div className={`mt-1 flex items-center justify-between gap-2 ${roundOffAmount ? "" : "print:hidden"}`}>
+                  <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="text-slate-500">Round off</span>
                     <div className="flex items-center gap-0.5">
                       <span className="text-slate-500">: ₹</span>
                       <input
                         type="number"
                         step="0.01"
-                        value={roundOffAmount === 0 ? "" : roundOffAmount}
+                        value={roundOffInput}
                         onChange={(e) => {
-                          const numericValue = Number(e.target.value);
+                          const value = e.target.value;
+                          setRoundOffInput(value);
+                          const numericValue = value === "" ? 0 : Number(value);
                           setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);
                         }}
                         placeholder="0"

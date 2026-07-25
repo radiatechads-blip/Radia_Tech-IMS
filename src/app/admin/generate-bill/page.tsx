@@ -2,7 +2,9 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import AnnexurePreview from "@/components/admin/AnnexurePreview";
+import CNPreview from "@/components/admin/CNPreview";
 import DeliveryChallen from "@/components/admin/DeliveryChallen";
+import DNPreview from "@/components/admin/DNPreview";
 import InvoicePreview from "@/components/admin/InvoicePreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
@@ -355,9 +357,32 @@ export default function GenerateBillPage() {
     return "invoice";
   };
 
+  const isDebitNoteInvoice = (invoice: InvoiceSummary) => {
+    const label = getBillTypeLabel(invoice);
+    const documentType = String(
+      (invoice as InvoiceWithDocType).documentType ?? invoice.billType ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    const invoiceNumber = String(invoice.invoiceNumber ?? "").trim().toUpperCase();
+
+    return (
+      label === "Debit Note" ||
+      documentType.includes("debit") ||
+      documentType.includes("return") ||
+      invoiceNumber.startsWith("DN")
+    );
+  };
+
   const renderPreviewForInvoice = (invoice: InvoiceSummary) => {
     // Use the Tax Invoice preview template for all document types
  const label = getBillTypeLabel(invoice);
+    if (isDebitNoteInvoice(invoice)) {
+      return <DNPreview invoice={invoice} />;
+    }
+    if (label === "Credit Note") {
+      return <CNPreview invoice={invoice} />;
+    }
     if (label === "Proforma Invoice") {
       return <ProformaInvoicePreview invoice={invoice} />;
     }
@@ -404,7 +429,6 @@ export default function GenerateBillPage() {
     if (label === "Delivery Challan") {
       return <DeliveryChallen invoice={invoice} />;
     }
-   
 
     return <InvoicePreview invoice={invoice} />;
   };

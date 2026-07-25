@@ -116,6 +116,7 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
     extraDiscountAmount: Number.isFinite(extraDiscountAmountValue) ? extraDiscountAmountValue : 0,
     taxableAmount: Number(data.taxableAmount || 0),
     taxAmount: Number(data.taxAmount || 0),
+    roundOff: Number.isFinite(Number(data.roundOff || 0)) ? Number(data.roundOff || 0) : 0,
     grandTotal: Number(data.grandTotal || 0),
   };
 

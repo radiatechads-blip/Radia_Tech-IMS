@@ -572,6 +572,14 @@ const formatDate = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-IN");
 };
 
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div className="relative -mx-3 -mt-3 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] bg-[#e7eef9] border-b border-slate-300">
+      {title}
+    </div>
+  );
+}
+
 interface InvoicePreviewProps {
   invoice: InvoiceSummary;
   taxType?: TaxType;
@@ -590,7 +598,8 @@ export default function InvoicePreview({
   const taxType = taxTypeProp ?? internalTaxType;
 
   const items = useMemo(() => invoice.items || [], [invoice.items]);
-  const roundOff = Number(invoice.roundOff ?? 0);
+  const hasRoundOff = invoice.roundOff !== undefined && invoice.roundOff !== null && invoice.roundOff !== "";
+  const roundOff = Number.isFinite(Number(invoice.roundOff)) ? Number(invoice.roundOff) : 0;
   const shouldShowDiscountColumn = items.some(
     (item) => Number(item.discountPercent || 0) > 0,
   );
@@ -710,12 +719,6 @@ export default function InvoicePreview({
   const hasTerms = !!invoice.terms?.trim();
   const hasNotesOrTerms = hasNotes || hasTerms;
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div className="relative -mx-3 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] bg-[#e7eef9] border-b border-slate-300">
-      {title}
-    </div>
-  );
-
   return (
     <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
       <div className="mx-auto w-full max-w-225 overflow-hidden border border-slate-300 bg-white text-black print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
@@ -751,7 +754,7 @@ export default function InvoicePreview({
 
         {/* Proforma To & Details */}
         <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
-          <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+          <div className="border-b border-slate-300 pt-0 pb-3 px-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
             <SectionHeader title="Proforma To" />
             <div className="space-y-0.5 text-[12px] leading-5 text-slate-800">
               <div className="font-bold text-black">{invoice.partyName || "—"}</div>
@@ -764,7 +767,7 @@ export default function InvoicePreview({
             </div>
           </div>
 
-          <div className="p-3">
+          <div className="pt-0 pb-3 px-3">
             <SectionHeader title="Proforma Details" />
             <div className="grid grid-cols-[auto_1fr] gap-x-0 gap-y-1 text-[12px] text-slate-800">
               <span className="font-semibold text-slate-900">Proforma No:</span>
@@ -879,7 +882,7 @@ export default function InvoicePreview({
 
         {/* Tax Summary & Breakdown */}
         <div className="grid grid-cols-1 border-b border-slate-300 md:grid-cols-[1.1fr_0.9fr] print:grid-cols-2">
-          <div className="border-b border-slate-300 p-3 md:border-b-0 md:border-r print:border-b-0 print:border-r">
+          <div className="border-b border-slate-300 pt-0 pb-3 px-3 md:border-b-0 md:border-r print:border-b-0 print:border-r">
             <SectionHeader title="Tax Summary" />
             <div className="mt-1">
               <div className="mb-1.5 flex items-center justify-between">
@@ -901,11 +904,16 @@ export default function InvoicePreview({
                     <th className="border border-slate-300 px-2 py-1 text-left font-semibold">Taxable</th>
                     {taxType === "cgst-sgst" ? (
                       <>
-                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST</th>
-                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
                       </>
                     ) : taxType === "igst" ? (
-                      <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST</th>
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
+                      </>
                     ) : null}
                     <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
                   </tr>
@@ -915,11 +923,16 @@ export default function InvoicePreview({
                     <td className="border border-slate-300 px-2 py-1 font-semibold">{formatCurrency(totals.taxable)}</td>
                     {taxType === "cgst-sgst" ? (
                       <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
                         <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
                         <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
                       </>
                     ) : taxType === "igst" ? (
-                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      </>
                     ) : null}
                     <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
                   </tr>
@@ -931,7 +944,7 @@ export default function InvoicePreview({
             </div>
           </div>
 
-          <div className="p-3 text-[12px] text-slate-800">
+          <div className="pt-0 pb-3 px-3 text-[12px] text-slate-800">
             {totals.discountTotal > 0 ? (
               <div className="flex justify-between gap-2 py-0.5">
                 <span>Item-wise Discount</span>
@@ -952,7 +965,7 @@ export default function InvoicePreview({
               <span>Tax</span>
               <span>{formatCurrency(totals.tax)}</span>
             </div>
-            {Math.abs(totals.roundOff) > 0 ? (
+            {hasRoundOff ? (
               <div className="flex justify-between gap-2 py-0.5">
                 <span>Round Off</span>
                 <span>{formatCurrency(totals.roundOff)}</span>
@@ -976,13 +989,13 @@ export default function InvoicePreview({
         {/* Notes & Terms Section */}
         {hasNotesOrTerms ? (
           <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
-            <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+            <div className="border-b border-slate-300 pt-0 pb-3 px-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
               <SectionHeader title="Notes" />
               <div className="whitespace-pre-line text-[11px] leading-5 text-slate-700">
                 {hasNotes ? invoice.notes : "—"}
               </div>
             </div>
-            <div className="p-3">
+            <div className="pt-0 pb-3 px-3">
               <SectionHeader title="Terms & Conditions" />
               <div className="whitespace-pre-line text-[11px] leading-5 text-slate-700">
                 {hasTerms ? invoice.terms : "—"}
@@ -993,11 +1006,11 @@ export default function InvoicePreview({
 
         {/* Bank Details & Authorized Signature */}
         <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
-          <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+          <div className="border-b border-slate-300 pt-0 pb-3 px-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
             <SectionHeader title="Bank Details" />
             <div className="whitespace-pre-line text-[12px] leading-5 text-slate-800">{invoice.bankDetails || "—"}</div>
           </div>
-          <div className="p-3">
+          <div className="pt-0 pb-3 px-3">
             <SectionHeader title="For Radiatech Electra" />
             <div className="mt-2 flex flex-col items-start">
               <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border border-slate-300 bg-slate-50 text-[11px] text-slate-400">

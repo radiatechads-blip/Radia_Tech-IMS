@@ -688,18 +688,16 @@ function CreditNotePageContent() {
 
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className={labelCls}>Credit Note Number</label><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Credit Note Date</label><div className="relative"><input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={`${inputCls} pr-7`} /><CalendarDays size={13} className="absolute right-2 top-1.5 text-gray-400 pointer-events-none" /></div></div>
+                    <div><label className={labelCls}>Return Number</label><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputCls} /></div>
+                    <div><label className={labelCls}> Date</label><div className="relative"><input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={`${inputCls} pr-7`} /><CalendarDays size={13} className="absolute right-2 top-1.5 text-gray-400 pointer-events-none" /></div></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className={labelCls}>Due Date</label><input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} className={inputCls} /></div>
                     <div><label className={labelCls}>Place of Supply</label><input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} placeholder="—" className={inputCls} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div><label className={labelCls}>Bill No.</label><input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="Bill No." className={inputCls} /></div>
                     <div><label className={labelCls}>Bill Date</label><input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} className={inputCls} /></div>
                   </div>
-                  <div><label className={labelCls}>E-Way Bill No.</label><input value={ewayBillNo} onChange={(e) => setEwayBillNo(e.target.value)} placeholder="E-Way Bill No." className={inputCls} /></div>
                   <div className="flex items-center gap-2 pt-1"><input type="checkbox" id="isDuplicateCopy" checked={isDuplicateCopy} onChange={(e) => setIsDuplicateCopy(e.target.checked)} className="h-4 w-4 accent-blue-600 cursor-pointer" /><label htmlFor="isDuplicateCopy" className="text-[12px] text-gray-600 cursor-pointer select-none">Mark as “Duplicate Copy” (unchecked = “Original for Recipient”)</label></div>
                 </div>
               </div>
@@ -785,14 +783,12 @@ function CreditNotePageContent() {
                   </div>
                   <div className="flex flex-wrap gap-2 pt-1">
                     {!showDescriptionField && <button type="button" onClick={() => setShowDescriptionField(true)} className="flex items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-100 transition-colors"><AlignLeft size={13} className="text-gray-500" /> ADD DESCRIPTION</button>}
-                    <label className="flex cursor-pointer items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-100 transition-colors"><Camera size={13} className="text-gray-500" /> ADD IMAGE<input type="file" accept="image/*" onChange={handleAttachedImageUpload} className="hidden" /></label>
-                    <label className="flex cursor-pointer items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-100 transition-colors"><FileText size={13} className="text-gray-500" /> ADD DOCUMENT<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" onChange={handleAttachedDocumentUpload} className="hidden" /></label>
+                
                   </div>
                   {showDescriptionField && <div><div className="mb-1 flex items-center justify-between"><label className={labelCls}>Additional Description</label><button type="button" onClick={() => { setShowDescriptionField(false); setAdditionalDescription(""); }} className="text-[11px] font-semibold text-red-500 hover:text-red-700">Remove</button></div><textarea value={additionalDescription} onChange={(e) => setAdditionalDescription(e.target.value)} rows={2} placeholder="Extra details about this credit note…" className={`${inputCls} resize-none`} /></div>}
-                  {attachedImage && <div className="flex items-center gap-3 rounded border border-gray-200 bg-gray-50 p-2"><img src={attachedImage} alt="Attached" className="h-14 w-14 rounded object-cover" /><div className="flex-1 text-[12px] text-gray-600">Reference image attached</div><button type="button" onClick={removeAttachedImage} className="text-[11px] font-semibold text-red-500 hover:text-red-700">Remove</button></div>}
-                  {attachedDocument && <div className="flex items-center gap-3 rounded border border-gray-200 bg-gray-50 p-2"><FileText size={18} className="text-gray-500" /><a href={attachedDocument.dataUrl} download={attachedDocument.name} className="flex-1 truncate text-[12px] font-medium text-blue-600 hover:underline">{attachedDocument.name}</a><button type="button" onClick={removeAttachedDocument} className="text-[11px] font-semibold text-red-500 hover:text-red-700">Remove</button></div>}
+                 
                   <div><label className={labelCls}>Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Thank you for your business." className={`${inputCls} resize-none`} /></div>
-                  <div><label className={labelCls}>Terms &amp; Conditions</label><textarea value={terms} onChange={(e) => setTerms(e.target.value)} rows={2} placeholder="Payment due within 7 days of invoice date." className={`${inputCls} resize-none`} /></div>
+          
                   <div><label className={labelCls}>Bank Details</label><textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className={`${inputCls} resize-none`} /></div>
                   <div className="grid grid-cols-2 gap-2 items-end"><div><label className={labelCls}>Authorized Signature Label</label><input value={authorizedSignature} onChange={(e) => setAuthorizedSignature(e.target.value)} placeholder="Authorized Signatory" className={inputCls} /></div><div className="flex items-center gap-3"><div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">{signatureImage ? <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" /> : "Signature"}</div><div className="flex flex-col gap-1"><label className="cursor-pointer text-[11px] font-semibold text-blue-600 hover:text-blue-800">{signatureImage ? "Replace" : "Upload image"}<input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" /></label>{signatureImage && <button type="button" onClick={removeSignatureImage} className="text-[11px] font-semibold text-red-500 hover:text-red-700 text-left">Remove</button>}</div></div></div>
                 </div>

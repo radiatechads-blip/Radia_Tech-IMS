@@ -2,17 +2,18 @@
 export const dynamic = "force-dynamic";
 
 import AdminShell from "@/components/admin/AdminShell";
+import DNPreview from "@/components/admin/DNPreview";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
-    AlignLeft,
-    CalendarDays,
-    Camera,
-    Check,
-    ChevronDown,
-    FileText,
-    Plus,
-    Save,
-    Share2,
+  AlignLeft,
+  CalendarDays,
+  Camera,
+  Check,
+  ChevronDown,
+  FileText,
+  Plus,
+  Save,
+  Share2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -598,6 +599,47 @@ function DebitNotePageContent() {
   };
 
   const previewPageLabels = getDuplicateCopyPageLabels(isDuplicateCopy);
+  const previewInvoice = useMemo(() => ({
+    billType: "Debit Note",
+    partyName,
+    contactPerson,
+    address,
+    city,
+    state,
+    pincode,
+    phone,
+    email,
+    gstin,
+    invoiceNumber,
+    invoiceDate,
+    createdAt: invoiceDate,
+    poDate,
+    ewayBillNo,
+    poNo,
+    placeOfSupply,
+    shipToAddress,
+    transportName,
+    vehicleNumber,
+    taxType,
+    extraDiscountAmount,
+    roundOff: roundOffAmount,
+    paymentMode,
+    notes,
+    terms,
+    bankDetails,
+    signatureImage,
+    authorizedSignature,
+    items: items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      hsn: item.hsn,
+      qty: item.qty,
+      rate: item.rate,
+      unit: item.unit,
+      discountPercent: item.discountPercent,
+      taxPercent: item.taxPercent,
+    })),
+  }), [address, authorizedSignature, bankDetails, city, contactPerson, email, extraDiscountAmount, gstin, invoiceDate, invoiceNumber, items, notes, partyName, paymentMode, phone, placeOfSupply, pincode, poDate, poNo, roundOffAmount, shipToAddress, signatureImage, state, taxType, terms, transportName, vehicleNumber, ewayBillNo]);
 
   const inputCls = "w-full bg-white border border-gray-300 rounded px-2 py-1 text-[13px] text-gray-800 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300 placeholder-gray-400";
   const selectCls = "w-full bg-white border border-gray-300 rounded px-2 py-1 text-[13px] text-gray-800 focus:outline-none focus:border-blue-400 appearance-none cursor-pointer";
@@ -690,11 +732,10 @@ function DebitNotePageContent() {
 
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className={labelCls}>Debit Note Number</label><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Debit Note Date</label><div className="relative"><input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={`${inputCls} pr-7`} /><CalendarDays size={13} className="absolute right-2 top-1.5 text-gray-400 pointer-events-none" /></div></div>
+                    <div><label className={labelCls}>Return Number</label><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Return  Date</label><div className="relative"><input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={`${inputCls} pr-7`} /><CalendarDays size={13} className="absolute right-2 top-1.5 text-gray-400 pointer-events-none" /></div></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className={labelCls}>Due Date</label><input type="date" value={dueDateValue} onChange={(e) => setDueDateValue(e.target.value)} className={inputCls} /></div>
                     <div><label className={labelCls}>Place of Supply</label><input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} placeholder="—" className={inputCls} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -821,86 +862,7 @@ function DebitNotePageContent() {
 
         <div className={showPreview ? "block" : "hidden print:block"}>
           {showPreview && <div className="mx-auto mb-3 flex max-w-[1000px] items-center justify-between px-1 print:hidden"><span className="text-sm font-semibold text-slate-700">Debit Note Preview</span><button type="button" onClick={() => setShowPreview(false)} className="rounded border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50">Back to Editing</button></div>}
-          <div className="invoice-preview-shell mx-auto w-full">
-            <div className="overflow-hidden rounded-2xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_8px_32px_rgba(15,23,42,0.07)] print:rounded-none print:shadow-none print:border-[1.2px]">
-              {previewPageLabels.map((label, index) => (
-                <div key={`${label}-${index}`} className={`invoice-preview-page ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`} style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}>
-                  <div className="relative flex items-center justify-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3"><h2 className="text-base font-semibold text-slate-900">Debit Note</h2><span className="absolute right-6 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</span></div>
-                  {convertedFromProforma && <div className="border-b border-slate-300 bg-blue-50 px-6 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-blue-700">Converted from Proforma Invoice {sourceProformaNumber || "—"}</div>}
-                  <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-6 pb-4 pt-4"><div className="flex items-start gap-3"><img src="/LOGO.png" alt="Radiatech Electra" className="h-12 w-12 rounded-md object-contain" /><div><h3 className="text-xl font-bold tracking-wide text-slate-950">RADIATECH ELECTRA</h3><p className="mt-1 text-[11px] text-slate-600">Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301</p></div></div><div className="text-right text-[11px] text-slate-600"><div>Phone: +91 81788 50959</div><div>Email: sales@radiatech.in</div><div>GSTIN: 09DDZPK0004H1ZF</div><div>State: 09-Uttar Pradesh</div></div></div>
-                  <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
-                    <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r">
-                      <div className="rounded-lg border border-slate-300 bg-white p-3">
-                        <div className="mb-2 flex items-center justify-between"><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Return To:</p><select value={selectedCustomerId} onChange={(e) => handleCustomerSelect(e.target.value)} className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 outline-none transition hover:border-slate-300 print:hidden cursor-pointer"><option value="">Select customer…</option><option value={ADD_NEW_CUSTOMER_OPTION}>+ Add New Customer</option>{customers.filter((c) => c.id).map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}</select></div>
-                        <div className="space-y-0.5 text-[13px]"><input value={partyName} onChange={(e) => setPartyName(e.target.value)} placeholder="Party name" className="inv-field w-full font-semibold text-slate-900" /><div className={contactPerson ? "" : "print:hidden"}><input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder="Contact person" className="inv-field w-full text-slate-700" /></div><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" className="inv-field w-full text-slate-700" /><div className="flex gap-1"><input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="inv-field min-w-0 flex-1 text-slate-700" /><input value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="inv-field min-w-0 flex-1 text-slate-700" /><input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="PIN" className="inv-field w-16 text-slate-700" /></div><div className={`flex items-center gap-1 text-slate-700 ${phone ? "" : "print:hidden"}`}><span className="shrink-0 text-slate-500">Contact No:</span><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" /></div><div className={`flex items-center gap-1 text-slate-700 ${email ? "" : "print:hidden"}`}><span className="shrink-0 text-slate-500">Email:</span><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" /></div><div className={`flex items-center gap-1 text-slate-700 ${gstin ? "" : "print:hidden"}`}><span className="shrink-0 text-slate-500">GSTIN:</span><input value={gstin} onChange={(e) => setGstin(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" /></div></div>
-                      </div>
-                    </div>
-                    <div className="bg-white p-4">
-                      <div className="rounded-lg border border-slate-300 bg-white p-3">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Return Details:</p>
-                        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-[13px] text-slate-800">
-                          <span className="whitespace-nowrap font-semibold text-slate-900">Return No:</span><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="inv-field w-full" />
-                          <span className="font-semibold text-slate-900">Date:</span><input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="inv-field w-full" />
-                          <span className="whitespace-nowrap font-semibold text-slate-900">Bill No:</span><input value={poNo} onChange={(e) => setPoNo(e.target.value)} placeholder="—" className="inv-field w-full" />
-                          <span className="font-semibold text-slate-900">Bill Date:</span><input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} className="inv-field w-full" />
-                          <span className="whitespace-nowrap font-semibold text-slate-900">Place of Supply:</span><input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} placeholder="—" className="inv-field w-full" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2">
-                    <div className={`border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r ${shipToAddress ? "" : "print:hidden"}`}>
-                      <div className="rounded-lg border border-slate-300 bg-white p-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Ship To:</p><textarea value={shipToAddress} onChange={(e) => setShipToAddress(e.target.value)} rows={3} placeholder="Shipping address" className="inv-field w-full resize-none text-[13px] text-slate-800" /></div>
-                    </div>
-                    <div className={`bg-white p-4 ${transportName || vehicleNumber ? "" : "print:hidden"}`}>
-                      <div className="rounded-lg border border-slate-300 bg-white p-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Transportation Details:</p><div className="space-y-1 text-[13px] text-slate-800"><div className={`flex items-center gap-1 ${transportName ? "" : "print:hidden"}`}><span className="shrink-0 text-slate-500">Transport Name:</span><input value={transportName} onChange={(e) => setTransportName(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" /></div><div className={`flex items-center gap-1 ${vehicleNumber ? "" : "print:hidden"}`}><span className="shrink-0 text-slate-500">Vehicle Number:</span><input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} placeholder="—" className="inv-field min-w-0 flex-1" /></div></div></div>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto border-b border-slate-300">
-                    <table className="w-full table-fixed border-collapse text-[10px] print:text-[8.5px]">
-                      <thead>
-                        <tr className="bg-slate-50 text-left text-slate-700">
-                          <th className="border border-slate-300 px-2 py-2">#</th><th className="border border-slate-300 px-2 py-2">Item</th><th className="border border-slate-300 px-2 py-2">HSN/SAC</th><th className="border border-slate-300 px-2 py-2 text-right">Qty</th><th className="border border-slate-300 px-2 py-2">Unit</th><th className="border border-slate-300 px-2 py-2 text-right">Rate</th><th className="border border-slate-300 px-2 py-2 text-right">Disc %</th><th className="border border-slate-300 px-2 py-2 text-right">Tax %</th><th className="border border-slate-300 px-2 py-2 text-right">Taxable Amt</th><th className="border border-slate-300 px-2 py-2 text-right">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((item, index) => {
-                          const taxableAmount = item.qty * item.rate * (1 - item.discountPercent / 100);
-                          const rowTotal = taxableAmount + taxableAmount * (item.taxPercent / 100);
-                          return (
-                            <tr key={item.id}>
-                              <td className="border border-slate-300 px-2 py-2 text-center">{index + 1}</td>
-                              <td className="border border-slate-300 px-2 py-2">{item.description || "—"}</td>
-                              <td className="border border-slate-300 px-2 py-2">{item.hsn || "—"}</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{item.qty}</td>
-                              <td className="border border-slate-300 px-2 py-2">{item.unit || "—"}</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(item.rate)}</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{item.discountPercent}%</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{item.taxPercent}%</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(taxableAmount)}</td>
-                              <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(rowTotal)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="grid grid-cols-1 border-b border-slate-300 bg-white p-4 sm:grid-cols-2">
-                    <div className="space-y-2"><div><label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="inv-field w-full resize-none text-[13px] text-slate-800" /></div><div><label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Terms &amp; Conditions</label><textarea value={terms} onChange={(e) => setTerms(e.target.value)} rows={2} className="inv-field w-full resize-none text-[13px] text-slate-800" /></div></div>
-                    <div className="space-y-2"><div><label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bank Details</label><textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className="inv-field w-full resize-none text-[13px] text-slate-800" /></div><div className="flex items-end justify-between gap-2"><div className="flex-1"><label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Authorized Signature</label><input value={authorizedSignature} onChange={(e) => setAuthorizedSignature(e.target.value)} className="inv-field w-full" /></div>{signatureImage ? <img src={signatureImage} alt="Signature" className="h-12 w-24 rounded object-contain" /> : null}</div></div>
-                  </div>
-
-                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-6 py-3 text-[13px]">
-                    <span className="text-slate-600">Tax Type: {taxType === "cgst-sgst" ? "CGST + SGST" : taxType === "igst" ? "IGST" : "No Tax"}</span>
-                    <span className="font-semibold text-slate-900">Grand Total: {formatCurrency(totals.grandTotal)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {showPreview && <DNPreview invoice={previewInvoice} taxType={taxType} pageLabels={previewPageLabels} />}
         </div>
       </div>
     </AdminShell>
