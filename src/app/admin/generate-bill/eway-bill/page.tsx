@@ -3,7 +3,8 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { Calendar, Info, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import EWayBillPreview from "./EWayBillPreview";
 
 interface ItemRow {
@@ -34,10 +35,13 @@ const initialItem: ItemRow = {
   cessNonAdvit: '0',
 };
 
-export default function EWayBillForm() {
+function EWayBillFormContent() {
   const [supplyType, setSupplyType] = useState<'outward' | 'inward'>('outward');
   const [subType, setSubType] = useState('supply');
-  const [documentType, setDocumentType] = useState('Delivery Challan');
+  const searchParams = useSearchParams();
+  const [documentType, setDocumentType] = useState(
+    searchParams.get('documentType') || 'Delivery Challan',
+  );
   const [documentNo, setDocumentNo] = useState('');
   const [documentDate, setDocumentDate] = useState('');
   const [transactionType, setTransactionType] = useState('Regular');
@@ -251,6 +255,7 @@ export default function EWayBillForm() {
                   <option>Tax Invoice</option>
                   <option>Bill of Supply</option>
                   <option>Credit Note</option>
+                  <option>Debit Note</option>
                 </select>
               </FieldGroup>
               <FieldGroup label="Document No">
@@ -673,5 +678,13 @@ function TotalField({ label, value, className = '' }: { label: React.ReactNode; 
       <label className="text-gray-600 font-medium leading-tight flex items-center gap-0.5">{label}</label>
       <input readOnly value={value} className="border border-gray-300 rounded px-1.5 py-0.5 text-xs text-right bg-gray-100 w-full font-semibold" />
     </div>
+  );
+}
+
+export default function EWayBillForm() {
+  return (
+    <Suspense fallback={<div className="rounded border border-slate-200 bg-white p-6 text-sm text-slate-500">Loading e-way bill form…</div>}>
+      <EWayBillFormContent />
+    </Suspense>
   );
 }

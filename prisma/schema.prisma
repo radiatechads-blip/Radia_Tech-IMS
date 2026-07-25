@@ -112,6 +112,14 @@ model Invoice {
   shipToAddress       String         @default("")
   transportName       String         @default("")
   vehicleNumber       String         @default("")
+  receivedByName      String         @default("")
+  receivedByComment   String         @default("")
+  receivedByDate     DateTime?
+  receivedBySignature String        @default("")
+  deliveredByName    String         @default("")
+  deliveredByComment String         @default("")
+  deliveredByDate    DateTime?
+  deliveredBySignature String       @default("")
   taxType             String         @default("cgst-sgst")
   paymentMode         String         @default("")
   notes               String         @default("")

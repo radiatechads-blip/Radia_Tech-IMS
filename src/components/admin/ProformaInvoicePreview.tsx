@@ -1,21 +1,39 @@
-// "use client";
+﻿// "use client";
 
 // import type { InvoiceSummary } from "@/lib/invoiceRoute";
 // import { getBillTypeLabel } from "@/lib/invoiceRoute";
+// import Image from "next/image";
 // import { useMemo, useState } from "react";
 
 // type TaxType = "cgst-sgst" | "igst" | "none";
 
 // const ONES = [
-//   "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
-//   "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen",
-//   "Sixteen", "Seventeen", "Eighteen", "Nineteen",
+//   "",
+//   "One",
+//   "Two",
+//   "Three",
+//   "Four",
+//   "Five",
+//   "Six",
+//   "Seven",
+//   "Eight",
+//   "Nine",
+//   "Ten",
+//   "Eleven",
+//   "Twelve",
+//   "Thirteen",
+//   "Fourteen",
+//   "Fifteen",
+//   "Sixteen",
+//   "Seventeen",
+//   "Eighteen",
+//   "Nineteen",
 // ];
 // const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
 
 // function twoDigits(n: number): string {
 //   if (n < 20) return ONES[n];
-//   return `${TENS[Math.floor(n / 10)]}${ONES[n % 10] ? " " + ONES[n % 10] : ""}`;
+//   return `${TENS[Math.floor(n / 10)]}${ONES[n % 10] ? ` ${ONES[n % 10]}` : ""}`;
 // }
 
 // function threeDigits(n: number): string {
@@ -45,7 +63,7 @@
 //   const parts: string[] = [];
 //   if (crore > 0) parts.push(`${threeDigits(crore)} Crore`);
 //   if (lakh > 0) parts.push(`${twoDigits(lakh)} Lakh`);
-//   if (thousand > 0) parts.push(`${twoDigits(thousand)} Thousand`);
+//   if (thousand > 0) parts.push(`${threeDigits(thousand)} Thousand`);
 //   if (rest > 0) parts.push(threeDigits(rest));
 
 //   return `${negative ? "Minus " : ""}${parts.join(" ")} Only`;
@@ -79,7 +97,6 @@
 
 //   const items = useMemo(() => invoice.items || [], [invoice.items]);
 //   const roundOff = Number(invoice.roundOff ?? 0);
-
 //   const shouldShowDiscountColumn = items.some(
 //     (item) => Number(item.discountPercent || 0) > 0,
 //   );
@@ -117,16 +134,9 @@
 //   );
 
 //   const totals = useMemo(() => {
-//     const subtotal = rows.reduce((sum, r) => sum + r.qty * r.rate, 0);
 //     const discountTotal = rows.reduce((sum, r) => sum + r.discountAmount, 0);
-//     const taxableBeforeExtraDiscount = rows.reduce(
-//       (sum, r) => sum + r.taxableAmount,
-//       0,
-//     );
-//     const taxBeforeExtraDiscount = rows.reduce(
-//       (sum, r) => sum + r.gstAmount,
-//       0,
-//     );
+//     const taxableBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.taxableAmount, 0);
+//     const taxBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.gstAmount, 0);
 
 //     const extraDiscountAmount = Number(invoice.extraDiscountAmount || 0);
 //     const taxable =
@@ -137,9 +147,7 @@
 //       extraDiscountAmount > 0
 //         ? rows.reduce((sum, r) => {
 //             const ratio =
-//               taxableBeforeExtraDiscount > 0
-//                 ? r.taxableAmount / taxableBeforeExtraDiscount
-//                 : 0;
+//               taxableBeforeExtraDiscount > 0 ? r.taxableAmount / taxableBeforeExtraDiscount : 0;
 //             return sum + r.gstAmount * ratio;
 //           }, 0)
 //         : taxBeforeExtraDiscount;
@@ -166,7 +174,6 @@
 //     const igst = tax;
 
 //     return {
-//       subtotal,
 //       discountTotal,
 //       taxableBeforeExtraDiscount,
 //       taxBeforeExtraDiscount,
@@ -194,54 +201,41 @@
 //   };
 
 //   const renderCompactMetricCell = (amount: number, rate: number) => {
-//     if (rate <= 0) return <span className="text-slate-400">—</span>;
+//     if (rate <= 0) return <span className="text-black">—</span>;
 //     return (
 //       <span>
 //         {formatCurrency(amount)}
-//         <span className="ml-1 text-[10px] text-slate-400">
-//           ({rate.toFixed(2)}%)
-//         </span>
+//         <span className="ml-1 text-[10px] text-black">({rate.toFixed(2)}%)</span>
 //       </span>
 //     );
 //   };
 
 //   const docLabel = getBillTypeLabel(invoice);
-  
-//   // Conditional check to determine if the notes/terms section should show up
-//   const hasNotesOrTerms = !!(invoice.notes?.trim() || invoice.terms?.trim());
+//   const signatureImageSrc = invoice.signatureImage?.trim() ? invoice.signatureImage : "/STAMP.jpeg";
+//   const hasNotes = !!invoice.notes?.trim();
+//   const hasTerms = !!invoice.terms?.trim();
+//   const hasNotesOrTerms = hasNotes || hasTerms;
+//   const sectionLabel = "mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-black";
 
 //   return (
-//     <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-//       <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
-//         {/* Header bar */}
-//         <div className="relative flex items-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3 print:px-5">
-//           <div className="flex-1" />
-//           <h2 className="absolute left-1/2 -translate-x-1/2 text-base font-semibold capitalize text-slate-900">
-//             {docLabel}
-//           </h2>
-//           <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-//             {invoice.isDuplicate ? "" : ""}
-//           </span>
+//     <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
+//       <div className="mx-auto w-full max-w-225 overflow-hidden border border-slate-300 bg-white text-black print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
+//         <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-black">
+//           <div className="text-[13px] font-semibold uppercase tracking-normal">Proforma Invoice</div>
+//           <div className="text-[11px] uppercase tracking-normal"></div>
 //         </div>
 
-//         {/* Company row */}
-//         <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-6 pb-4 pt-4 print:px-5">
+//         <div className="flex items-start justify-between gap-3 border-b border-slate-300 px-4 py-3">
 //           <div className="flex items-start gap-3">
-//             <div className="flex h-12 w-12 items-center justify-center rounded-md text-sm font-bold text-white">
-//               {/* eslint-disable-next-line @next/next/no-img-element */}
-//               <img src="/favicon.png" alt="Company Logo" />
-//             </div>
+//             <Image src="/favicon.png" alt="Logo" width={64} height={64} className="h-14 w-14 object-contain" unoptimized />
 //             <div>
-//               <h3 className="text-xl font-bold tracking-wide text-slate-950">
-//                 RADIATECH ELECTRA
-//               </h3>
-//               <p className="mt-1 text-[11px] text-slate-600">
-//                 Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar
-//                 Pradesh, 201301
+//               <h3 className="text-[18px] font-bold tracking-wide text-black">RADIATECH ELECTRA</h3>
+//               <p className="mt-0.5 text-[12px] leading-snug text-black">
+//                 Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
 //               </p>
 //             </div>
 //           </div>
-//           <div className="text-right text-[11px] text-slate-600">
+//           <div className="shrink-0 text-right text-[11px] leading-5 text-black">
 //             <div>Phone: +91 81788 50959</div>
 //             <div>Email: sales@radiatech.in</div>
 //             <div>GSTIN: 09DDZPK0004H1ZF</div>
@@ -249,387 +243,277 @@
 //           </div>
 //         </div>
 
-//         {/* Bill To + Invoice Details */}
-//         <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2 print:grid-cols-2">
-//           <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
-//             <div className="rounded-lg border border-slate-300 bg-white p-3">
-//               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-//                 Bill To:
-//               </p>
-//               <div className="mt-1 text-[13px] leading-5 text-slate-800">
-//                 <div className="font-semibold text-slate-900">
-//                   {invoice.partyName || "—"}
-//                 </div>
-//                 {invoice.contactPerson ? (
-//                   <div>Attn: {invoice.contactPerson}</div>
-//                 ) : null}
-//                 <div>{invoice.address || "—"}</div>
-//                 {invoice.shipToAddress ? (
-//                   <div>Ship To: {invoice.shipToAddress}</div>
-//                 ) : null}
-//                 <div>
-//                   {[invoice.city, invoice.state, invoice.pincode]
-//                     .filter(Boolean)
-//                     .join(", ") || "—"}
-//                 </div>
-//                 <div>Contact No: {invoice.phone || "—"}</div>
-//                 <div>Email: {invoice.email || "—"}</div>
-//                 <div>GSTIN: {invoice.gstin || "—"}</div>
-//               </div>
+//         <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
+//           <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+//             <div className={sectionLabel}>Proforma To</div>
+//             <div className="space-y-0.5 text-[12px] leading-5 text-black">
+//               <div className="font-semibold">{invoice.partyName || "—"}</div>
+//               {invoice.contactPerson ? <div> {invoice.contactPerson}</div> : null}
+//               <div>{invoice.address || "—"}</div>
+//               <div>{[invoice.city, invoice.state, invoice.pincode].filter(Boolean).join(", ") || "—"}</div>
+//               <div>Contact No: {invoice.phone || "—"}</div>
+//               <div>Email: {invoice.email || "—"}</div>
+//               <div>GSTIN: {invoice.gstin || "—"}</div>
 //             </div>
 //           </div>
-//           <div className="bg-white p-4">
-//             <div className="rounded-lg border border-slate-300 bg-white p-3">
-//               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-//                 Proforma Details:
-//               </p>
-//               <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[13px] text-slate-800">
-//                 <span className="font-semibold text-slate-900">Proforma No:</span>
-//                 <span>{invoice.invoiceNumber || "—"}</span>
-//                 <span className="font-semibold text-slate-900">Date:</span>
-//                 <span>{formatDate(String(invoice.invoiceDate || invoice.createdAt))}</span>
-//                 <span className="font-semibold text-slate-900">Valid Till:</span>
-//                 <span>{formatDate(String(invoice.dueDate || ""))}</span>
-//                 <span className="font-semibold text-slate-900">PO Date:</span>
-//                 <span>{formatDate(String(invoice.poDate || ""))}</span>
-//                 <span className="font-semibold text-slate-900">PO No:</span>
-//                 <span>{invoice.poNo || "—"}</span>
-//                 <span className="font-semibold text-slate-900">Place of Supply:</span>
-//                 <span>{invoice.placeOfSupply || "—"}</span>
-//                 {invoice.transportName ? (
-//                   <>
-//                     <span className="font-semibold text-slate-900">Transport:</span>
-//                     <span>{invoice.transportName}</span>
-//                   </>
-//                 ) : null}
-//                 {invoice.vehicleNumber ? (
-//                   <>
-//                     <span className="font-semibold text-slate-900">Vehicle No:</span>
-//                     <span>{invoice.vehicleNumber}</span>
-//                   </>
-//                 ) : null}
-//                 {invoice.ewayBillNo ? (
-//                   <>
-//                     <span className="font-semibold text-slate-900">E-way Bill No:</span>
-//                     <span>{invoice.ewayBillNo}</span>
-//                   </>
-//                 ) : null}
-//               </div>
+
+//           <div className="p-3">
+//             <div className={sectionLabel}>Proforma Details</div>
+//             <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[12px] text-black">
+//               <span className="font-semibold">Proforma No:</span>
+//               <span>{invoice.invoiceNumber || "—"}</span>
+//               <span className="font-semibold">Date:</span>
+//               <span>{formatDate(String(invoice.invoiceDate || invoice.createdAt))}</span>
+//               <span className="font-semibold">Valid Till:</span>
+//               <span>{formatDate(String(invoice.dueDate || ""))}</span>
+//               <span className="font-semibold">PO Date:</span>
+//               <span>{formatDate(String(invoice.poDate || ""))}</span>
+//               <span className="font-semibold">PO No:</span>
+//               <span>{invoice.poNo || "—"}</span>
+//               <span className="font-semibold">Place of Supply:</span>
+//               <span>{invoice.placeOfSupply || "—"}</span>
+//               {invoice.transportName ? (
+//                 <>
+//                   <span className="font-semibold">Transport:</span>
+//                   <span>{invoice.transportName}</span>
+//                 </>
+//               ) : null}
+//               {invoice.vehicleNumber ? (
+//                 <>
+//                   <span className="font-semibold">Vehicle No:</span>
+//                   <span>{invoice.vehicleNumber}</span>
+//                 </>
+//               ) : null}
+//               {invoice.ewayBillNo ? (
+//                 <>
+//                   <span className="font-semibold">E-way Bill No:</span>
+//                   <span>{invoice.ewayBillNo}</span>
+//                 </>
+//               ) : null}
 //             </div>
 //           </div>
 //         </div>
 
-       
-
-//         {/* Items table */}
-//         <div className="invoice-table-wrap overflow-hidden border-b border-slate-300">
-//           <table className="w-full border-collapse text-[12px]">
+//         <div className="overflow-x-auto border-b border-slate-300">
+//           <table className="w-full border-collapse text-[11px]">
+//             <colgroup>
+//               <col className="w-[3%]" />
+//               <col className="w-[22%]" />
+//               <col className="w-[8%]" />
+//               <col className="w-[6%]" />
+//               <col className="w-[5%]" />
+//               <col className="w-[8%]" />
+//               {shouldShowDiscountColumn ? <col className="w-[8%]" /> : null}
+//               <col className="w-[8%]" />
+//               <col className="w-[9%]" />
+//               <col className="w-[8%]" />
+//               <col className="w-[8%]" />
+//               <col className="w-[10%]" />
+//             </colgroup>
 //             <thead>
-//               <tr className="bg-[#bec9d9] text-left text-slate-700">
-//                 <th className="border border-slate-300 px-2 py-2 font-semibold">#</th>
-//                 <th className="border border-slate-300 px-2 py-2 font-semibold">Item name</th>
-//                 <th className="border border-slate-300 px-2 py-2 font-semibold">HSN/SAC</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Quantity</th>
-//                 <th className="border border-slate-300 px-2 py-2 font-semibold">Unit</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Price/unit (Rs)</th>
-//                 {shouldShowDiscountColumn && (
-//                   <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Discount</th>
-//                 )}
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable Price/unit (Rs)</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable amount (Rs)</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">GST</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Final Rate (Rs)</th>
-//                 <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Amount Total (Rs)</th>
+//               <tr className="bg-white text-black">
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">#</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">Item name</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">HSN/SAC</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Qty</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">Unit</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Price/unit</th>
+//                 {shouldShowDiscountColumn ? (
+//                   <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Discount</th>
+//                 ) : null}
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Taxable/unit</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Taxable amt</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">GST</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Final rate</th>
+//                 <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Amount</th>
 //               </tr>
 //             </thead>
 //             <tbody>
 //               {rows.map((item, index) => (
-//                 <tr key={item.id || index}>
-//                   <td className="border border-slate-300 px-2 py-2 align-top">{index + 1}</td>
-//                   <td className="border border-slate-300 px-2 py-2 align-top">{item.description || "Item description"}</td>
-//                   <td className="border border-slate-300 px-2 py-2 align-top">{item.hsn || "—"}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{item.qty}</td>
-//                   <td className="border border-slate-300 px-2 py-2 align-top">{item.unit || "—"}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{formatCurrency(item.rate)}</td>
-//                   {shouldShowDiscountColumn && (
-//                     <td className="border border-slate-300 px-2 py-2 text-right align-top">
+//                 <tr key={item.id || index} className="text-black">
+//                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{index + 1}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.description || "—"}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.hsn || "—"}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{item.qty}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.unit || "—"}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.rate)}</td>
+//                   {shouldShowDiscountColumn ? (
+//                     <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
 //                       {renderCompactMetricCell(item.discountAmount, item.discountPercent)}
 //                     </td>
-//                   )}
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
-//                   <td className="border border-slate-300 px-2 py-2 text-right align-top font-semibold text-slate-900">{formatCurrency(item.rowAmount)}</td>
+//                   ) : null}
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top font-semibold">{formatCurrency(item.rowAmount)}</td>
 //                 </tr>
 //               ))}
 //             </tbody>
 //             <tfoot>
-//               <tr className="bg-slate-50 font-semibold text-slate-900">
-//                 <td className="border border-slate-300 px-2 py-2" colSpan={3}>Total</td>
-//                 <td className="border border-slate-300 px-2 py-2 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
-//                 <td className="border border-slate-300 px-2 py-2" />
-//                 <td className="border border-slate-300 px-2 py-2" />
-//                 {shouldShowDiscountColumn && (
-//                   <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.discountTotal)}</td>
-//                 )}
-//                 <td className="border border-slate-300 px-2 py-2" />
-//                 <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
-//                 <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
-//                 <td className="border border-slate-300 px-2 py-2" />
-//                 <td className="border border-slate-300 px-2 py-2 text-right">
-//                   {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
-//                 </td>
+//               <tr className="bg-white text-black">
+//                 <td className="border border-slate-300 px-1.5 py-1.5" colSpan={3}>Total</td>
+//                 <td className="border border-slate-300 px-1.5 py-1.5 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
+//                 <td className="border border-slate-300 px-1.5 py-1.5" />
+//                 <td className="border border-slate-300 px-1.5 py-1.5" />
+//                 {shouldShowDiscountColumn ? (
+//                   <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.discountTotal)}</td>
+//                 ) : null}
+//                 <td className="border border-slate-300 px-1.5 py-1.5" />
+//                 <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
+//                 <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
+//                 <td className="border border-slate-300 px-1.5 py-1.5" />
+//                 <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}</td>
 //               </tr>
 //             </tfoot>
 //           </table>
 //         </div>
 
-//         {/* Tax Summary + Totals */}
-//         <div className="grid grid-cols-1 border-b border-slate-300 bg-white md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)]">
-//           <div className="min-w-0 border-b border-slate-300 bg-slate-50 p-4 md:border-b-0 md:border-r">
-//             <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
-//               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary:</p>
-//               <label className="mt-2 mb-2 block">
-//                 <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
+//         <div className="grid grid-cols-1 border-b border-slate-300 md:grid-cols-[1.1fr_0.9fr] print:grid-cols-2">
+//           <div className="border-b border-slate-300 p-3 md:border-b-0 md:border-r print:border-b-0 print:border-r">
+//             <div className={sectionLabel}>Tax Summary</div>
+//             <div className="mt-0.5">
+//               <div className="mb-1.5">
+//                 <span className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-black">Tax Option</span>
 //                 <select
 //                   value={taxType}
 //                   onChange={(event) => handleTaxTypeChange(event.target.value as TaxType)}
 //                   disabled={!isInteractive}
-//                   className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[12px] text-slate-700 disabled:opacity-60"
+//                   className="mt-1 w-40 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-black disabled:opacity-60"
 //                 >
 //                   <option value="cgst-sgst">CGST + SGST</option>
 //                   <option value="igst">IGST</option>
 //                   <option value="none">No Tax</option>
 //                 </select>
-//               </label>
-//               <div className="mt-2 overflow-x-auto">
-//                 <table className="min-w-[520px] w-full border-collapse text-[11px]">
-//                   <thead>
-//                     <tr className="bg-slate-100 text-left text-slate-600">
-//                       <th className="border border-slate-300 px-2 py-1 font-semibold">Taxable</th>
-//                       {taxType === "cgst-sgst" ? (
-//                         <>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
-//                         </>
-//                       ) : taxType === "igst" ? (
-//                         <>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
-//                           <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
-//                         </>
-//                       ) : null}
-//                       <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
-//                     </tr>
-//                   </thead>
-//                   <tbody>
-//                     <tr className="bg-[#fbfcfe]">
-//                       <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
-//                       {taxType === "cgst-sgst" ? (
-//                         <>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-//                         </>
-//                       ) : taxType === "igst" ? (
-//                         <>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-//                         </>
-//                       ) : null}
-//                       <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-//                     </tr>
-//                     <tr className="bg-[#ce9b24] font-semibold text-slate-900">
-//                       <td className="border border-slate-300 px-2 py-1">TOTAL</td>
-//                       {taxType === "cgst-sgst" ? (
-//                         <>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-//                         </>
-//                       ) : taxType === "igst" ? (
-//                         <>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-//                           <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-//                         </>
-//                       ) : null}
-//                       <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-//                     </tr>
-//                   </tbody>
-//                 </table>
 //               </div>
-//               <div className="mt-3 text-[12px] text-slate-700">
-//                 <span className="font-semibold text-slate-900">Invoice Amount in Words: </span>
-//                 {numberToIndianWords(totals.grandTotal)}
+//               <table className="w-full border-collapse text-[11px] text-black">
+//                 <thead>
+//                   <tr>
+//                     <th className="border border-slate-300 px-2 py-1 text-left font-semibold">Taxable</th>
+//                     {taxType === "cgst-sgst" ? (
+//                       <>
+//                         <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST</th>
+//                         <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST</th>
+//                       </>
+//                     ) : taxType === "igst" ? (
+//                       <>
+//                         <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST</th>
+//                       </>
+//                     ) : null}
+//                     <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   <tr>
+//                     <td className="border border-slate-300 px-2 py-1 font-semibold">{formatCurrency(totals.taxable)}</td>
+//                     {taxType === "cgst-sgst" ? (
+//                       <>
+//                         <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+//                         <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+//                       </>
+//                     ) : taxType === "igst" ? (
+//                       <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+//                     ) : null}
+//                     <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+//                   </tr>
+//                 </tbody>
+//               </table>
+//               <div className="mt-1 text-[11px] text-black">
+//                 <span className="font-semibold">Amount in Words:</span> {numberToIndianWords(totals.grandTotal)}
 //               </div>
 //             </div>
 //           </div>
 
-//           <div className="min-w-0 bg-white p-4 text-[13px] text-slate-800">
-//             {totals.discountTotal > 0 && (
-//               <div className="mt-1 flex items-start justify-between gap-3">
-//                 <span className="min-w-0 pr-2">Item-wise Discount</span>
-//                 <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
+//           <div className="p-3 text-[12px] text-black">
+//             {totals.discountTotal > 0 ? (
+//               <div className="flex justify-between gap-2 py-0.5">
+//                 <span>Item-wise Discount</span>
+//                 <span>{formatCurrency(totals.discountTotal)}</span>
 //               </div>
-//             )}
-//             {totals.extraDiscountAmount > 0 && (
-//               <div className="mt-1 flex items-start justify-between gap-3 text-amber-700">
-//                 <span className="min-w-0 pr-2">Discount on Taxable Amount</span>
-//                 <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
-//               </div>
-//             )}
+//             ) : null}
 //             {totals.extraDiscountAmount > 0 ? (
-//               <div className="mt-1 flex items-start justify-between gap-3">
-//                 <span className="min-w-0 pr-2">Taxable Amount (After Extra Discount)</span>
-//                 <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxable)}</span>
+//               <div className="flex justify-between gap-2 py-0.5 text-black">
+//                 <span>Discount on Taxable Amount</span>
+//                 <span>{formatCurrency(totals.extraDiscountAmount)}</span>
 //               </div>
-//             ) : (
-//               <div className="flex items-start justify-between gap-3">
-//                 <span className="min-w-0 pr-2">Taxable Amount</span>
-//                 <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
+//             ) : null}
+//             <div className="flex justify-between gap-2 py-0.5">
+//               <span>Taxable Amount</span>
+//               <span>{formatCurrency(totals.extraDiscountAmount > 0 ? totals.taxable : totals.taxableBeforeExtraDiscount)}</span>
+//             </div>
+//             <div className="flex justify-between gap-2 py-0.5">
+//               <span>Tax</span>
+//               <span>{formatCurrency(totals.tax)}</span>
+//             </div>
+//             {Math.abs(totals.roundOff) > 0 ? (
+//               <div className="flex justify-between gap-2 py-0.5">
+//                 <span>Round Off</span>
+//                 <span>{formatCurrency(totals.roundOff)}</span>
 //               </div>
-//             )}
-//             <div className="mt-1 flex items-start justify-between gap-3">
-//               <span className="min-w-0 pr-2">Tax</span>
-//               <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
+//             ) : null}
+//             <div className="mt-2 flex justify-between gap-2 border-t border-slate-300 pt-2 text-[13px] font-semibold">
+//               <span>Grand Total</span>
+//               <span>{formatCurrency(totals.grandTotal)}</span>
 //             </div>
-//             {Math.abs(totals.roundOff) > 0 && (
-//               <div className="mt-1 flex items-start justify-between gap-3">
-//                 <span className="min-w-0 pr-2">Round Off</span>
-//                 <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
-//               </div>
-//             )}
-//             <div className="mt-2 flex items-start justify-between gap-3 border-t border-slate-300 pt-2 text-[15px] font-semibold text-slate-950">
-//               <span className="min-w-0 pr-2">Grand Total</span>
-//               <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+//             <div className="mt-2 flex justify-between gap-2 py-0.5">
+//               <span>Payment Mode</span>
+//               <span>{invoice.paymentMode || "—"}</span>
 //             </div>
-//             <div className="mt-3 flex items-start justify-between gap-3">
-//               <span className="min-w-0 pr-2">Payment Terms</span>
-//               <span className="ml-auto shrink-0 text-right">: {invoice.paymentMode || "—"}</span>
-//             </div>
-//             <div className="mt-1 flex items-start justify-between gap-3 font-semibold text-slate-900">
-//               <span className="min-w-0 pr-2">Balance</span>
-//               <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+//             <div className="mt-0.5 flex justify-between gap-2 font-semibold">
+//               <span>Balance</span>
+//               <span>{formatCurrency(totals.grandTotal)}</span>
 //             </div>
 //           </div>
 //         </div>
 
-//         {/* Notes + Terms (Conditionally rendered to adapt layout) */}
-//         {hasNotesOrTerms && (
-//           <div className="border-b border-slate-300 bg-slate-50 p-4 text-[13px] text-slate-700">
-//             <div className="rounded-lg border border-slate-300 bg-white p-3">
-//               {invoice.notes?.trim() && (
-//                 <>
-//                   <div className="font-semibold text-slate-900">Notes</div>
-//                   <div className="mt-1 mb-3 last:mb-0">{invoice.notes}</div>
-//                 </>
-//               )}
-//               {invoice.terms?.trim() && (
-//                 <>
-//                   <div className="font-semibold text-slate-900">Terms & Conditions</div>
-//                   <div className="mt-1">{invoice.terms}</div>
-//                 </>
-//               )}
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Bank Details + Signature */}
-//         <div className="grid grid-cols-1 gap-4 bg-white p-4 sm:grid-cols-2 print:grid-cols-2">
-//           <div>
-//             <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-3">
-//               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-//               <div className="mt-2 whitespace-pre-line text-[12px] text-slate-700">
-//                 {invoice.bankDetails || "—"}
+//         {hasNotesOrTerms ? (
+//           <div className="border-b border-slate-300 p-3 text-[12px] leading-5 text-black">
+//             {hasNotes ? (
+//               <div className="mb-2">
+//                 <div className={sectionLabel}>Notes</div>
+//                 <div className="mt-1 whitespace-pre-line">{invoice.notes}</div>
 //               </div>
-//             </div>
+//             ) : null}
+//             {hasTerms ? (
+//               <div>
+//                 <div className={sectionLabel}>Terms &amp; Conditions</div>
+//                 <div className="mt-1 whitespace-pre-line">{invoice.terms}</div>
+//               </div>
+//             ) : null}
 //           </div>
-//           <div className="flex flex-col items-end justify-between text-[13px] text-slate-700">
-//             <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
-//               <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
-//               <div className="mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
+//         ) : null}
+
+//         <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
+//           <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+//             <div className={sectionLabel}>Bank Details</div>
+//             <div className="mt-1 whitespace-pre-line text-[12px] leading-5 text-black">{invoice.bankDetails || "—"}</div>
+//           </div>
+//           <div className="p-3">
+//             <div className={sectionLabel}>For Radiatech Electra</div>
+//             <div className="mt-1 flex flex-col items-start">
+//               <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border border-slate-300 bg-slate-50 text-[11px] text-black">
 //                 {invoice.signatureImage ? (
-//                   // eslint-disable-next-line @next/next/no-img-element
-//                   <img src={invoice.signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
+//                   <Image src={signatureImageSrc} alt="Signature" width={128} height={64} className="h-full w-full object-contain" unoptimized />
 //                 ) : (
 //                   "Signature"
 //                 )}
 //               </div>
-//               <div className="mt-1 text-center text-[11px] font-semibold text-slate-700">
-//                 {invoice.authorizedSignature || "Authorized Signatory"}
-//               </div>
+//               <div className="mt-1 text-[11px] font-semibold text-black">{invoice.authorizedSignature || "Authorized Signatory"}</div>
 //             </div>
 //           </div>
 //         </div>
 //       </div>
-
-//       <style jsx global>{`
-//         @page {
-//           size: A4;
-//           margin: 6mm;
-//         }
-
-//         @media print {
-//           html,
-//           body {
-//             width: 210mm !important;
-//             height: 297mm !important;
-//             background: white !important;
-//             margin: 0 !important;
-//             padding: 0 !important;
-//           }
-//           body * {
-//             visibility: hidden !important;
-//           }
-//           .invoice-preview-shell,
-//           .invoice-preview-shell * {
-//             visibility: visible !important;
-//             -webkit-print-color-adjust: exact !important;
-//             print-color-adjust: exact !important;
-//           }
-//           .invoice-preview-shell {
-//             position: static !important;
-//             width: 100% !important;
-//             max-width: none !important;
-//             box-shadow: none !important;
-//             border: none !important;
-//             padding: 0 !important;
-//             margin: 0 !important;
-//             background: white !important;
-//             overflow: visible !important;
-//           }
-//           .invoice-preview-shell > div {
-//             width: 100% !important;
-//             max-width: none !important;
-//             min-height: 285mm !important;
-//             box-shadow: none !important;
-//             border: 1.2px solid #cbd5e1 !important;
-//             border-radius: 0 !important;
-//             box-sizing: border-box !important;
-//             overflow: visible !important;
-//           }
-//           .invoice-preview-shell .invoice-card,
-//           .invoice-preview-shell .invoice-table-wrap {
-//             page-break-inside: avoid !important;
-//             break-inside: avoid !important;
-//           }
-//           .print\:hidden {
-//             display: none !important;
-//           }
-//         }
-//       `}</style>
 //     </section>
 //   );
 // }
+
+
 
 "use client";
 
 import type { InvoiceSummary } from "@/lib/invoiceRoute";
 import { getBillTypeLabel } from "@/lib/invoiceRoute";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -643,7 +527,7 @@ const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", 
 
 function twoDigits(n: number): string {
   if (n < 20) return ONES[n];
-  return `${TENS[Math.floor(n / 10)]}${ONES[n % 10] ? " " + ONES[n % 10] : ""}`;
+  return `${TENS[Math.floor(n / 10)]}${ONES[n % 10] ? ` ${ONES[n % 10]}` : ""}`;
 }
 
 function threeDigits(n: number): string {
@@ -707,7 +591,6 @@ export default function InvoicePreview({
 
   const items = useMemo(() => invoice.items || [], [invoice.items]);
   const roundOff = Number(invoice.roundOff ?? 0);
-
   const shouldShowDiscountColumn = items.some(
     (item) => Number(item.discountPercent || 0) > 0,
   );
@@ -745,16 +628,9 @@ export default function InvoicePreview({
   );
 
   const totals = useMemo(() => {
-    const subtotal = rows.reduce((sum, r) => sum + r.qty * r.rate, 0);
     const discountTotal = rows.reduce((sum, r) => sum + r.discountAmount, 0);
-    const taxableBeforeExtraDiscount = rows.reduce(
-      (sum, r) => sum + r.taxableAmount,
-      0,
-    );
-    const taxBeforeExtraDiscount = rows.reduce(
-      (sum, r) => sum + r.gstAmount,
-      0,
-    );
+    const taxableBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.taxableAmount, 0);
+    const taxBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.gstAmount, 0);
 
     const extraDiscountAmount = Number(invoice.extraDiscountAmount || 0);
     const taxable =
@@ -765,9 +641,7 @@ export default function InvoicePreview({
       extraDiscountAmount > 0
         ? rows.reduce((sum, r) => {
             const ratio =
-              taxableBeforeExtraDiscount > 0
-                ? r.taxableAmount / taxableBeforeExtraDiscount
-                : 0;
+              taxableBeforeExtraDiscount > 0 ? r.taxableAmount / taxableBeforeExtraDiscount : 0;
             return sum + r.gstAmount * ratio;
           }, 0)
         : taxBeforeExtraDiscount;
@@ -794,7 +668,6 @@ export default function InvoicePreview({
     const igst = tax;
 
     return {
-      subtotal,
       discountTotal,
       taxableBeforeExtraDiscount,
       taxBeforeExtraDiscount,
@@ -822,440 +695,323 @@ export default function InvoicePreview({
   };
 
   const renderCompactMetricCell = (amount: number, rate: number) => {
-    if (rate <= 0) return <span className="text-slate-400">—</span>;
+    if (rate <= 0) return <span className="text-black">—</span>;
     return (
-      <span>
-        {formatCurrency(amount)}
-        <span className="ml-1 text-[10px] text-slate-400">
-          ({rate.toFixed(2)}%)
-        </span>
+      <span className="flex flex-col items-end leading-none">
+        <span>{formatCurrency(amount)}</span>
+        <span className="text-[9px] text-slate-500">({rate.toFixed(1)}%)</span>
       </span>
     );
   };
 
   const docLabel = getBillTypeLabel(invoice);
   const signatureImageSrc = invoice.signatureImage?.trim() ? invoice.signatureImage : "/STAMP.jpeg";
-  
   const hasNotes = !!invoice.notes?.trim();
   const hasTerms = !!invoice.terms?.trim();
   const hasNotesOrTerms = hasNotes || hasTerms;
 
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div className="relative -mx-3 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] bg-[#e7eef9] border-b border-slate-300">
+      {title}
+    </div>
+  );
+
   return (
-    <section className="invoice-preview-shell rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-      <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-lg border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_5px_20px_rgba(15,23,42,0.06)] print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
+    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
+      <div className="mx-auto w-full max-w-225 overflow-hidden border border-slate-300 bg-white text-black print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
         
-        {/* Header bar */}
-        <div className="relative flex items-center border-b border-slate-300 bg-[#f7f9fc] px-4 py-2 print:px-4">
-          <div className="flex-1" />
-          <h2 className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold capitalize text-slate-900">
-            {docLabel}
-          </h2>
-          <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {invoice.isDuplicate ? "" : ""}
-          </span>
+        {/* Header Ribbon */}
+        <div className="flex items-center justify-between border-b border-slate-300 bg-slate-100 px-4 py-2 text-black">
+          <div className="text-[13px] font-bold uppercase tracking-wide text-slate-800">
+            {docLabel || "Proforma Invoice"}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            Original Copy
+          </div>
         </div>
 
-        {/* Company row */}
-        <div className="flex items-start justify-between gap-3 border-b border-slate-300 bg-white px-4 py-3 print:px-4">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-bold text-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/favicon.png" alt="Company Logo" />
-            </div>
+        {/* Company Info */}
+        <div className="flex items-start justify-between gap-3 border-b border-slate-300 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <Image src="/favicon.png" alt="Logo" width={64} height={64} className="h-14 w-14 object-contain" unoptimized />
             <div>
-              <h3 className="text-lg font-bold tracking-wide text-slate-950">
-                RADIATECH ELECTRA
-              </h3>
-              <p className="mt-0.5 text-[11px] text-slate-600">
+              <h3 className="text-[18px] font-bold tracking-wide text-black">RADIATECH ELECTRA</h3>
+              <p className="mt-0.5 text-[12px] leading-snug text-slate-600">
                 Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
               </p>
             </div>
           </div>
-          <div className="text-right text-[11px] text-slate-600 leading-tight">
-            <div>Phone: +91 81788 50959</div>
-            <div>Email: sales@radiatech.in</div>
-            <div>GSTIN: 09DDZPK0004H1ZF</div>
-            <div>State: 09-Uttar Pradesh</div>
+          <div className="shrink-0 text-right text-[11px] leading-5 text-slate-700">
+            <div><span className="font-medium text-slate-900">Phone:</span> +91 81788 50959</div>
+            <div><span className="font-medium text-slate-900">Email:</span> sales@radiatech.in</div>
+            <div><span className="font-medium text-slate-900">GSTIN:</span> 09DDZPK0004H1ZF</div>
+            <div><span className="font-medium text-slate-900">State:</span> 09-Uttar Pradesh</div>
           </div>
         </div>
 
-        {/* Bill To + Invoice Details */}
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2 print:grid-cols-2">
-          <div className="border-b border-slate-300 bg-slate-50 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
-            <div className="rounded-lg border border-slate-300 bg-white p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Bill To:
-              </p>
-              <div className="mt-1 text-[12px] leading-relaxed text-slate-800">
-                <div className="font-semibold text-slate-900">
-                  {invoice.partyName || "—"}
-                </div>
-                {invoice.contactPerson ? (
-                  <div>Attn: {invoice.contactPerson}</div>
-                ) : null}
-                <div>{invoice.address || "—"}</div>
-                {invoice.shipToAddress ? (
-                  <div>Ship To: {invoice.shipToAddress}</div>
-                ) : null}
-                <div>
-                  {[invoice.city, invoice.state, invoice.pincode]
-                    .filter(Boolean)
-                    .join(", ") || "—"}
-                </div>
-                <div>Contact No: {invoice.phone || "—"}</div>
-                <div>Email: {invoice.email || "—"}</div>
-                <div>GSTIN: {invoice.gstin || "—"}</div>
-              </div>
+        {/* Proforma To & Details */}
+        <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
+          <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+            <SectionHeader title="Proforma To" />
+            <div className="space-y-0.5 text-[12px] leading-5 text-slate-800">
+              <div className="font-bold text-black">{invoice.partyName || "—"}</div>
+              {invoice.contactPerson ? <div>{invoice.contactPerson}</div> : null}
+              <div>{invoice.address || "—"}</div>
+              <div>{[invoice.city, invoice.state, invoice.pincode].filter(Boolean).join(", ") || "—"}</div>
+              <div>Contact No: {invoice.phone || "—"}</div>
+              <div>Email: {invoice.email || "—"}</div>
+              <div>GSTIN: {invoice.gstin || "—"}</div>
             </div>
           </div>
-          <div className="bg-white p-3">
-            <div className="rounded-lg border border-slate-300 bg-white p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Proforma Details:
-              </p>
-              <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[12px] text-slate-800">
-                <span className="font-semibold text-slate-900">Proforma No:</span>
-                <span>{invoice.invoiceNumber || "—"}</span>
-                <span className="font-semibold text-slate-900">Date:</span>
-                <span>{formatDate(String(invoice.invoiceDate || invoice.createdAt))}</span>
-                <span className="font-semibold text-slate-900">Valid Till:</span>
-                <span>{formatDate(String(invoice.dueDate || ""))}</span>
-                <span className="font-semibold text-slate-900">PO Date:</span>
-                <span>{formatDate(String(invoice.poDate || ""))}</span>
-                <span className="font-semibold text-slate-900">PO No:</span>
-                <span>{invoice.poNo || "—"}</span>
-                <span className="font-semibold text-slate-900">Place of Supply:</span>
-                <span>{invoice.placeOfSupply || "—"}</span>
-                {invoice.transportName ? (
-                  <>
-                    <span className="font-semibold text-slate-900">Transport:</span>
-                    <span>{invoice.transportName}</span>
-                  </>
-                ) : null}
-                {invoice.vehicleNumber ? (
-                  <>
-                    <span className="font-semibold text-slate-900">Vehicle No:</span>
-                    <span>{invoice.vehicleNumber}</span>
-                  </>
-                ) : null}
-                {invoice.ewayBillNo ? (
-                  <>
-                    <span className="font-semibold text-slate-900">E-way Bill No:</span>
-                    <span>{invoice.ewayBillNo}</span>
-                  </>
-                ) : null}
-              </div>
+
+          <div className="p-3">
+            <SectionHeader title="Proforma Details" />
+            <div className="grid grid-cols-[auto_1fr] gap-x-0 gap-y-1 text-[12px] text-slate-800">
+              <span className="font-semibold text-slate-900">Proforma No:</span>
+              <span>{invoice.invoiceNumber || "—"}</span>
+              <span className="font-semibold text-slate-900">Date:</span>
+              <span>{formatDate(String(invoice.invoiceDate || invoice.createdAt))}</span>
+              <span className="font-semibold text-slate-900">Valid Till:</span>
+              <span>{formatDate(String(invoice.dueDate || ""))}</span>
+              <span className="font-semibold text-slate-900">PO Date:</span>
+              <span>{formatDate(String(invoice.poDate || ""))}</span>
+              <span className="font-semibold text-slate-900">PO No:</span>
+              <span>{invoice.poNo || "—"}</span>
+              <span className="font-semibold text-slate-900">Place of Supply:</span>
+              <span>{invoice.placeOfSupply || "—"}</span>
+              {invoice.transportName && (
+                <>
+                  <span className="font-semibold text-slate-900">Transport:</span>
+                  <span>{invoice.transportName}</span>
+                </>
+              )}
+              {invoice.vehicleNumber && (
+                <>
+                  <span className="font-semibold text-slate-900">Vehicle No:</span>
+                  <span>{invoice.vehicleNumber}</span>
+                </>
+              )}
+              {invoice.ewayBillNo && (
+                <>
+                  <span className="font-semibold text-slate-900">E-way Bill No:</span>
+                  <span>{invoice.ewayBillNo}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Items table */}
-        <div className="invoice-table-wrap overflow-hidden border-b border-slate-300">
+        {/* Table Section */}
+        <div className="overflow-x-auto border-b border-slate-300">
           <table className="w-full border-collapse text-[11px]">
+            <colgroup>
+              <col className="w-[3%]" />
+              <col className="w-[22%]" />
+              <col className="w-[8%]" />
+              <col className="w-[6%]" />
+              <col className="w-[5%]" />
+              <col className="w-[8%]" />
+              {shouldShowDiscountColumn ? <col className="w-[8%]" /> : null}
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <thead>
-              <tr className="bg-[#bec9d9] text-left text-slate-700">
-                <th className="border border-slate-300 px-2 py-1.5 font-semibold">#</th>
-                <th className="border border-slate-300 px-2 py-1.5 font-semibold">Item name</th>
-                <th className="border border-slate-300 px-2 py-1.5 font-semibold">HSN/SAC</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Quantity</th>
-                <th className="border border-slate-300 px-2 py-1.5 font-semibold">Unit</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Price/unit (Rs)</th>
-                {shouldShowDiscountColumn && (
-                  <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Discount</th>
-                )}
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Taxable Price/unit (Rs)</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Taxable amount (Rs)</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">GST</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Final Rate (Rs)</th>
-                <th className="border border-slate-300 px-2 py-1.5 text-right font-semibold">Amount Total (Rs)</th>
+              <tr className="bg-slate-100 text-slate-900">
+                <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">#</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">Item name</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">HSN/SAC</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Qty</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-left font-semibold">Unit</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Price/unit</th>
+                {shouldShowDiscountColumn ? (
+                  <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Discount</th>
+                ) : null}
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Taxable/unit</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Taxable amt</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">GST</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Final rate</th>
+                <th className="border border-slate-300 px-1.5 py-1.5 text-right font-semibold">Amount</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((item, index) => (
-                <tr key={item.id || index}>
-                  <td className="border border-slate-300 px-2 py-1.5 align-top">{index + 1}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 align-top">{item.description || "Item description"}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 align-top">{item.hsn || "—"}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{item.qty}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 align-top">{item.unit || "—"}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{formatCurrency(item.rate)}</td>
-                  {shouldShowDiscountColumn && (
-                    <td className="border border-slate-300 px-2 py-1.5 text-right align-top">
+                <tr key={item.id || index} className="text-slate-800">
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{index + 1}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.description || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.hsn || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{item.qty}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.unit || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.rate)}</td>
+                  {shouldShowDiscountColumn ? (
+                    <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                       {renderCompactMetricCell(item.discountAmount, item.discountPercent)}
                     </td>
-                  )}
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
-                  <td className="border border-slate-300 px-2 py-1.5 text-right align-top font-semibold text-slate-900">{formatCurrency(item.rowAmount)}</td>
+                  ) : null}
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top font-semibold text-black">{formatCurrency(item.rowAmount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 font-semibold text-slate-900">
-                <td className="border border-slate-300 px-2 py-1.5" colSpan={3}>Total</td>
-                <td className="border border-slate-300 px-2 py-1.5 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
-                <td className="border border-slate-300 px-2 py-1.5" />
-                <td className="border border-slate-300 px-2 py-1.5" />
-                {shouldShowDiscountColumn && (
-                  <td className="border border-slate-300 px-2 py-1.5 text-right">{formatCurrency(totals.discountTotal)}</td>
-                )}
-                <td className="border border-slate-300 px-2 py-1.5" />
-                <td className="border border-slate-300 px-2 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-2 py-1.5 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-2 py-1.5" />
-                <td className="border border-slate-300 px-2 py-1.5 text-right">
-                  {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
-                </td>
+              <tr className="bg-slate-50 font-semibold text-black">
+                <td className="border border-slate-300 px-1.5 py-1.5" colSpan={3}>Total</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                {shouldShowDiscountColumn ? (
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.discountTotal)}</td>
+                ) : null}
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
-        {/* Tax Summary + Totals */}
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white md:grid-cols-[minmax(0,0.65fr)_minmax(0,0.35fr)]">
-          <div className="min-w-0 border-b border-slate-300 bg-slate-50 p-3 md:border-b-0 md:border-r">
-            <div className="invoice-card rounded-lg border border-slate-300 bg-white p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary:</p>
-              <label className="mt-1.5 mb-1.5 block">
-                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
+        {/* Tax Summary & Breakdown */}
+        <div className="grid grid-cols-1 border-b border-slate-300 md:grid-cols-[1.1fr_0.9fr] print:grid-cols-2">
+          <div className="border-b border-slate-300 p-3 md:border-b-0 md:border-r print:border-b-0 print:border-r">
+            <SectionHeader title="Tax Summary" />
+            <div className="mt-1">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase text-slate-500">Tax Option:</span>
                 <select
                   value={taxType}
                   onChange={(event) => handleTaxTypeChange(event.target.value as TaxType)}
                   disabled={!isInteractive}
-                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 disabled:opacity-60"
+                  className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-800 disabled:opacity-60"
                 >
                   <option value="cgst-sgst">CGST + SGST</option>
                   <option value="igst">IGST</option>
                   <option value="none">No Tax</option>
                 </select>
-              </label>
-              <div className="mt-1.5 overflow-x-auto">
-                <table className="min-w-[500px] w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-slate-100 text-left text-slate-600">
-                      <th className="border border-slate-300 px-2 py-1 font-semibold">Taxable</th>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
-                        </>
-                      ) : null}
-                      <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="bg-[#fbfcfe]">
-                      <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                    <tr className="bg-[#ce9b24] font-semibold text-slate-900">
-                      <td className="border border-slate-300 px-2 py-1">TOTAL</td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
-              <div className="mt-2 text-[11px] text-slate-700">
-                <span className="font-semibold text-slate-900">Invoice Amount in Words: </span>
-                {numberToIndianWords(totals.grandTotal)}
+              <table className="w-full border-collapse text-[11px] text-slate-800">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="border border-slate-300 px-2 py-1 text-left font-semibold">Taxable</th>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST</th>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST</th>
+                    ) : null}
+                    <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1 font-semibold">{formatCurrency(totals.taxable)}</td>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                    ) : null}
+                    <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="mt-2 text-[11px] text-slate-800">
+                <span className="font-semibold text-slate-900">Amount in Words:</span> {numberToIndianWords(totals.grandTotal)}
               </div>
             </div>
           </div>
 
-          <div className="min-w-0 bg-white p-3 text-[12px] text-slate-800">
-            {totals.discountTotal > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-2">Item-wise Discount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
+          <div className="p-3 text-[12px] text-slate-800">
+            {totals.discountTotal > 0 ? (
+              <div className="flex justify-between gap-2 py-0.5">
+                <span>Item-wise Discount</span>
+                <span>{formatCurrency(totals.discountTotal)}</span>
               </div>
-            )}
-            {totals.extraDiscountAmount > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2 text-amber-700">
-                <span className="min-w-0 pr-2">Discount on Taxable Amount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
-              </div>
-            )}
+            ) : null}
             {totals.extraDiscountAmount > 0 ? (
-              <div className="mt-0.5 flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-2">Taxable Amount (After Extra Discount)</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxable)}</span>
+              <div className="flex justify-between gap-2 py-0.5 text-emerald-700">
+                <span>Discount on Taxable Amount</span>
+                <span>{formatCurrency(totals.extraDiscountAmount)}</span>
               </div>
-            ) : (
-              <div className="flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-2">Taxable Amount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
+            ) : null}
+            <div className="flex justify-between gap-2 py-0.5">
+              <span>Taxable Amount</span>
+              <span>{formatCurrency(totals.extraDiscountAmount > 0 ? totals.taxable : totals.taxableBeforeExtraDiscount)}</span>
+            </div>
+            <div className="flex justify-between gap-2 py-0.5">
+              <span>Tax</span>
+              <span>{formatCurrency(totals.tax)}</span>
+            </div>
+            {Math.abs(totals.roundOff) > 0 ? (
+              <div className="flex justify-between gap-2 py-0.5">
+                <span>Round Off</span>
+                <span>{formatCurrency(totals.roundOff)}</span>
               </div>
-            )}
-            <div className="mt-0.5 flex items-start justify-between gap-2">
-              <span className="min-w-0 pr-2">Tax</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
+            ) : null}
+            <div className="mt-2 flex justify-between gap-2 border-t border-slate-300 pt-1.5 text-[13px] font-bold text-black">
+              <span>Grand Total</span>
+              <span>{formatCurrency(totals.grandTotal)}</span>
             </div>
-            {Math.abs(totals.roundOff) > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-2">Round Off</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
-              </div>
-            )}
-            <div className="mt-1.5 flex items-start justify-between gap-2 border-t border-slate-300 pt-1.5 text-[14px] font-semibold text-slate-950">
-              <span className="min-w-0 pr-2">Grand Total</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="mt-2 flex justify-between gap-2 py-0.5">
+              <span>Payment Mode</span>
+              <span>{invoice.paymentMode || "—"}</span>
             </div>
-            <div className="mt-2 flex items-start justify-between gap-2">
-              <span className="min-w-0 pr-2">Payment Terms</span>
-              <span className="ml-auto shrink-0 text-right">: {invoice.paymentMode || "—"}</span>
-            </div>
-            <div className="mt-0.5 flex items-start justify-between gap-2 font-semibold text-slate-900">
-              <span className="min-w-0 pr-2">Balance</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="mt-0.5 flex justify-between gap-2 font-semibold text-black">
+              <span>Balance</span>
+              <span>{formatCurrency(totals.grandTotal)}</span>
             </div>
           </div>
         </div>
 
-        {/* Notes + Terms */}
-        {hasNotesOrTerms && (
-          <div className="border-b border-slate-300 bg-slate-50 p-3 text-[12px] text-slate-700">
-            <div className={`grid gap-3 ${hasNotes && hasTerms ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
-              {hasNotes && (
-                <div className="rounded-lg border border-slate-300 bg-white p-2.5 h-full">
-                  <div className="font-semibold text-slate-900">Notes</div>
-                  <div className="mt-1">{invoice.notes}</div>
-                </div>
-              )}
-              {hasTerms && (
-                <div className="rounded-lg border border-slate-300 bg-white p-2.5 h-full">
-                  <div className="font-semibold text-slate-900">Terms & Conditions</div>
-                  <div className="mt-1">{invoice.terms}</div>
-                </div>
-              )}
+        {/* Notes & Terms Section */}
+        {hasNotesOrTerms ? (
+          <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
+            <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+              <SectionHeader title="Notes" />
+              <div className="whitespace-pre-line text-[11px] leading-5 text-slate-700">
+                {hasNotes ? invoice.notes : "—"}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Bank Details + Aligned Signature */}
-        <div className="grid grid-cols-1 gap-3 bg-white p-3 sm:grid-cols-2 print:grid-cols-2">
-          <div>
-            <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-2.5 h-full">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-              <div className="mt-1.5 flex gap-2 items-start">
-                <div className="flex-1 whitespace-pre-line text-[11px] text-slate-700">
-                  {invoice.bankDetails || "—"}
-                </div>
-                <div className="flex-shrink-0">
-                  <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 object-contain" />
-                </div>
+            <div className="p-3">
+              <SectionHeader title="Terms & Conditions" />
+              <div className="whitespace-pre-line text-[11px] leading-5 text-slate-700">
+                {hasTerms ? invoice.terms : "—"}
               </div>
             </div>
           </div>
-          <div className="invoice-card rounded-lg border border-slate-300 bg-white p-2.5 flex flex-col justify-between items-end text-right">
-            <div className="w-full text-right font-semibold text-slate-900 text-[12px]">
-              For Radiatech Electra:
-            </div>
-            <div className="my-2 flex h-14 w-32 items-center justify-center overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
-              {signatureImageSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={signatureImageSrc} alt="Authorized signature" className="h-full w-full object-contain" />
-              ) : (
-                "Signature"
-              )}
-            </div>
-            <div className="w-full text-right text-[10px] font-semibold text-slate-700">
-              {invoice.authorizedSignature || "Authorized Signatory"}
+        ) : null}
+
+        {/* Bank Details & Authorized Signature */}
+        <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
+          <div className="border-b border-slate-300 p-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
+            <SectionHeader title="Bank Details" />
+            <div className="whitespace-pre-line text-[12px] leading-5 text-slate-800">{invoice.bankDetails || "—"}</div>
+          </div>
+          <div className="p-3">
+            <SectionHeader title="For Radiatech Electra" />
+            <div className="mt-2 flex flex-col items-start">
+              <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border border-slate-300 bg-slate-50 text-[11px] text-slate-400">
+                {invoice.signatureImage ? (
+                  <Image src={signatureImageSrc} alt="Signature" width={128} height={64} className="h-full w-full object-contain" unoptimized />
+                ) : (
+                  "Signature"
+                )}
+              </div>
+              <div className="mt-1 text-[11px] font-semibold text-slate-900">{invoice.authorizedSignature || "Authorized Signatory"}</div>
             </div>
           </div>
         </div>
-
       </div>
-
-      <style jsx global>{`
-        @page {
-          size: A4;
-          margin: 6mm;
-        }
-
-        @media print {
-          html,
-          body {
-            width: 210mm !important;
-            height: 297mm !important;
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          .invoice-preview-shell,
-          .invoice-preview-shell * {
-            visibility: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .invoice-preview-shell {
-            position: static !important;
-            width: 100% !important;
-            max-width: none !important;
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-            overflow: visible !important;
-          }
-          .invoice-preview-shell > div {
-            width: 100% !important;
-            max-width: none !important;
-            min-height: 285mm !important;
-            box-shadow: none !important;
-            border: 1.2px solid #cbd5e1 !important;
-            border-radius: 0 !important;
-            box-sizing: border-box !important;
-            overflow: visible !important;
-          }
-          .invoice-preview-shell .invoice-card,
-          .invoice-preview-shell .invoice-table-wrap {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          .print\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }

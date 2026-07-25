@@ -22,6 +22,14 @@ export type InvoiceSummary = {
   shipToAddress?: string | null;
   transportName?: string | null;
   vehicleNumber?: string | null;
+  receivedByName?: string | null;
+  receivedByComment?: string | null;
+  receivedByDate?: string | null;
+  receivedBySignature?: string | null;
+  deliveredByName?: string | null;
+  deliveredByComment?: string | null;
+  deliveredByDate?: string | null;
+  deliveredBySignature?: string | null;
   taxType?: string | null;
   paymentMode?: string | null;
   notes?: string | null;
@@ -63,6 +71,14 @@ export function getBillTypeLabel(invoice?: InvoiceRouteLike | null) {
   const billType = String(invoice.billType ?? "").trim().toLowerCase();
   const invoiceNumber = String(invoice.invoiceNumber ?? "").trim().toUpperCase();
 
+  if (billType.includes("debit") || billType.includes("return") || invoiceNumber.startsWith("DN")) {
+    return "Debit Note";
+  }
+
+  if (billType.includes("credit") || invoiceNumber.startsWith("CN")) {
+    return "Credit Note";
+  }
+
   if (
     billType.includes("proforma") ||
     invoiceNumber.startsWith("PMA") ||
@@ -89,6 +105,10 @@ export function getBillTypeLabel(invoice?: InvoiceRouteLike | null) {
     return "Quotation";
   }
 
+  if (billType.includes("delivery") || billType.includes("challan") || invoiceNumber.startsWith("DC")) {
+    return "Delivery Challan";
+  }
+
   return "Tax Invoice";
 }
 
@@ -99,6 +119,14 @@ export function getInvoiceEditRoute(invoice?: InvoiceRouteLike | null) {
 
   const billType = String(invoice.billType ?? "").trim().toLowerCase();
   const invoiceNumber = String(invoice.invoiceNumber ?? "").trim().toUpperCase();
+
+  if (billType.includes("debit") || billType.includes("return") || invoiceNumber.startsWith("DN")) {
+    return `/admin/generate-bill/debit-note?invoiceId=${invoice.id}`;
+  }
+
+  if (billType.includes("credit") || invoiceNumber.startsWith("CN")) {
+    return `/admin/generate-bill/credit-note?invoiceId=${invoice.id}`;
+  }
 
   if (
     billType.includes("proforma") ||
@@ -124,6 +152,10 @@ export function getInvoiceEditRoute(invoice?: InvoiceRouteLike | null) {
 
   if (billType.includes("quotation") || invoiceNumber.startsWith("QTN")) {
     return `/admin/generate-bill/quotation?invoiceId=${invoice.id}`;
+  }
+
+  if (billType.includes("delivery") || billType.includes("challan") || invoiceNumber.startsWith("DC")) {
+    return `/admin/generate-bill/delivery-challan?invoiceId=${invoice.id}`;
   }
 
   return `/admin/generate-bill/invoice?invoiceId=${invoice.id}`;

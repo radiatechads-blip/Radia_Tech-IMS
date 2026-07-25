@@ -9,8 +9,8 @@ import {
     Save,
     Share2
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 
@@ -99,12 +99,17 @@ const emptyNewCustomerForm = {
 const UNITS = ["Nos", "Pcs", "Kg", "L", "m", "Box", "Set"];
 
 export default function AnnexurePage() {
+  return (
+    <Suspense fallback={null}>
+      <AnnexurePageContent />
+    </Suspense>
+  );
+}
+
+function AnnexurePageContent() {
   const router = useRouter();
-  const [annexureId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const query = new URLSearchParams(window.location.search);
-    return query.get("annexureId") ?? query.get("invoiceId");
-  });
+  const searchParams = useSearchParams();
+  const annexureId = searchParams.get("annexureId") ?? searchParams.get("invoiceId");
 
   // ---- Customers ----
   const [customers, setCustomers] = useState<Customer[]>(fallbackCustomerOptions);
@@ -135,7 +140,7 @@ export default function AnnexurePage() {
   const [authorizedSignature, setAuthorizedSignature] = useState("Authorized Signatory");
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(() => Boolean(annexureId));
+  const [isEditing, setIsEditing] = useState(false);
   const [editingAnnexureId, setEditingAnnexureId] = useState<string | null>(null);
 
   const [isDuplicateCopy, setIsDuplicateCopy] = useState(false);
@@ -633,8 +638,13 @@ export default function AnnexurePage() {
 
   useEffect(() => {
     if (!annexureId) {
+      setIsEditing(false);
+      setEditingAnnexureId(null);
       return;
     }
+
+    setIsEditing(true);
+    setEditingAnnexureId(annexureId);
 
     const loadAnnexure = async () => {
       try {
@@ -644,7 +654,6 @@ export default function AnnexurePage() {
         const data = await response.json();
         if (!data) return;
 
-        setIsEditing(true);
         setEditingAnnexureId(String(data.id));
         setAnnexureNumber(String(data.annexureNumber ?? data.invoiceNumber ?? "").trim());
         applyAnnexureData(data);

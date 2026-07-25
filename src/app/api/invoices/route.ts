@@ -5,7 +5,42 @@ import { resolveInvoiceDate, resolveInvoiceNumber } from "@/lib/invoicePayload";
 import { buildStockReductionPlan, shouldApplyStockReduction } from "@/lib/stockReduction";
 import { NextResponse } from "next/server";
 
-type DocumentType = "invoice" | "proforma" | "annexure" | "quotation";
+type DocumentType = "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan";
+
+async function ensureDeliveryChallanColumns() {
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByName" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByComment" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByDate" TIMESTAMP(3)`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedBySignature" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByName" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByComment" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByDate" TIMESTAMP(3)`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredBySignature" TEXT NOT NULL DEFAULT ''`);
+}
+
+async function writeDeliveryChallanDetails(id: string, payload: Record<string, unknown>) {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Invoice"
+     SET "receivedByName" = $1,
+         "receivedByComment" = $2,
+         "receivedByDate" = $3,
+         "receivedBySignature" = $4,
+         "deliveredByName" = $5,
+         "deliveredByComment" = $6,
+         "deliveredByDate" = $7,
+         "deliveredBySignature" = $8
+     WHERE "id" = $9`,
+    payload.receivedByName,
+    payload.receivedByComment,
+    payload.receivedByDate,
+    payload.receivedBySignature,
+    payload.deliveredByName,
+    payload.deliveredByComment,
+    payload.deliveredByDate,
+    payload.deliveredBySignature,
+    id,
+  );
+}
 
 function buildInvoicePayload(data: Record<string, unknown>, documentType: DocumentType, invoiceNumberOverride?: string) {
   const override = String(invoiceNumberOverride || "").trim();
@@ -18,6 +53,13 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
   const poDateValue = String(data.poDate || "").trim();
   const poDate = poDateValue ? new Date(poDateValue) : null;
 
+  const parseOptionalDate = (value: unknown) => {
+    const raw = String(value || "").trim();
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const extraDiscountAmountValue = Number(data.extraDiscountAmount || 0);
 
   const payload = {
@@ -29,6 +71,8 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
           ? "Annexure"
           : documentType === "quotation"
             ? "Quotation"
+            : documentType === "delivery-challan"
+              ? "Delivery Challan"
             : String(data.billType || "Invoice").trim() || "Invoice",
     invoiceNumber,
     invoiceDate,
@@ -49,6 +93,18 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
     shipToAddress: String(data.shipToAddress || "").trim(),
     transportName: String(data.transportName || "").trim(),
     vehicleNumber: String(data.vehicleNumber || "").trim(),
+    ...(documentType === "delivery-challan"
+      ? {
+          receivedByName: String(data.receivedByName || "").trim(),
+          receivedByComment: String(data.receivedByComment || "").trim(),
+          receivedByDate: parseOptionalDate(data.receivedByDate),
+          receivedBySignature: String(data.receivedBySignature || "").trim(),
+          deliveredByName: String(data.deliveredByName || "").trim(),
+          deliveredByComment: String(data.deliveredByComment || "").trim(),
+          deliveredByDate: parseOptionalDate(data.deliveredByDate),
+          deliveredBySignature: String(data.deliveredBySignature || "").trim(),
+        }
+      : {}),
     taxType: String(data.taxType || "cgst-sgst").trim(),
     paymentMode: String(data.paymentMode || "").trim(),
     notes: String(data.notes || "").trim(),
@@ -62,13 +118,6 @@ function buildInvoicePayload(data: Record<string, unknown>, documentType: Docume
     taxAmount: Number(data.taxAmount || 0),
     grandTotal: Number(data.grandTotal || 0),
   };
-
-  if (documentType !== "annexure") {
-    return {
-      ...payload,
-      roundOff: Number(data.roundOff || 0),
-    };
-  }
 
   return payload;
 }
@@ -182,6 +231,10 @@ async function writeQuotationConversionMeta(id: string, meta: ReturnType<typeof 
 }
 
 async function createDocumentRecord(data: Record<string, unknown>, documentType: DocumentType) {
+  if (documentType === "delivery-challan") {
+    await ensureDeliveryChallanColumns();
+  }
+
   const documentItems = buildDocumentItems(data);
   const stockReductionPlan = shouldApplyStockReduction(documentType)
     ? buildStockReductionPlan(
@@ -210,8 +263,14 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
       .filter(Boolean),
   );
 
+  const blockedInvoiceNumber = String(data.invoiceNumber || data.annexureNumber || "").trim();
+
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const payload = buildInvoicePayload(data, documentType, resolveInvoiceNumber(data, documentType, existingNumbers));
+    const payload = buildInvoicePayload(
+      data,
+      documentType,
+      resolveInvoiceNumber(data, documentType, existingNumbers, blockedInvoiceNumber),
+    );
 
     try {
       if (documentType === "proforma") {
@@ -309,9 +368,22 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...created, items: created.items ?? [] };
       }
 
+      const {
+        receivedByName: _receivedByName,
+        receivedByComment: _receivedByComment,
+        receivedByDate: _receivedByDate,
+        receivedBySignature: _receivedBySignature,
+        deliveredByName: _deliveredByName,
+        deliveredByComment: _deliveredByComment,
+        deliveredByDate: _deliveredByDate,
+        deliveredBySignature: _deliveredBySignature,
+        ...invoicePayload
+      } = payload;
+
       const created = await prisma.invoice.create({
         data: {
-          ...payload,
+          ...invoicePayload,
+          billType: documentType === "delivery-challan" ? "Delivery Challan" : payload.billType,
           invoiceDate: payload.invoiceDate,
           dueDate: payload.dueDate,
           poDate: payload.poDate,
@@ -335,7 +407,10 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         include: { items: true },
       });
 
-      if (documentType === "invoice") {
+      if (documentType === "invoice" || documentType === "delivery-challan") {
+        if (documentType === "delivery-challan") {
+          await writeDeliveryChallanDetails(created.id, payload);
+        }
         await applyStockReductionPlan(stockReductionPlan);
         await writeInvoiceConversionMeta(created.id, conversionMeta);
         const refreshed = await prisma.invoice.findUnique({
@@ -367,6 +442,10 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
 }
 
 async function updateDocumentRecord(id: string, data: Record<string, unknown>, documentType: DocumentType) {
+  if (documentType === "delivery-challan") {
+    await ensureDeliveryChallanColumns();
+  }
+
   const payload = buildInvoicePayload(data, documentType);
   const itemPayload = buildDocumentItems(data);
   const conversionMeta = buildConversionMeta(data);
@@ -431,10 +510,23 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...updated, items: updated.items ?? [] };
   }
 
+  const {
+    receivedByName: _receivedByName,
+    receivedByComment: _receivedByComment,
+    receivedByDate: _receivedByDate,
+    receivedBySignature: _receivedBySignature,
+    deliveredByName: _deliveredByName,
+    deliveredByComment: _deliveredByComment,
+    deliveredByDate: _deliveredByDate,
+    deliveredBySignature: _deliveredBySignature,
+    ...invoicePayload
+  } = payload;
+
   const updated = await prisma.invoice.update({
     where: { id },
     data: {
-      ...payload,
+      ...invoicePayload,
+      billType: documentType === "delivery-challan" ? "Delivery Challan" : payload.billType,
       invoiceDate: payload.invoiceDate,
       dueDate: payload.dueDate,
       poDate: payload.poDate,
@@ -445,6 +537,9 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     },
     include: { items: true },
   });
+  if (documentType === "delivery-challan") {
+    await writeDeliveryChallanDetails(updated.id, payload);
+  }
   await writeInvoiceConversionMeta(updated.id, conversionMeta);
   const refreshed = await prisma.invoice.findUnique({
     where: { id: updated.id },
@@ -465,6 +560,9 @@ async function getAllDocumentRecords(documentType?: DocumentType) {
   }
   if (documentType === "invoice") {
     return prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
+  }
+  if (documentType === "delivery-challan") {
+    return prisma.invoice.findMany({ where: { billType: "Delivery Challan" }, orderBy: { createdAt: "desc" }, include: { items: true } });
   }
 
   const [invoices, proformas, annexures, quotations] = await Promise.all([
@@ -581,6 +679,8 @@ export async function GET(req: Request) {
             ? "invoice"
             : documentTypeParam === "quotation"
               ? "quotation"
+              : documentTypeParam === "delivery-challan"
+                ? "delivery-challan"
               : undefined;
 
     if (invoiceId) {

@@ -1,4 +1,4 @@
-export type DocumentType = "invoice" | "proforma" | "annexure" | "quotation";
+export type DocumentType = "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan";
 
 export function normalizeDocumentType(data: Record<string, unknown>): DocumentType {
   const explicit = String(
@@ -17,6 +17,10 @@ export function normalizeDocumentType(data: Record<string, unknown>): DocumentTy
 
   if (explicit.includes("quotation") || explicit.startsWith("qtn")) {
     return "quotation";
+  }
+
+  if (explicit.includes("delivery") || explicit.includes("challan") || explicit.startsWith("dc")) {
+    return "delivery-challan";
   }
 
   return "invoice";

@@ -2006,17 +2006,18 @@
 import AdminShell from "@/components/admin/AdminShell";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import { getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
+import { calculateQuotationTotals } from "@/lib/quotationTotals";
 import {
-    AlignLeft,
-    CalendarDays,
-    Check,
-    ChevronDown,
-    Plus,
-    Save,
-    Share2,
+  AlignLeft,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Plus,
+  Save,
+  Share2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 interface Customer {
   id: string;
@@ -2101,15 +2102,18 @@ const emptyNewCustomerForm = {
 const UNITS = ["Nos", "Pcs", "Kg", "L", "m", "Box", "Set"];
 
 export default function InvoicePage() {
+  return (
+    <Suspense fallback={null}>
+      <QuotationPageContent />
+    </Suspense>
+  );
+}
+
+function QuotationPageContent() {
   const router = useRouter();
-  const [invoiceId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("invoiceId");
-  });
-  const [sourceInvoiceId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return new URLSearchParams(window.location.search).get("fromProformaId");
-  });
+  const searchParams = useSearchParams();
+  const invoiceId = searchParams.get("invoiceId");
+  const sourceInvoiceId = searchParams.get("fromProformaId");
 
   const [customers, setCustomers] = useState<Customer[]>(fallbackCustomerOptions);
   const [selectedCustomerId, setSelectedCustomerId] = useState(fallbackCustomerOptions[0].id);
@@ -2433,59 +2437,21 @@ export default function InvoicePage() {
   };
 
   const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + item.qty * item.rate, 0);
-    const discountTotal = items.reduce((sum, item) => {
-      const lineTotal = item.qty * item.rate;
-      return sum + (lineTotal * item.discountPercent) / 100;
-    }, 0);
-    const taxableBeforeExtraDiscount = Math.max(subtotal - discountTotal, 0);
-    const extraDiscount = Number(extraDiscountAmount || 0);
-    const taxable = Math.max(taxableBeforeExtraDiscount - extraDiscount, 0);
-    const roundOff = Number(roundOffAmount || 0);
-    const taxBeforeExtraDiscount = items.reduce((sum, item) => {
-      const lineTotal = item.qty * item.rate;
-      const discountValue = (lineTotal * item.discountPercent) / 100;
-      const discountedValue = lineTotal - discountValue;
-      return sum + (discountedValue * item.taxPercent) / 100;
-    }, 0);
-    const tax = taxableBeforeExtraDiscount > 0 ? (taxBeforeExtraDiscount / taxableBeforeExtraDiscount) * taxable : 0;
-
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
-
-    if (taxType === "cgst-sgst") {
-      cgst = tax / 2;
-      sgst = tax / 2;
-    } else if (taxType === "igst") {
-      igst = tax;
-    }
-
-    const grandTotalBeforeRoundOff = taxable + tax;
-    const grandTotal = grandTotalBeforeRoundOff + roundOff;
-    const effectiveTaxRate = taxable > 0 ? (tax / taxable) * 100 : 0;
-    const defaultTaxPercent = items.reduce((sum, item) => sum + item.taxPercent, 0) / Math.max(items.length, 1);
-    const cgstRate = taxType === "cgst-sgst" ? defaultTaxPercent / 2 : 0;
-    const sgstRate = taxType === "cgst-sgst" ? defaultTaxPercent / 2 : 0;
-    const igstRate = taxType === "igst" ? defaultTaxPercent : 0;
+    const calculatedTotals = calculateQuotationTotals({
+      items: items.map((item) => ({
+        qty: item.qty,
+        rate: item.rate,
+        discountPercent: item.discountPercent,
+        taxPercent: item.taxPercent,
+      })),
+      taxType,
+      extraDiscountAmount,
+      roundOffAmount,
+    });
 
     return {
-      subtotal,
-      discountTotal,
-      extraDiscountAmount: extraDiscount,
-      taxableBeforeExtraDiscount,
-      taxable,
-      tax,
-      taxBeforeExtraDiscount,
-      roundOff,
-      grandTotal,
-      effectiveTaxRate,
-      cgst,
-      sgst,
-      igst,
-      cgstRate,
-      sgstRate,
-      igstRate,
+      ...calculatedTotals,
+      effectiveTaxRate: calculatedTotals.taxable > 0 ? (calculatedTotals.tax / calculatedTotals.taxable) * 100 : 0,
     };
   }, [items, taxType, extraDiscountAmount, roundOffAmount]);
 
@@ -2656,6 +2622,9 @@ export default function InvoicePage() {
       return () => window.clearTimeout(timeoutId);
     }
 
+    setIsEditing(true);
+    setEditingInvoiceId(invoiceId);
+
     const loadInvoice = async () => {
       try {
         const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=quotation`);
@@ -2664,7 +2633,6 @@ export default function InvoicePage() {
         const data = await response.json();
         if (!data) return;
 
-        setIsEditing(true);
         setEditingInvoiceId(String(data.id));
         setInvoiceNumber(String(data.invoiceNumber || ""));
         applyInvoiceData(data);
@@ -3435,7 +3403,7 @@ export default function InvoicePage() {
                     <input
                       type="number"
                       step="0.01"
-                      value={roundOffAmount === 0 ? "" : roundOffAmount}
+                      value={roundOffAmount}
                       onChange={(e) => setRoundOffAmount(Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0)}
                       placeholder="0"
                       className={`${inputCls} text-right`}
@@ -3816,7 +3784,7 @@ export default function InvoicePage() {
                     </div>
                   )}
 
-                  <div className={`mt-1 flex items-center justify-between gap-2 ${extraDiscountAmount ? "" : "print:hidden"}`}>
+                  <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="text-slate-500">Discount on Taxable Amount</span>
                     <div className="flex items-center gap-0.5">
                       <span className="text-slate-500">: ₹</span>
@@ -3851,14 +3819,14 @@ export default function InvoicePage() {
                     <span>: {formatCurrency(totals.tax)}</span>
                   </div>
 
-                  <div className={`mt-1 flex items-center justify-between gap-2 ${roundOffAmount ? "" : "print:hidden"}`}>
+                  <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="text-slate-500">Round off</span>
                     <div className="flex items-center gap-0.5">
                       <span className="text-slate-500">: ₹</span>
                       <input
                         type="number"
                         step="0.01"
-                        value={roundOffAmount === 0 ? "" : roundOffAmount}
+                        value={roundOffAmount}
                         onChange={(e) => {
                           const numericValue = Number(e.target.value);
                           setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);

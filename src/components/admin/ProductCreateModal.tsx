@@ -9,17 +9,24 @@ interface ProductCreateModalProps {
   onProductCreated: (product: {
     id: string;
     name: string;
-    sku: string;
+    sku?: string;
     hsn: string;
     unit: string;
     price: number;
-    categoryId: string;
+    categoryId?: string;
+    rate?: number;
+    taxPercent?: number;
   }) => void;
 }
 
 interface CategoryOption {
   id: string;
   name: string;
+}
+
+interface CategoryApiResponse {
+  id?: string | number | null;
+  name?: string | null;
 }
 
 const ALLOWED_UNITS = [
@@ -66,6 +73,7 @@ export default function ProductCreateModal({
   useEffect(() => {
     if (!open) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm((current) => ({
       ...current,
       name: initialName || "",
@@ -85,7 +93,7 @@ export default function ProductCreateModal({
         if (!Array.isArray(data)) return;
 
         const normalized = data
-          .map((category: any) => ({
+          .map((category: CategoryApiResponse) => ({
             id: String(category.id || ""),
             name: String(category.name || ""),
           }))

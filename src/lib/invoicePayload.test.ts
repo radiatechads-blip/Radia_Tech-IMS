@@ -31,7 +31,13 @@ test("resolveInvoiceDate falls back to the current date for missing or invalid v
 test("resolveInvoiceNumber skips a duplicate explicit number when the value is already used", () => {
   const value = resolveInvoiceNumber({ invoiceNumber: "INV-000001" }, "invoice", new Set(["INV-000001"]));
   assert.notEqual(value, "INV-000001");
-  assert.match(value, /^INV-\d{6}$/);
+  assert.match(value, /^RAD\/\d{2}-\d{2}\/\d{3}$/);
+});
+
+test("resolveInvoiceNumber avoids reusing a previously blocked number on retries", () => {
+  const value = resolveInvoiceNumber({ invoiceNumber: "ANX-699112" }, "annexure", new Set(), "ANX-699112");
+  assert.notEqual(value, "ANX-699112");
+  assert.match(value, /^ANN-\d{6}-\d{3}$/);
 });
 
 test("getConversionSourceLabel returns the correct source label for quotations", () => {

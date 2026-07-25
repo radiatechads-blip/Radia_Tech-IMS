@@ -38,7 +38,7 @@ function generateInvoiceSerial(existingNumbers: Set<string>, prefix: string) {
   return String(Math.min(maxSerial + 1, 999)).padStart(3, "0");
 }
 
-function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "quotation") {
+function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan") {
   if (documentType === "proforma") {
     return "PFI-";
   }
@@ -49,6 +49,10 @@ function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "q
 
   if (documentType === "quotation") {
     return "QTN-";
+  }
+
+  if (documentType === "delivery-challan") {
+    return "DC-";
   }
 
   return "INV-";
@@ -68,11 +72,17 @@ export function getConversionSourceLabel(documentType: "invoice" | "proforma" | 
 
 export function resolveInvoiceNumber(
   data: Record<string, unknown>,
-  documentType: "invoice" | "proforma" | "annexure" | "quotation",
+  documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan",
   usedNumbers: Iterable<string> = [],
+  blockedNumber?: string,
 ) {
   const explicit = String(data.invoiceNumber || data.annexureNumber || "").trim();
   const existingNumbers = new Set(usedNumbers);
+  const normalizedBlockedNumber = String(blockedNumber || "").trim();
+
+  if (normalizedBlockedNumber) {
+    existingNumbers.add(normalizedBlockedNumber);
+  }
 
   if (explicit && !existingNumbers.has(explicit)) {
     return explicit;

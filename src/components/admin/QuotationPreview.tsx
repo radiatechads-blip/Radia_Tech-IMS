@@ -2116,6 +2116,7 @@
 "use client";
 
 import type { InvoiceSummary } from "@/lib/invoiceRoute";
+import { calculateQuotationTotals } from "@/lib/quotationTotals";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -2321,50 +2322,19 @@ export default function QuotationPreview({
   );
 
   const totals = useMemo(() => {
-    const subtotal = rows.reduce((sum, r) => sum + r.qty * r.rate, 0);
-    const discountTotal = rows.reduce((sum, r) => sum + r.discountAmount, 0);
-    const taxableBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.taxableAmount, 0);
-    const taxBeforeExtraDiscount = rows.reduce((sum, r) => sum + r.gstAmount, 0);
-
     const discountAmountVal = Number(effectiveExtraDiscountAmount || 0);
-    const taxable = discountAmountVal > 0 ? Math.max(0, taxableBeforeExtraDiscount - discountAmountVal) : taxableBeforeExtraDiscount;
-    const tax =
-      discountAmountVal > 0
-        ? rows.reduce((sum, r) => {
-            const ratio = taxableBeforeExtraDiscount > 0 ? r.taxableAmount / taxableBeforeExtraDiscount : 0;
-            return sum + r.gstAmount * ratio;
-          }, 0)
-        : taxBeforeExtraDiscount;
 
-    const grandTotalBeforeRoundOff = taxable + tax;
-    const grandTotal = grandTotalBeforeRoundOff + roundOff;
-
-    const cgstRate = taxType === "cgst-sgst" && rows.length > 0 ? Number(rows[0].taxPercent || 0) / 2 : 0;
-    const sgstRate = cgstRate;
-    const igstRate = taxType === "igst" && rows.length > 0 ? Number(rows[0].taxPercent || 0) : 0;
-
-    const cgst = tax / 2;
-    const sgst = tax / 2;
-    const igst = tax;
-
-    return {
-      subtotal,
-      discountTotal,
-      taxableBeforeExtraDiscount,
-      taxBeforeExtraDiscount,
+    return calculateQuotationTotals({
+      items: rows.map((row) => ({
+        qty: row.qty,
+        rate: row.rate,
+        discountPercent: row.discountPercent,
+        taxPercent: row.taxPercent,
+      })),
+      taxType,
       extraDiscountAmount: discountAmountVal,
-      taxable,
-      tax,
-      roundOff,
-      grandTotalBeforeRoundOff,
-      grandTotal,
-      cgstRate,
-      sgstRate,
-      igstRate,
-      cgst,
-      sgst,
-      igst,
-    };
+      roundOffAmount: roundOff,
+    });
   }, [rows, taxType, effectiveExtraDiscountAmount, roundOff]);
 
   const handleTaxTypeChange = (value: TaxType) => {
@@ -2388,33 +2358,29 @@ export default function QuotationPreview({
   const docLabel = effectiveConvertedFromProforma ? "Quotation (From Proforma)" : "Quotation Invoice";
   const hasNotes = !!effectiveNotes?.trim();
   const hasTerms = !!effectiveTerms?.trim();
-  const hasNotesOrTerms = hasNotes || hasTerms;
+
+  const sectionHeaderClass = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
 
   return (
-    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-2 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
+    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
       <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white">
-        
+
         {/* Header bar */}
-        <div className="relative flex items-center border-b border-slate-300 bg-[#f7f9fc] px-4 py-1.5 print:px-4">
-          <div className="flex-1" />
-          <h2 className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold capitalize text-slate-900">{docLabel}</h2>
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-slate-500"></span>
+        <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
+          <h2 className="text-[15px] font-bold text-slate-900">{docLabel}</h2>
+          <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700"></span>
         </div>
 
         {/* Company row */}
-        <div className="flex items-start justify-between gap-3 border-b border-slate-300 bg-white px-4 py-2 print:px-4">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md text-sm font-bold text-white shrink-0">
-              <img src="/favicon.png" alt="Company Logo" className="h-full w-full object-contain" />
-            </div>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-5 py-3">
+          <div className="flex items-start gap-3">
+            <img src="/favicon.png" alt="Logo" className="h-20 w-20 object-contain" />
             <div>
-              <h3 className="text-lg font-bold tracking-wide text-slate-950 leading-snug">RADIATECH ELECTRA</h3>
-              <p className="mt-0.5 text-[10px] text-slate-600 leading-tight">
-                Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
-              </p>
+              <h3 className="text-[20px] font-extrabold tracking-wide text-slate-950">RADIATECH ELECTRA</h3>
+              <p className="mt-0.5 text-[14px] text-slate-500 leading-snug">Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301</p>
             </div>
           </div>
-          <div className="text-right text-[10px] leading-tight text-slate-600 shrink-0">
+          <div className="text-right text-[13px] leading-5 shrink-0">
             <div>Phone: +91 81788 50959</div>
             <div>Email: sales@radiatech.in</div>
             <div>GSTIN: 09DDZPK0004H1ZF</div>
@@ -2422,372 +2388,284 @@ export default function QuotationPreview({
           </div>
         </div>
 
-        {/* Bill To + Invoice Details */}
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2 print:grid-cols-2">
-          <div className="border-b border-slate-300 bg-slate-50 p-2.5 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
-            <div className="rounded-md border border-slate-300 bg-white p-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Quotation To:</p>
-              <div className="mt-0.5 text-[11px] leading-snug text-slate-800">
-                <div className="font-semibold text-slate-900">{effectivePartyName || "—"}</div>
-                {effectiveContactPerson ? <div>Attn: {effectiveContactPerson}</div> : null}
-                <div>{effectiveAddress || "—"}</div>
-                <div>{[effectiveCity, effectiveState, effectivePincode].filter(Boolean).join(", ") || "—"}</div>
-                <div>Contact: {effectivePhone || "—"} | Email: {effectiveEmail || "—"}</div>
-                <div>GSTIN: {effectiveGstin || "—"}</div>
-              </div>
+        {/* Quotation To + Quotation Details */}
+        <div className="grid grid-cols-2 border-b border-slate-300">
+          <div className="border-r border-slate-300">
+            <div className={sectionHeaderClass}>Quotation To:</div>
+            <div className="p-3 text-[13px] leading-5 text-slate-800">
+              <div className="font-semibold text-slate-900">{effectivePartyName || "—"}</div>
+              {effectiveContactPerson && <div>{effectiveContactPerson}</div>}
+              <div>{effectiveAddress || "—"}</div>
+              <div>{[effectiveCity, effectiveState, effectivePincode].filter(Boolean).join(", ") || "—"}</div>
+              <div>Contact No: {effectivePhone || "—"}</div>
+              <div>Email: {effectiveEmail || "—"}</div>
+              <div>GSTIN: {effectiveGstin || "—"}</div>
             </div>
           </div>
-          <div className="bg-white p-2.5">
-            <div className="rounded-md border border-slate-300 bg-white p-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Quotation Details:</p>
-              <div className="mt-0.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-slate-800 leading-snug">
-                <span className="font-semibold text-slate-900">Quotation No:</span>
-                <span>{effectiveQuotationNumber || "—"}</span>
-                <span className="font-semibold text-slate-900">Date:</span>
-                <span>{formatDate(effectiveQuotationDate)}</span>
-                <span className="font-semibold text-slate-900">Valid Until:</span>
-                <span>{formatDate(effectiveValidUntil)}</span>
-                <span className="font-semibold text-slate-900">PO Date:</span>
-                <span>{formatDate(effectivePoDate)}</span>
-                <span className="font-semibold text-slate-900">PO No:</span>
-                <span>{effectivePoNo || "—"}</span>
-                <span className="font-semibold text-slate-900">Reference No:</span>
-                <span>{effectivePlaceOfSupply || "—"}</span>
-              </div>
+          <div>
+            <div className={sectionHeaderClass}>Quotation Details:</div>
+            <div className="p-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px] text-slate-800">
+              <span className="font-semibold text-slate-900">Quotation No:</span><span>{effectiveQuotationNumber || "—"}</span>
+              <span className="font-semibold text-slate-900">Date:</span><span>{formatDate(effectiveQuotationDate ?? (invoice?.createdAt as string | null))}</span>
+              <span className="font-semibold text-slate-900">PO Date:</span><span>{formatDate(effectivePoDate)}</span>
+              <span className="font-semibold text-slate-900">Valid Until:</span><span>{formatDate(effectiveValidUntil)}</span>
+              <span className="font-semibold text-slate-900">PO No:</span><span>{effectivePoNo || "—"}</span>
+              <span className="font-semibold text-slate-900">Reference No:</span><span>{effectivePlaceOfSupply || "—"}</span>
             </div>
           </div>
         </div>
 
         {/* Items table */}
         <div className="invoice-table-wrap overflow-x-auto border-b border-slate-300">
-          <table className="w-full table-fixed border-collapse text-[9.5px] print:text-[8.5px]">
+          <table className="w-full table-fixed border-collapse text-[11px]">
             {shouldShowDiscountColumn ? (
               <colgroup>
                 <col className="w-[3%]" />
-                <col className="w-[20%]" />
+                <col className="w-[18%]" />
                 <col className="w-[7%]" />
-                <col className="w-[5%]" />
+                <col className="w-[6%]" />
                 <col className="w-[5%]" />
                 <col className="w-[8%]" />
                 <col className="w-[8%]" />
                 <col className="w-[8%]" />
                 <col className="w-[9%]" />
-                <col className="w-[8%]" />
+                <col className="w-[9%]" />
                 <col className="w-[9%]" />
                 <col className="w-[10%]" />
               </colgroup>
             ) : (
               <colgroup>
                 <col className="w-[3%]" />
-                <col className="w-[22%]" />
+                <col className="w-[20%]" />
                 <col className="w-[8%]" />
-                <col className="w-[5%]" />
+                <col className="w-[6%]" />
                 <col className="w-[5%]" />
                 <col className="w-[9%]" />
                 <col className="w-[9%]" />
                 <col className="w-[10%]" />
-                <col className="w-[9%]" />
+                <col className="w-[10%]" />
                 <col className="w-[10%]" />
                 <col className="w-[10%]" />
               </colgroup>
             )}
             <thead>
-              <tr className="bg-[#bec9d9] text-left text-slate-700">
-                <th className="border border-slate-300 px-1 py-1 font-semibold">#</th>
-                <th className="border border-slate-300 px-1 py-1 font-semibold">Item name</th>
-                <th className="border border-slate-300 px-1 py-1 font-semibold">HSN/SAC</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Qty</th>
-                <th className="border border-slate-300 px-1 py-1 font-semibold">Unit</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Price/unit</th>
-                {shouldShowDiscountColumn && (
-                  <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Discount</th>
-                )}
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Taxable Price</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Taxable Amt</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">GST</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Final Rate</th>
-                <th className="border border-slate-300 px-1 py-1 text-right font-semibold">Amount Total</th>
+              <tr className="bg-[#bec9d9] text-slate-700">
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">#</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">Item name</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">HSN/SAC</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Qty</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">Unit</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Price/unit</th>
+                {shouldShowDiscountColumn && <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Discount</th>}
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Taxable<br/>Price/unit</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Taxable<br/>Amount</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">GST</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Final Rate</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Amount Total</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((item, index) => (
-                <tr key={item.id || index}>
-                  <td className="border border-slate-300 px-1 py-1 align-top">{index + 1}</td>
-                  <td className="border border-slate-300 px-1 py-1 align-top break-words whitespace-normal">{item.description || "Item description"}</td>
-                  <td className="border border-slate-300 px-1 py-1 align-top break-words whitespace-normal">{item.hsn || "—"}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{item.qty}</td>
-                  <td className="border border-slate-300 px-1 py-1 align-top">{item.unit || "—"}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{formatCurrency(item.rate)}</td>
-                  {shouldShowDiscountColumn && (
-                    <td className="border border-slate-300 px-1 py-1 text-right align-top">
-                      {renderCompactMetricCell(item.discountAmount, item.discountPercent)}
-                    </td>
-                  )}
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
-                  <td className="border border-slate-300 px-1 py-1 text-right align-top font-semibold text-slate-900">{formatCurrency(item.rowAmount)}</td>
+                <tr key={item.id || index} className="odd:bg-white even:bg-slate-50/50">
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{index + 1}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top break-words whitespace-normal">{item.description || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.hsn || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{item.qty}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.unit || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.rate)}</td>
+                  {shouldShowDiscountColumn && <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{renderCompactMetricCell(item.discountAmount, item.discountPercent)}</td>}
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxablePerUnit)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.taxableAmount)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{renderCompactMetricCell(item.gstAmount, item.taxPercent)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.finalRatePerUnit)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top font-semibold text-slate-900">{formatCurrency(item.rowAmount)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 font-semibold text-slate-900">
-                <td className="border border-slate-300 px-1 py-1" colSpan={3}>Total</td>
-                <td className="border border-slate-300 px-1 py-1 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
-                <td className="border border-slate-300 px-1 py-1" />
-                <td className="border border-slate-300 px-1 py-1" />
-                {shouldShowDiscountColumn && (
-                  <td className="border border-slate-300 px-1 py-1 text-right">{formatCurrency(totals.discountTotal)}</td>
-                )}
-                <td className="border border-slate-300 px-1 py-1" />
-                <td className="border border-slate-300 px-1 py-1 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-1 py-1 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-1 py-1" />
-                <td className="border border-slate-300 px-1 py-1 text-right">
-                  {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
-                </td>
+              <tr className="bg-slate-100 font-semibold text-slate-900 text-[11px]">
+                <td className="border border-slate-300 px-1.5 py-1.5" colSpan={3}>Total</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{rows.reduce((sum, row) => sum + row.qty, 0)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                {shouldShowDiscountColumn && <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.discountTotal)}</td>}
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
-        {/* Tax Summary + Totals */}
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white md:grid-cols-[minmax(0,0.65fr)_minmax(0,0.35fr)]">
-          <div className="min-w-0 border-b border-slate-300 bg-slate-50 p-2.5 md:border-b-0 md:border-r">
-            <div className="invoice-card rounded-md border border-slate-300 bg-white p-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary:</p>
-              <label className="mt-1 mb-1 block">
-                <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
+        <div className="grid border-b border-slate-300" style={{ gridTemplateColumns: "1fr 280px" }}>
+          <div className="border-r border-slate-300">
+            <div className={sectionHeaderClass}>Tax Summary:</div>
+            <div className="p-3">
+              <div className="mb-2 print:hidden">
+                <span className="block mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
                 <select
                   value={taxType}
                   onChange={(event) => handleTaxTypeChange(event.target.value as TaxType)}
                   disabled={!isInteractive}
-                  className="w-full rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-700 disabled:opacity-60"
+                  className="w-48 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 disabled:opacity-60"
                 >
                   <option value="cgst-sgst">CGST + SGST</option>
                   <option value="igst">IGST</option>
                   <option value="none">No Tax</option>
                 </select>
-              </label>
-              <div className="mt-1 overflow-x-auto">
-                <table className="w-full border-collapse text-[10px]">
-                  <thead>
-                    <tr className="bg-slate-100 text-left text-slate-600">
-                      <th className="border border-slate-300 px-1.5 py-0.5 font-semibold">Taxable</th>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">CGST Rate</th>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">CGST Amt</th>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">SGST Rate</th>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">SGST Amt</th>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">IGST Rate</th>
-                          <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">IGST Amt</th>
-                        </>
-                      ) : null}
-                      <th className="border border-slate-300 px-1.5 py-0.5 text-right font-semibold">Total Tax</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="bg-[#fbfcfe]">
-                      <td className="border border-slate-300 px-1.5 py-0.5 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{totals.cgstRate.toFixed(1)}%</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{totals.sgstRate.toFixed(1)}%</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{totals.igstRate.toFixed(1)}%</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                    <tr className="bg-[#ce9b24] font-semibold text-slate-900">
-                      <td className="border border-slate-300 px-1.5 py-0.5">TOTAL</td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">—</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">—</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">—</td>
-                          <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-1.5 py-0.5 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
-              <div className="mt-1.5 text-[11px] text-slate-700">
-                <span className="font-semibold text-slate-900">Amount in Words: </span>
+              <table className="w-full border-collapse text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600">
+                    <th className="border border-slate-300 px-2 py-1 text-left font-semibold">Taxable</th>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
+                      </>
+                    ) : null}
+                    <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      </>
+                    ) : null}
+                    <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                  </tr>
+                  <tr className="bg-[#e9e7e9] font-semibold text-slate-900">
+                    <td className="border border-slate-300 px-2 py-1">TOTAL</td>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      </>
+                    ) : null}
+                    <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="mt-2.5 text-[11px] text-slate-700">
+                <span className="font-semibold text-slate-900">Invoice Amount in Words: </span>
                 {numberToIndianWords(totals.grandTotal)}
               </div>
             </div>
           </div>
 
-          <div className="min-w-0 bg-white p-2.5 text-[11px] text-slate-800 leading-tight">
+          <div className="p-3 text-[12px] text-slate-800">
             {totals.discountTotal > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-1">Item-wise Discount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Item-wise Discount</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
               </div>
             )}
             {totals.extraDiscountAmount > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2 text-amber-700">
-                <span className="min-w-0 pr-1">Extra Discount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
+              <div className="flex justify-between gap-2 mt-0.5 text-amber-700">
+                <span>Discount on Taxable Amt</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
               </div>
             )}
-            <div className="mt-0.5 flex items-start justify-between gap-2">
-              <span className="min-w-0 pr-1">Taxable Amount</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxable)}</span>
+            <div className="flex justify-between gap-2 mt-0.5">
+              <span>Taxable Amount</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount > 0 ? totals.taxable : totals.taxableBeforeExtraDiscount)}</span>
             </div>
-            <div className="mt-0.5 flex items-start justify-between gap-2">
-              <span className="min-w-0 pr-1">Tax</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
+            <div className="flex justify-between gap-2 mt-0.5">
+              <span>Tax</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
             </div>
             {Math.abs(totals.roundOff) > 0 && (
-              <div className="mt-0.5 flex items-start justify-between gap-2">
-                <span className="min-w-0 pr-1">Round Off</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Round Off</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
               </div>
             )}
-            <div className="mt-1 flex items-start justify-between gap-2 border-t border-slate-300 pt-1 text-[13px] font-semibold text-slate-950">
-              <span className="min-w-0 pr-1">Grand Total</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-slate-300 text-[14px] font-bold text-slate-950">
+              <span>Grand Total</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
             </div>
-            <div className="mt-1.5 flex items-start justify-between gap-2">
-              <span className="min-w-0 pr-1">Payment Mode</span>
-              <span className="ml-auto shrink-0 text-right">: {effectivePaymentMode || "—"}</span>
+            <div className="flex justify-between gap-2 mt-2">
+              <span>Payment Mode</span>
+              <span className="shrink-0 text-right">: {effectivePaymentMode || "—"}</span>
             </div>
-            <div className="mt-0.5 flex items-start justify-between gap-2 font-semibold text-slate-900">
-              <span className="min-w-0 pr-1">Balance</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="flex justify-between gap-2 mt-0.5 font-semibold text-slate-900">
+              <span>Balance</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
             </div>
           </div>
         </div>
 
-        {/* Notes + Terms (50%-50% Grid split) */}
-        {hasNotesOrTerms && (
-          <div className="border-b border-slate-300 bg-slate-50 p-2.5 text-[11px] text-slate-700">
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              <div className="rounded-md border border-slate-300 bg-white p-2">
-                <div className="font-semibold text-slate-900 text-[10px] uppercase tracking-wide">Notes</div>
-                <div className="mt-0.5 whitespace-pre-line leading-tight text-slate-600">
-                  {hasNotes ? effectiveNotes : "—"}
+        {(hasNotes || hasTerms) && (
+          <div className="grid grid-cols-1 border-b border-slate-300 print:grid-cols-2 md:grid-cols-2">
+            {hasNotes && (
+              <div className={`border-b border-slate-300 ${hasTerms ? "md:border-r print:border-r" : ""}`}>
+                <div className={sectionHeaderClass}>Notes</div>
+                <div className="px-4 py-2.5 text-[12px] leading-5 text-slate-700 whitespace-pre-line">
+                  {effectiveNotes || "—"}
                 </div>
               </div>
-              <div className="rounded-md border border-slate-300 bg-white p-2">
-                <div className="font-semibold text-slate-900 text-[10px] uppercase tracking-wide">Terms & Conditions</div>
-                <div className="mt-0.5 whitespace-pre-line leading-tight text-slate-600">
-                  {hasTerms ? effectiveTerms : "—"}
+            )}
+            {hasTerms && (
+              <div className="border-b border-slate-300">
+                <div className={sectionHeaderClass}>Terms &amp; Conditions</div>
+                <div className="px-4 py-2.5 text-[12px] leading-5 text-slate-700 whitespace-pre-line">
+                  {effectiveTerms || "—"}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Bank Details + Signature */}
-        <div className="grid grid-cols-1 gap-2.5 bg-white p-2.5 sm:grid-cols-2 print:grid-cols-2">
-          <div>
-            <div className="invoice-card rounded-md border border-slate-300 bg-slate-50 p-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-              <div className="mt-1 flex gap-2 items-start">
-                <div className="flex-1 whitespace-pre-line text-[11px] text-slate-700 leading-tight">
-                  {effectiveBankDetails || "—"}
-                </div>
-                <div className="flex-shrink-0">
-                  <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 object-contain" />
-                </div>
-              </div>
+        <div className="grid grid-cols-2">
+          <div className="border-r border-slate-300">
+            <div className={sectionHeaderClass}>Bank Details:</div>
+            <div className="p-3 whitespace-pre-line text-[12px] text-slate-700 leading-5">
+              {effectiveBankDetails || "—"}
             </div>
           </div>
-          <div className="flex flex-col items-end justify-between text-[11px] text-slate-700">
-            <div className="invoice-card rounded-md border border-slate-300 bg-white p-2 text-right">
-              <div className="font-semibold text-slate-900 text-[10px]">For Radiatech Electra:</div>
-              <div className="mt-1.5 flex h-12 w-28 items-center justify-center overflow-hidden rounded border border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
+          <div>
+            <div className={`${sectionHeaderClass} text-right`}>For Radiatech Electra:</div>
+            <div className="p-3 flex flex-col items-end">
+              <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
                 {effectiveSignatureImageSrc ? (
-                  <img src={effectiveSignatureImageSrc} alt="Authorized signature" className="h-full w-full object-contain" />
-                ) : (
-                  "Signature"
-                )}
+                  <img src={effectiveSignatureImageSrc} alt="Signature" className="h-full w-full object-contain" />
+                ) : "Signature"}
               </div>
-              <div className="mt-1 text-center text-[10px] font-semibold text-slate-700">
+              <div className="mt-1 text-[11px] font-semibold text-slate-700 text-center">
                 {effectiveAuthorizedSignature || "Authorized Signatory"}
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @page {
-          size: A4;
-          margin: 4mm;
-        }
-
-        @media print {
-          html,
-          body {
-            width: 210mm !important;
-            height: auto !important;
-            min-height: 0 !important;
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          .invoice-preview-shell,
-          .invoice-preview-shell * {
-            visibility: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .invoice-preview-shell {
-            position: static !important;
-            width: 100% !important;
-            max-width: none !important;
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-            overflow: visible !important;
-          }
-          .invoice-preview-shell > div {
-            width: 100% !important;
-            max-width: none !important;
-            height: auto !important;
-            min-height: 0 !important;
-            box-shadow: none !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 0 !important;
-            box-sizing: border-box !important;
-            overflow: visible !important;
-          }
-          .invoice-preview-shell .invoice-card,
-          .invoice-preview-shell .invoice-table-wrap {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          .print\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }
