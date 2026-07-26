@@ -1324,7 +1324,7 @@ export function PendingMaterialBillsPageContent() {
 
     const loadInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=invoice`);
+        const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=pending-material`);
         if (!response.ok) {
           return;
         }
@@ -1694,7 +1694,7 @@ export function PendingMaterialBillsPageContent() {
     setIsSaving(true);
     try {
       const payload = {
-        documentType: "invoice",
+        documentType: "pending-material",
         billType: "Pending Material",
         invoiceNumber: updateNumber,
         invoiceDate: billingDate || today,
@@ -1740,7 +1740,7 @@ export function PendingMaterialBillsPageContent() {
 
       const method = isEditing && editingInvoiceId ? "PUT" : "POST";
       const url = isEditing && editingInvoiceId
-        ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=invoice`
+        ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=pending-material`
         : "/api/invoices";
 
       const response = await fetch(url, {
