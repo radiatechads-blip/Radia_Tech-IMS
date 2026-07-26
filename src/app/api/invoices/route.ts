@@ -477,7 +477,7 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
       const created = await prisma.invoice.create({
         data: {
           ...invoicePayload,
-          billType: documentType === "delivery-challan" ? "Delivery Challan" : payload.billType,
+          billType: payload.billType,
           invoiceDate: payload.invoiceDate,
           dueDate: payload.dueDate,
           poDate: payload.poDate,
@@ -689,7 +689,7 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     where: { id },
     data: {
       ...invoicePayload,
-      billType: documentType === "delivery-challan" ? "Delivery Challan" : payload.billType,
+      billType: payload.billType,
       invoiceDate: payload.invoiceDate,
       dueDate: payload.dueDate,
       poDate: payload.poDate,

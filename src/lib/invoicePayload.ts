@@ -1,3 +1,5 @@
+import type { DocumentType } from "@/lib/invoiceApi";
+
 function safeDate(value: unknown): Date | null {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -38,7 +40,7 @@ function generateInvoiceSerial(existingNumbers: Set<string>, prefix: string) {
   return String(Math.min(maxSerial + 1, 999)).padStart(3, "0");
 }
 
-function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan") {
+function getInvoicePrefix(documentType: DocumentType) {
   if (documentType === "proforma") {
     return "PFI-";
   }
@@ -55,10 +57,22 @@ function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "q
     return "DC-";
   }
 
+  if (documentType === "debit-note") {
+    return "DN-";
+  }
+
+  if (documentType === "credit-note") {
+    return "CN-";
+  }
+
+  if (documentType === "pending-material") {
+    return "PM-";
+  }
+
   return "INV-";
 }
 
-export function getConversionSourceLabel(documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan") {
+export function getConversionSourceLabel(documentType: DocumentType) {
   if (documentType === "quotation") {
     return "Quotation";
   }
@@ -76,7 +90,7 @@ export function getConversionSourceLabel(documentType: "invoice" | "proforma" | 
 
 export function resolveInvoiceNumber(
   data: Record<string, unknown>,
-  documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan",
+  documentType: DocumentType,
   usedNumbers: Iterable<string> = [],
   blockedNumber?: string,
 ) {
