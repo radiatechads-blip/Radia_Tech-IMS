@@ -211,8 +211,8 @@ export default function CNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
   const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-black border-b border-slate-300";
 
   return (
-    <div className="invoice-preview-shell mx-auto w-full">
-      <div className="overflow-hidden border-[1.2px] border-slate-300 bg-white text-black print:border-[1px]">
+    <div className="invoice-preview-shell mx-auto w-full" style={{ color: "#000" }}>
+      <div className="overflow-hidden border-[1.2px] border-slate-300 bg-white print:border-[1px]" style={{ color: "#000" }}>
         {labels.map((label, index) => (
           <section key={`${label}-${index}`} className={`invoice-preview-page ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`} style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}>
             <div className="relative flex items-center justify-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3">

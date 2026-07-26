@@ -720,15 +720,22 @@ export default function InvoicePreview({
   const hasNotesOrTerms = hasNotes || hasTerms;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-      <div className="mx-auto w-full max-w-225 overflow-hidden border border-slate-300 bg-white text-black print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
+    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0" style={{ color: "#000" }}>
+      <style jsx global>{`
+        .invoice-preview-shell,
+        .invoice-preview-shell * {
+          color: #000 !important;
+          -webkit-print-color-adjust: exact;
+        }
+      `}</style>
+      <div className="invoice-preview-shell mx-auto w-full max-w-225 overflow-hidden border border-slate-300 bg-white print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white" style={{ color: "#000" }}>
         
         {/* Header Ribbon */}
-        <div className="flex items-center justify-between border-b border-slate-300 bg-slate-100 px-4 py-2 text-black">
+        <div className="relative flex items-center justify-center border-b border-slate-300 bg-slate-100 px-4 py-2 text-black">
           <div className="text-[13px] font-bold uppercase tracking-wide text-slate-800">
             {docLabel || "Proforma Invoice"}
           </div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <div className="absolute right-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Original Copy
           </div>
         </div>

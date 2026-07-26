@@ -331,7 +331,13 @@ export default function QuotationPreview({
     <div>
       {labels.map((label, labelIndex) => (
         <section key={`${label}-${labelIndex}`} className={`invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0 ${labelIndex > 0 ? "mt-6 pt-6 print:mt-0 print:pt-0" : ""}`} style={labelIndex > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}>
-          <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white">
+          <style jsx global>{`
+            .invoice-preview-shell,
+            .invoice-preview-shell * {
+              color: #000 !important;
+            }
+          `}</style>
+          <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white" style={{ color: "#000" }}>
 
             {/* Header bar */}
             <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">

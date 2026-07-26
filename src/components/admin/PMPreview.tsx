@@ -92,8 +92,8 @@ export default function PMPreview({ invoice, taxType: taxTypeProp, onTaxTypeChan
   const hasTerms = !!effectiveTerms?.trim();
 
   return (
-    <section className="invoice-preview-shell border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-      <div className="mx-auto w-full max-w-225 overflow-hidden border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white">
+    <section className="invoice-preview-shell border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0" style={{ color: "#000" }}>
+      <div className="mx-auto w-full max-w-225 overflow-hidden border-[1.5px] border-slate-300 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white" style={{ color: "#000" }}>
         <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
           <h2 className="text-[15px] font-bold text-black">Pending Material</h2>
         </div>

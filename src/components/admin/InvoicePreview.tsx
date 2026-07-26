@@ -2952,7 +2952,7 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
   const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
 
   return (
-    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm text-black" style={{ color: "#000" }}>
+    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm" style={{ color: "#000" }}>
       <style jsx global>{`
         .invoice-preview-shell,
         .invoice-preview-shell * {
