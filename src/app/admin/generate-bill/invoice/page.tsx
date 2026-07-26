@@ -4,15 +4,15 @@ export const dynamic = "force-dynamic";
 import AdminShell from "@/components/admin/AdminShell";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
-    AlignLeft,
-    CalendarDays,
-    Camera,
-    Check,
-    ChevronDown,
-    FileText,
-    Plus,
-    Save,
-    Share2,
+  AlignLeft,
+  CalendarDays,
+  Camera,
+  Check,
+  ChevronDown,
+  FileText,
+  Plus,
+  Save,
+  Share2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -2359,9 +2359,7 @@ export default function InvoicePage() {
                 print-color-adjust: exact !important;
               }
               .invoice-preview-shell {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
+                position: static !important;
                 width: 100% !important;
                 max-width: none !important;
                 box-shadow: none !important;
@@ -2369,6 +2367,10 @@ export default function InvoicePage() {
                 padding: 0 !important;
                 margin: 0 !important;
                 background: white !important;
+                overflow: visible !important;
+              }
+              .invoice-preview-shell > div {
+                overflow: visible !important;
               }
               .invoice-preview-shell .invoice-card,
               .invoice-preview-shell .invoice-table-wrap {
@@ -2376,6 +2378,8 @@ export default function InvoicePage() {
                 break-inside: avoid !important;
               }
               .invoice-preview-page {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
                 page-break-before: auto;
                 break-before: auto;
               }

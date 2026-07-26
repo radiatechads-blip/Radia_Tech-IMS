@@ -2746,6 +2746,7 @@
 // }
 
 
+import { getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -2835,6 +2836,7 @@ export interface InvoiceSummary {
   subtotal?: number | string | null;
   discountTotal?: number | string | null;
   taxableAmount?: number | string | null;
+  isDuplicate?: boolean | null;
   taxAmount?: number | string | null;
   grandTotal?: number | string | null;
   paymentMode?: string | null;
@@ -2858,6 +2860,9 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
     (invoice.taxType as TaxType) || "cgst-sgst",
   );
   const taxType = taxTypeProp ?? internalTaxType;
+
+  const isDuplicateCopy = Boolean(invoice.isDuplicate || getInvoiceDuplicateFlag(invoice));
+  const previewPageLabels = getDuplicateCopyPageLabels(isDuplicateCopy);
 
   const items = useMemo(() => invoice.items || [], [invoice.items]);
   const roundOff = Number(invoice.roundOff || 0);
@@ -2948,15 +2953,20 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
 
   return (
     <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-      <div className="mx-auto w-full max-w-[900px] overflow-hidden border border-black bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+      {previewPageLabels.map((label, index) => (
+        <div
+          key={`${label}-${index}`}
+          className={`invoice-preview-page mx-auto w-full max-w-7xl overflow-hidden border border-black bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`}
+          style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}
+        >
 
-        {/* ── Header bar ── */}
-        <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
-          <h2 className="text-[15px] font-bold text-slate-900">Tax Invoice</h2>
-          <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700">
-            Original for Recipient
-          </span>
-        </div>
+          {/* ── Header bar ── */}
+          <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
+            <h2 className="text-[15px] font-bold text-slate-900">Tax Invoice</h2>
+            <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700">
+              {label}
+            </span>
+          </div>
 
         {/* ── Company row ── */}
         <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-5 py-3">
@@ -3059,7 +3069,7 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
               {rows.map((item, i) => (
                 <tr key={item.id || i} className="odd:bg-white even:bg-slate-50/50">
                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{i + 1}</td>
-                  <td className="border border-slate-300 px-1.5 py-1.5 align-top break-words whitespace-normal">{item.description || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top whitespace-normal">{item.description || "—"}</td>
                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.hsn || "—"}</td>
                   <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{item.qty}</td>
                   <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.unit || "—"}</td>
@@ -3264,8 +3274,8 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
             </div>
           </div>
         </div>
-
       </div>
+        ))}
     </section>
   );
 }
