@@ -6,8 +6,15 @@ import CNPreview from "@/components/admin/CNPreview";
 import DeliveryChallen from "@/components/admin/DeliveryChallen";
 import DNPreview from "@/components/admin/DNPreview";
 import InvoicePreview from "@/components/admin/InvoicePreview";
+import PMPreview from "@/components/admin/PMPreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
+import {
+  BILL_REPORT_COLUMN_OPTIONS,
+  buildBillReportRows,
+  exportBillReport,
+  type BillReportColumnKey,
+} from "@/lib/billReport";
 import { getConversionSourceLabel } from "@/lib/invoicePayload";
 import { getBillTypeLabel, getDuplicateCopyInvoiceNumber, getInvoiceDuplicateFlag, getInvoiceEditRoute } from "@/lib/invoiceRoute";
 import jsPDF from "jspdf";
@@ -139,6 +146,18 @@ export default function GenerateBillPage() {
   );
   const [isDocTypeMenuOpen, setIsDocTypeMenuOpen] = useState(false);
   const docTypeMenuRef = useRef<HTMLDivElement>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportColumns, setReportColumns] = useState<BillReportColumnKey[]>([
+    "date",
+    "billNumber",
+    "customerName",
+    "total",
+    "paymentType",
+    "receivedOrPaid",
+    "remainingBalance",
+    "gstin",
+  ]);
+  const [isExportingReport, setIsExportingReport] = useState(false);
 
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
@@ -272,6 +291,43 @@ export default function GenerateBillPage() {
     };
   }, [openActionMenuId]);
 
+  const handleToggleReportColumn = (column: BillReportColumnKey) => {
+    setReportColumns((current) =>
+      current.includes(column)
+        ? current.filter((item) => item !== column)
+        : [...current, column],
+    );
+  };
+
+  const handleExportReport = () => {
+    if (!selectedDocType) return;
+
+    const rows = buildBillReportRows(
+      filteredInvoices.map((invoice) => ({
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate || invoice.createdAt,
+        partyName: invoice.partyName,
+        grandTotal: Number(invoice.grandTotal ?? 0),
+        paymentMode: invoice.paymentMode,
+        amountPaid: Number(invoice.grandTotal ?? 0) > 0 ? Number(invoice.grandTotal ?? 0) / 2 : 0,
+        gstin: invoice.gstin,
+      })),
+      reportColumns,
+    );
+
+    setIsExportingReport(true);
+    try {
+      const exportRows = rows.map((row) => row);
+      exportBillReport(
+        exportRows,
+        `${selectedDocType.toLowerCase().replace(/\s+/g, "-")}-report`,
+      );
+      setIsReportModalOpen(false);
+    } finally {
+      setIsExportingReport(false);
+    }
+  };
+
   const formatDate = (value?: string | null) => {
     if (!value) return "-";
     const date = new Date(value);
@@ -328,7 +384,11 @@ export default function GenerateBillPage() {
           invoice.convertedFromProforma,
         ) && (
           <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/10">
-            {getBillTypeLabel(invoice) === "Quotation" ? "From Quotation" : "From Proforma"}
+            {getBillTypeLabel(invoice) === "Quotation"
+              ? "From Quotation"
+              : getBillTypeLabel(invoice) === "Delivery Challan"
+                ? "From Delivery Challan"
+                : "From Proforma"}
             {invoiceMeta.sourceProformaNumber || invoice.sourceProformaNumber
               ? ` (${invoiceMeta.sourceProformaNumber || invoice.sourceProformaNumber})`
               : ""}
@@ -428,6 +488,9 @@ export default function GenerateBillPage() {
     }
     if (label === "Delivery Challan") {
       return <DeliveryChallen invoice={invoice} />;
+    }
+    if (label === "Pending Material") {
+      return <PMPreview invoice={invoice} taxType={invoice.taxType as "cgst-sgst" | "igst" | "none" | undefined} />;
     }
 
     return <InvoicePreview invoice={invoice} />;
@@ -798,7 +861,12 @@ export default function GenerateBillPage() {
 
   const openConvertModal = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
-    const sourceDocumentType = getBillTypeLabel(invoice) === "Quotation" ? "quotation" : "proforma";
+    const label = getBillTypeLabel(invoice);
+    const sourceDocumentType = label === "Quotation"
+      ? "quotation"
+      : label === "Delivery Challan"
+        ? "delivery-challan"
+        : "proforma";
     setConvertOptions({
       invoiceDate: new Date().toISOString().split("T")[0],
       paymentTerms: "Due on Receipt",
@@ -823,7 +891,12 @@ export default function GenerateBillPage() {
     })();
 
     const sourceInvoiceNumber = convertModalInvoice.invoiceNumber ?? "";
-    const sourceDocumentType = getBillTypeLabel(convertModalInvoice) === "Quotation" ? "quotation" : "proforma";
+    const label = getBillTypeLabel(convertModalInvoice);
+    const sourceDocumentType = label === "Quotation"
+      ? "quotation"
+      : label === "Delivery Challan"
+        ? "delivery-challan"
+        : "proforma";
     const taxInvoiceNumber = `TI-${sourceInvoiceNumber.replace(/^[A-Z]+-?/i, "")}`;
 
     const newTaxInvoice = {
@@ -1225,6 +1298,19 @@ export default function GenerateBillPage() {
               )}
             </div>
 
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 3h10l4 4v14H6z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 3v4h4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Report
+            </button>
+
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
               <span className="font-medium text-slate-700">Filter by</span>
               <select
@@ -1434,10 +1520,10 @@ export default function GenerateBillPage() {
                     const isMenuOpen = openActionMenuId === invoice.id;
                     const canGenerateInvoice =
                       getBillTypeLabel(invoice) !== "Tax Invoice";
-                    const isProforma =
-                      getBillTypeLabel(invoice) === "Proforma Invoice";
-                    const isQuotation =
-                      getBillTypeLabel(invoice) === "Quotation";
+                    const label = getBillTypeLabel(invoice);
+                    const isProforma = label === "Proforma Invoice";
+                    const isQuotation = label === "Quotation";
+                    const isDeliveryChallan = label === "Delivery Challan";
                     const rowKey = invoice.id ?? invoice.invoiceNumber ?? "";
                     const invoiceMeta = invoice as InvoiceWithDocType;
                     const convertedInvoiceNumber =
@@ -1501,7 +1587,7 @@ export default function GenerateBillPage() {
                               Preview
                             </button>
 
-                            {(isProforma || isQuotation) && (
+                            {(isProforma || isQuotation || isDeliveryChallan) && (
                               alreadyConverted ? (
                                 <div className="flex flex-col items-end gap-1">
                                   <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
@@ -1776,6 +1862,70 @@ export default function GenerateBillPage() {
           </>
         )}
       </div>
+
+      {isReportModalOpen && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Generate Report</h3>
+                <p className="text-sm text-slate-500">Choose columns for the selected bill history export.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {BILL_REPORT_COLUMN_OPTIONS.map((column) => {
+                  const checked = reportColumns.includes(column.key);
+                  return (
+                    <label key={column.key} className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleToggleReportColumn(column.key as BillReportColumnKey)}
+                        className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Export will use the currently filtered history rows from <strong>{selectedDocType ?? "the selected document type"}</strong>.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(false)}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExportReport}
+                disabled={isExportingReport || reportColumns.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {isExportingReport ? "Preparing…" : "Export Report"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {convertModalInvoice &&
         createPortal(

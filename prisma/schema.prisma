@@ -331,6 +331,7 @@ model Annexure {
   extraDiscountAmount Float          @default(0)
   taxableAmount       Float          @default(0)
   taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
   grandTotal          Float          @default(0)
   items               AnnexureItem[]
   createdAt           DateTime       @default(now())

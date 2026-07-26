@@ -1740,7 +1740,7 @@ function AnnexurePageContent() {
                           setExtraDiscountAmount(Number.isFinite(numericValue) ? numericValue : 0);
                         }}
                         placeholder="0"
-                        className="inv-field w-20 text-right"
+                        className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
                   </div>
@@ -1762,7 +1762,7 @@ function AnnexurePageContent() {
                   </div>
 
                   <div className={`mt-1 flex items-center justify-between gap-2 ${roundOffAmount ? "" : "print:hidden"}`}>
-                    <span className="text-slate-500">Round off adjustment</span>
+                    <span className="text-slate-500">Round off</span>
                     <div className="flex items-center gap-0.5">
                       <span className="text-slate-500">: ₹</span>
                       <input
@@ -1774,7 +1774,7 @@ function AnnexurePageContent() {
                           setRoundOffAmount(Number.isFinite(numericValue) ? numericValue : 0);
                         }}
                         placeholder="0"
-                        className="inv-field w-20 text-right"
+                        className="inv-field w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
                   </div>

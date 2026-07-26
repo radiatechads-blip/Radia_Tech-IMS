@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import AdminShell from "@/components/admin/AdminShell";
 import DeliveryChallen from "@/components/admin/DeliveryChallen";
+import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import { CalendarDays, ChevronDown, Plus, Save } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -49,6 +50,18 @@ const fallbackCustomer: Customer = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
+const ADD_NEW_CUSTOMER_OPTION = "__add_new_customer__";
+const emptyNewCustomerForm = {
+  name: "",
+  contactPerson: "",
+  phone: "",
+  email: "",
+  gstin: "",
+  address: "",
+  city: "",
+  state: "",
+  pincode: "",
+};
 
 export function DeliveryChallanPageContent() {
   const router = useRouter();
@@ -61,6 +74,13 @@ export function DeliveryChallanPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([fallbackCustomer]);
   const [selectedCustomerId, setSelectedCustomerId] = useState(fallbackCustomer.id);
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState(emptyNewCustomerForm);
+  const [newCustomerError, setNewCustomerError] = useState("");
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newProductName, setNewProductName] = useState("");
+  const [activeItemIdForNewProduct, setActiveItemIdForNewProduct] = useState<number | null>(null);
 
   const [partyName, setPartyName] = useState("");
   const [address, setAddress] = useState("");
@@ -200,6 +220,13 @@ export function DeliveryChallanPageContent() {
   }, [customers, invoiceId]);
 
   const handleCustomerSelect = (id: string) => {
+    if (id === ADD_NEW_CUSTOMER_OPTION) {
+      setNewCustomerForm(emptyNewCustomerForm);
+      setNewCustomerError("");
+      setShowAddCustomerModal(true);
+      return;
+    }
+
     setSelectedCustomerId(id);
     const customer = customers.find((entry) => entry.id === id);
     if (!customer) return;
@@ -212,6 +239,107 @@ export function DeliveryChallanPageContent() {
     setEmail(customer.email);
     setGstin(customer.gstin);
     setShipToAddress(customer.address);
+  };
+
+  const handleAddNewCustomerSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setNewCustomerError("");
+
+    if (!newCustomerForm.name || !newCustomerForm.phone || !newCustomerForm.email) {
+      setNewCustomerError("Name, phone, and email are required.");
+      return;
+    }
+
+    setIsSavingCustomer(true);
+
+    try {
+      const response = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCustomerForm),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to add customer.");
+
+      const createdCustomer: Customer = {
+        id: String(data.id ?? ""),
+        name: String(data.name ?? newCustomerForm.name ?? ""),
+        contactPerson: String(data.contactPerson ?? newCustomerForm.contactPerson ?? ""),
+        phone: String(data.phone ?? newCustomerForm.phone ?? ""),
+        email: String(data.email ?? newCustomerForm.email ?? ""),
+        gstin: String(data.gstin ?? newCustomerForm.gstin ?? ""),
+        address: String(data.address ?? newCustomerForm.address ?? ""),
+        city: String(data.city ?? newCustomerForm.city ?? ""),
+        state: String(data.state ?? newCustomerForm.state ?? ""),
+        pincode: String(data.pincode ?? newCustomerForm.pincode ?? ""),
+      };
+
+      setCustomers((current) => [createdCustomer, ...current]);
+      setSelectedCustomerId(createdCustomer.id);
+      setPartyName(createdCustomer.name || "");
+      setAddress(createdCustomer.address || "");
+      setCity(createdCustomer.city || "");
+      setState(createdCustomer.state || "");
+      setPincode(createdCustomer.pincode || "");
+      setPhone(createdCustomer.phone || "");
+      setEmail(createdCustomer.email || "");
+      setGstin(createdCustomer.gstin || "");
+      setShipToAddress(createdCustomer.address || "");
+      setShowAddCustomerModal(false);
+      setNewCustomerForm(emptyNewCustomerForm);
+    } catch (submitError) {
+      setNewCustomerError(submitError instanceof Error ? submitError.message : "Unable to add customer.");
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
+
+  const openAddProductModal = (id: number, initialName = "") => {
+    setActiveItemIdForNewProduct(id);
+    setNewProductName(initialName);
+    setShowAddProductModal(true);
+  };
+
+  const handleProductCreated = ({
+    id,
+    name,
+    hsn,
+    unit,
+    price,
+  }: {
+    id: string;
+    name: string;
+    hsn: string;
+    unit: string;
+    price: number;
+  }) => {
+    setProductOptions((current) => [
+      ...current,
+      {
+        id,
+        name,
+        hsn,
+        unit,
+      },
+    ]);
+
+    if (activeItemIdForNewProduct !== null) {
+      setItems((current) =>
+        current.map((item) =>
+          item.id !== activeItemIdForNewProduct
+            ? item
+            : {
+                ...item,
+                itemName: name,
+                hsn: hsn || item.hsn,
+                unit: unit || item.unit,
+              },
+        ),
+      );
+    }
+
+    setActiveItemIdForNewProduct(null);
+    setShowAddProductModal(false);
   };
 
   const handleItemNameChange = (id: number, value: string) => {
@@ -299,6 +427,60 @@ export function DeliveryChallanPageContent() {
       <datalist id="delivery-challan-product-options">
         {productOptions.map((product) => <option key={product.id} value={product.name} />)}
       </datalist>
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 print:hidden">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-950">Add New Customer</h2>
+              <button type="button" onClick={() => setShowAddCustomerModal(false)} className="text-sm text-slate-500 hover:text-slate-800">Close</button>
+            </div>
+            {newCustomerError && <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{newCustomerError}</div>}
+            <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleAddNewCustomerSubmit}>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Customer Name</label>
+                <input value={newCustomerForm.name} onChange={(event) => setNewCustomerForm((current) => ({ ...current, name: event.target.value }))} className={inputCls} required />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Contact Person</label>
+                <input value={newCustomerForm.contactPerson} onChange={(event) => setNewCustomerForm((current) => ({ ...current, contactPerson: event.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Phone</label>
+                <input value={newCustomerForm.phone} onChange={(event) => setNewCustomerForm((current) => ({ ...current, phone: event.target.value }))} className={inputCls} required />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Email</label>
+                <input type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className={inputCls} required />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">GSTIN</label>
+                <input value={newCustomerForm.gstin} onChange={(event) => setNewCustomerForm((current) => ({ ...current, gstin: event.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Address</label>
+                <input value={newCustomerForm.address} onChange={(event) => setNewCustomerForm((current) => ({ ...current, address: event.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">City</label>
+                <input value={newCustomerForm.city} onChange={(event) => setNewCustomerForm((current) => ({ ...current, city: event.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">State</label>
+                <input value={newCustomerForm.state} onChange={(event) => setNewCustomerForm((current) => ({ ...current, state: event.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500">Pincode</label>
+                <input value={newCustomerForm.pincode} onChange={(event) => setNewCustomerForm((current) => ({ ...current, pincode: event.target.value }))} className={inputCls} />
+              </div>
+              <div className="sm:col-span-2 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowAddCustomerModal(false)} className="inline-flex items-center justify-center rounded border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                <button type="submit" disabled={isSavingCustomer} className="inline-flex items-center justify-center rounded bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400">{isSavingCustomer ? "Saving..." : "Save Customer"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      <ProductCreateModal open={showAddProductModal} initialName={newProductName} onClose={() => setShowAddProductModal(false)} onProductCreated={handleProductCreated} />
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
         <div className={`${showPreview ? "hidden" : ""} print:hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-300 bg-[#f4f5f8] px-4 py-2 shadow-sm">
@@ -322,6 +504,7 @@ export function DeliveryChallanPageContent() {
                   <div className="relative">
                     <select value={selectedCustomerId} onChange={(event) => handleCustomerSelect(event.target.value)} className={`${inputCls} appearance-none pr-7`}>
                       <option value="">Select customer...</option>
+                      <option value={ADD_NEW_CUSTOMER_OPTION}>+ Add New Customer</option>
                       {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                     </select>
                     <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1.5 text-gray-400" />
@@ -425,7 +608,14 @@ export function DeliveryChallanPageContent() {
                   {items.map((item, index) => (
                     <tr key={item.id} className="group hover:bg-slate-50/60">
                       <td className="border border-slate-300 px-2 py-1.5 text-slate-500">{index + 1}</td>
-                      <td className="border border-slate-300 px-2 py-1.5"><input list="delivery-challan-product-options" value={item.itemName} onChange={(e) => handleItemNameChange(item.id, e.target.value)} placeholder="Item description" className="w-full bg-transparent outline-none" /></td>
+                      <td className="border border-slate-300 px-2 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <input list="delivery-challan-product-options" value={item.itemName} onChange={(e) => handleItemNameChange(item.id, e.target.value)} placeholder="Item description" className="min-w-0 flex-1 bg-transparent outline-none" />
+                          <button type="button" onClick={() => openAddProductModal(item.id, item.itemName)} className="pointer-events-none rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 opacity-0 transition-opacity duration-150 hover:bg-slate-50 group-hover:pointer-events-auto group-hover:opacity-100">
+                            + New
+                          </button>
+                        </div>
+                      </td>
                       <td className="border border-slate-300 px-2 py-1.5"><input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} className="w-full bg-transparent outline-none" /></td>
                       <td className="border border-slate-300 px-2 py-1.5"><input type="number" min="0" value={item.qty} onChange={(e) => updateItem(item.id, "qty", Number(e.target.value))} className="w-full bg-transparent text-right outline-none" /></td>
                       <td className="border border-slate-300 px-2 py-1.5"><div className="relative"><select value={item.unit} onChange={(e) => updateItem(item.id, "unit", e.target.value)} className="w-full appearance-none bg-transparent outline-none"><option value="">—</option><option value="PCS">PCS</option><option value="MTR">MTR</option><option value="KG">KG</option><option value="NOS">NOS</option></select><ChevronDown size={11} className="pointer-events-none absolute right-0 top-1 text-gray-400" /></div></td>

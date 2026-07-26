@@ -58,9 +58,13 @@ function getInvoicePrefix(documentType: "invoice" | "proforma" | "annexure" | "q
   return "INV-";
 }
 
-export function getConversionSourceLabel(documentType: "invoice" | "proforma" | "annexure" | "quotation") {
+export function getConversionSourceLabel(documentType: "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan") {
   if (documentType === "quotation") {
     return "Quotation";
+  }
+
+  if (documentType === "delivery-challan") {
+    return "Delivery Challan";
   }
 
   if (documentType === "proforma") {

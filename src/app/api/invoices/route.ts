@@ -685,18 +685,50 @@ export async function GET(req: Request) {
               : undefined;
 
     if (invoiceId) {
-      const invoice = await getDocumentRecordById(invoiceId, documentType);
+      try {
+        const invoice = await getDocumentRecordById(invoiceId, documentType);
+        if (invoice) return NextResponse.json(invoice);
+        return jsonError("Invoice not found.", 404);
+      } catch (error) {
+        // If the DB is missing the new `roundOff` column, attempt to add it and retry once.
+        const isPrismaMissingColumn =
+          typeof error === "object" && error !== null && "code" in error && String((error as any).code) === "P2022";
+        if (isPrismaMissingColumn) {
+          try {
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Annexure" ADD COLUMN IF NOT EXISTS "roundOff" double precision NOT NULL DEFAULT 0`);
+            const invoice = await getDocumentRecordById(invoiceId, documentType);
+            if (invoice) return NextResponse.json(invoice);
+            return jsonError("Invoice not found.", 404);
+          } catch (e2) {
+            logServerError("api.invoices.GET.retry", e2);
+          }
+        }
 
-      if (invoice) {
-        return NextResponse.json(invoice);
+        logServerError("api.invoices.GET", error);
+        const status = isDatabaseUnavailableError(error) ? 503 : 500;
+        return jsonError(status === 503 ? DATABASE_UNAVAILABLE_MESSAGE : "Unable to load invoices.", status);
       }
-
-      return jsonError("Invoice not found.", 404);
     }
 
     try {
-      const invoices = await getAllDocumentRecords(documentType);
-      return NextResponse.json(invoices);
+      try {
+        const invoices = await getAllDocumentRecords(documentType);
+        return NextResponse.json(invoices);
+      } catch (error) {
+        const isPrismaMissingColumn =
+          typeof error === "object" && error !== null && "code" in error && String((error as any).code) === "P2022";
+        if (isPrismaMissingColumn) {
+          try {
+            await prisma.$executeRawUnsafe(`ALTER TABLE "Annexure" ADD COLUMN IF NOT EXISTS "roundOff" double precision NOT NULL DEFAULT 0`);
+            const invoices = await getAllDocumentRecords(documentType);
+            return NextResponse.json(invoices);
+          } catch (e2) {
+            logServerError("api.invoices.GET.retryAll", e2);
+          }
+        }
+
+        throw error;
+      }
     } catch (error) {
       logServerError("api.invoices.GET", error);
       const status = isDatabaseUnavailableError(error) ? 503 : 500;

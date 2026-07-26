@@ -210,12 +210,13 @@ export default function AnnexurePreview({
     }
   };
 
+  // metric cell rendering follows the compact stacked layout style
   const renderCompactMetricCell = (amount: number, rate: number) => {
     if (rate <= 0) return <span className="text-slate-400">—</span>;
     return (
-      <span>
-        {formatCurrency(amount)}
-        <span className="ml-1 text-[10px] text-slate-400">({rate.toFixed(2)}%)</span>
+      <span className="flex flex-col items-end leading-tight">
+        <span>{formatCurrency(amount)}</span>
+        <span className="text-[9px] text-slate-400">({rate.toFixed(2)}%)</span>
       </span>
     );
   };
@@ -241,36 +242,41 @@ export default function AnnexurePreview({
 
   const hasAdditionalDetails = Boolean(additionalDescription || attachedImage || attachedDocumentName || attachedDocumentUrl);
   const hasNotesOrTerms = Boolean(String(invoice.notes || "").trim() || String(invoice.terms || "").trim());
+  const hasNotes = !!invoice.notes?.trim();
+  const hasTerms = !!invoice.terms?.trim();
+
+  /* ─── section header cell style (matches InvoicePreview) ─── */
+  const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
 
   return (
-    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-      <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:min-h-[297mm] print:rounded-none print:border-0 print:shadow-none print:bg-white">
-        <div className="flex items-center justify-between border-b border-slate-300 bg-[#f7f9fc] px-6 py-3 print:px-5">
-          <div>
-            <h2 className="text-base font-semibold capitalize text-slate-900">{docLabel}</h2>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-none print:bg-white print:shadow-none print:p-0">
+      <div className="mx-auto w-full max-w-[900px] overflow-hidden border border-black bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:min-h-[297mm] print:shadow-none">
+
+        {/* ── Header bar ── */}
+        <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
+          <div className="text-center">
+            <h2 className="text-[15px] font-bold text-slate-900">{docLabel}</h2>
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">
               Prepared for {invoice.partyName || "customer"}
             </p>
           </div>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700">
             Original
           </span>
         </div>
 
-        <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-6 pb-4 pt-4 print:px-5">
+        {/* ── Company row ── */}
+        <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-5 py-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md text-sm font-bold text-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/favicon.png" alt="Company Logo" className="h-full w-full object-contain" />
-            </div>
+            <img src="/favicon.png" alt="Logo" className="h-20 w-20 object-contain" />
             <div>
-              <h3 className="text-xl font-bold tracking-wide text-slate-950">RADIATECH ELECTRA</h3>
-              <p className="mt-1 text-[11px] text-slate-600">
+              <h3 className="text-[20px] font-extrabold tracking-wide text-slate-950">RADIATECH ELECTRA</h3>
+              <p className="mt-0.5 text-[14px] text-slate-500 leading-snug">
                 Basement, A-287, Sector 69, Noida, Gautam Buddha Nagar, Uttar Pradesh, 201301
               </p>
             </div>
           </div>
-          <div className="text-right text-[11px] text-slate-600">
+          <div className="text-right text-[13px] text-slate-600 leading-5 shrink-0">
             <div>Phone: +91 81788 50959</div>
             <div>Email: sales@radiatech.in</div>
             <div>GSTIN: 09DDZPK0004H1ZF</div>
@@ -278,104 +284,113 @@ export default function AnnexurePreview({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white sm:grid-cols-2 print:grid-cols-2">
-          <div className="border-b border-slate-300 bg-slate-50 p-4 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
-            <div className="rounded-lg border border-slate-300 bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Party Details</p>
-              <div className="mt-1 space-y-1 text-[13px] leading-5 text-slate-800">
-                <div className="font-semibold text-slate-900">{invoice.partyName || "—"}</div>
-                {invoice.contactPerson ? <div> {invoice.contactPerson}</div> : null}
-                <div>{invoice.address || "—"}</div>
-                <div>
-                  {[invoice.city, invoice.state, invoice.pincode].filter(Boolean).join(", ") || "—"}
-                </div>
-                <div>Contact No: {invoice.phone || "—"}</div>
-                <div>Email: {invoice.email || "—"}</div>
-                <div>GSTIN: {invoice.gstin || "—"}</div>
-              </div>
+        {/* ── Party Details | Document Details ── */}
+        <div className="grid grid-cols-2 border-b border-slate-300">
+          <div className="border-r border-slate-300">
+            <div className={secHeader}>Party Details</div>
+            <div className="p-3 text-[13px] leading-5 text-slate-800">
+              <div className="font-semibold text-slate-900">{invoice.partyName || "—"}</div>
+              {invoice.contactPerson && <div> {invoice.contactPerson}</div>}
+              <div>{invoice.address || "—"}</div>
+              <div>{[invoice.city, invoice.state, invoice.pincode].filter(Boolean).join(", ") || "—"}</div>
+              <div>Contact No: {invoice.phone || "—"}</div>
+              <div>Email: {invoice.email || "—"}</div>
+              <div>GSTIN: {invoice.gstin || "—"}</div>
             </div>
           </div>
-          <div className="bg-white p-4">
-            <div className="rounded-lg border border-slate-300 bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Document Details</p>
-              <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[13px] text-slate-800">
-                <span className="font-semibold text-slate-900">Document No:</span>
-                <span>{annexureNumber || invoice.invoiceNumber || "—"}</span>
-                <span className="font-semibold text-slate-900">Date:</span>
-                <span>{formatDate(annexureDate || invoice.invoiceDate || invoice.createdAt)}</span>
-                </div>
+          <div>
+            <div className={secHeader}>Document Details</div>
+            <div className="p-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px] text-slate-800">
+              <span className="font-semibold text-slate-900">Document No:</span>
+              <span>{annexureNumber || invoice.invoiceNumber || "—"}</span>
+              <span className="font-semibold text-slate-900">Date:</span>
+              <span>{formatDate(annexureDate || invoice.invoiceDate || invoice.createdAt)}</span>
             </div>
           </div>
         </div>
 
-       
-
-        <div className="invoice-table-wrap overflow-hidden border-b border-slate-300">
-          <table className="w-full border-collapse text-[12px]">
+        {/* ── Items table ── */}
+        <div className="invoice-table-wrap overflow-x-auto border-b border-slate-300">
+          <table className="w-full table-fixed border-collapse text-[11px]">
+            {shouldShowDiscountColumn ? (
+              <colgroup>
+                <col className="w-[3%]" /><col className="w-[18%]" /><col className="w-[7%]" />
+                <col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[8%]" />
+                <col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[9%]" />
+                <col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[10%]" />
+              </colgroup>
+            ) : (
+              <colgroup>
+                <col className="w-[3%]" /><col className="w-[20%]" /><col className="w-[8%]" />
+                <col className="w-[6%]" /><col className="w-[5%]" /><col className="w-[9%]" />
+                <col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[10%]" />
+                <col className="w-[10%]" /><col className="w-[10%]" />
+              </colgroup>
+            )}
             <thead>
-              <tr className="bg-[#bec9d9] text-left text-slate-700">
-                <th className="border border-slate-300 px-2 py-2 font-semibold">#</th>
-                <th className="border border-slate-300 px-2 py-2 font-semibold">Item name</th>
-                <th className="border border-slate-300 px-2 py-2 font-semibold">HSN/SAC</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Quantity</th>
-                <th className="border border-slate-300 px-2 py-2 font-semibold">Unit</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Price/unit (Rs)</th>
+              <tr className="bg-[#bec9d9] text-slate-700">
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">#</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">Item name</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">HSN/SAC</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Quantity</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-left font-semibold">Unit</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Price/unit (Rs)</th>
                 {shouldShowDiscountColumn && (
-                  <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Discount</th>
+                  <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Discount</th>
                 )}
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable Price/unit (Rs)</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Taxable amount (Rs)</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">GST</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Final Rate (Rs)</th>
-                <th className="border border-slate-300 px-2 py-2 text-right font-semibold">Amount Total (Rs)</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Taxable Price/unit (Rs)</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Taxable amount (Rs)</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">GST</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Final Rate (Rs)</th>
+                <th className="border border-slate-300 px-1.5 py-2 text-right font-semibold">Amount Total (Rs)</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((item, index) => (
-                <tr key={item.id || index}>
-                  <td className="border border-slate-300 px-2 py-2 align-top">{index + 1}</td>
-                  <td className="border border-slate-300 px-2 py-2 align-top">{item.description || "Item description"}</td>
-                  <td className="border border-slate-300 px-2 py-2 align-top">{item.hsn || "—"}</td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">{item.qty}</td>
-                  <td className="border border-slate-300 px-2 py-2 align-top">{item.unit || "—"}</td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">{formatCurrency(item.rate)}</td>
+                <tr key={item.id || index} className="odd:bg-white even:bg-slate-50/50">
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{index + 1}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top break-words whitespace-normal">{item.description || "Item description"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.hsn || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{item.qty}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 align-top">{item.unit || "—"}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">{formatCurrency(item.rate)}</td>
                   {shouldShowDiscountColumn && (
-                    <td className="border border-slate-300 px-2 py-2 text-right align-top">
+                    <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                       {renderCompactMetricCell(item.discountAmount, item.discountPercent)}
                     </td>
                   )}
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                     {formatCurrency(item.taxablePerUnit)}
                   </td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                     {formatCurrency(item.taxableAmount)}
                   </td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                     {renderCompactMetricCell(item.gstAmount, item.taxPercent)}
                   </td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top">
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top">
                     {formatCurrency(item.finalRatePerUnit)}
                   </td>
-                  <td className="border border-slate-300 px-2 py-2 text-right align-top font-semibold text-slate-900">
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right align-top font-semibold text-slate-900">
                     {formatCurrency(item.rowAmount)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 font-semibold text-slate-900">
-                <td className="border border-slate-300 px-2 py-2" colSpan={3}>Total</td>
-                <td className="border border-slate-300 px-2 py-2 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
-                <td className="border border-slate-300 px-2 py-2" />
-                <td className="border border-slate-300 px-2 py-2" />
+              <tr className="bg-slate-100 font-semibold text-slate-900 text-[11px]">
+                <td className="border border-slate-300 px-1.5 py-1.5" colSpan={3}>Total</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{rows.reduce((sum, item) => sum + item.qty, 0)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5" />
                 {shouldShowDiscountColumn && (
-                  <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.discountTotal)}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.discountTotal)}</td>
                 )}
-                <td className="border border-slate-300 px-2 py-2" />
-                <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-2 py-2 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
-                <td className="border border-slate-300 px-2 py-2" />
-                <td className="border border-slate-300 px-2 py-2 text-right">
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxableBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">{formatCurrency(totals.taxBeforeExtraDiscount)}</td>
+                <td className="border border-slate-300 px-1.5 py-1.5" />
+                <td className="border border-slate-300 px-1.5 py-1.5 text-right">
                   {formatCurrency(totals.taxableBeforeExtraDiscount + totals.taxBeforeExtraDiscount)}
                 </td>
               </tr>
@@ -383,176 +398,180 @@ export default function AnnexurePreview({
           </table>
         </div>
 
-        <div className="grid grid-cols-1 border-b border-slate-300 bg-white md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)]">
-          <div className="min-w-0 border-b border-slate-300 bg-slate-50 p-4 md:border-b-0 md:border-r">
-            <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Summary</p>
-              <label className="mt-2 mb-2 block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
+        {/* ── Tax Summary | Totals ── */}
+        <div className="invoice-card grid border-b border-slate-300" style={{ gridTemplateColumns: "1fr 280px" }}>
+          {/* Tax Summary left */}
+          <div className="border-r border-slate-300">
+            <div className={secHeader}>Tax Summary</div>
+            <div className="p-3">
+              {/* Tax Option selector (screen only) */}
+              <div className="mb-2 print:hidden">
+                <span className="block mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Tax Option</span>
                 <select
                   value={taxType}
                   onChange={(event) => handleTaxTypeChange(event.target.value as TaxType)}
                   disabled={!isInteractive}
-                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[12px] text-slate-700 disabled:opacity-60"
+                  className="w-48 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 disabled:opacity-60"
                 >
                   <option value="cgst-sgst">CGST + SGST</option>
                   <option value="igst">IGST</option>
                   <option value="none">No Tax</option>
                 </select>
-              </label>
-              <div className="mt-2 overflow-x-auto">
-                <table className="min-w-[520px] w-full border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-slate-100 text-left text-slate-600">
-                      <th className="border border-slate-300 px-2 py-1 font-semibold">Taxable</th>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
-                          <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
-                        </>
-                      ) : null}
-                      <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="bg-[#fbfcfe]">
-                      <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">
-                        {formatCurrency(totals.taxable)}
-                      </td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                    <tr className="bg-[#ce9b24] font-semibold text-slate-900">
-                      <td className="border border-slate-300 px-2 py-1">TOTAL</td>
-                      {taxType === "cgst-sgst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
-                        </>
-                      ) : taxType === "igst" ? (
-                        <>
-                          <td className="border border-slate-300 px-2 py-1 text-right">—</td>
-                          <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
-                        </>
-                      ) : null}
-                      <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
-              <div className="mt-3 text-[12px] text-slate-700">
+
+              {/* Tax table */}
+              <table className="w-full border-collapse text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600">
+                    <th className="border border-slate-300 px-2 py-1 text-left font-semibold">Taxable</th>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">CGST (Amt)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">SGST (Amt)</th>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Rate)</th>
+                        <th className="border border-slate-300 px-2 py-1 text-right font-semibold">IGST (Amt)</th>
+                      </>
+                    ) : null}
+                    <th className="border border-slate-300 px-2 py-1 text-right font-semibold">Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 px-2 py-1 font-semibold text-slate-900">{formatCurrency(totals.taxable)}</td>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.cgstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.sgstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{totals.igstRate.toFixed(2)}%</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      </>
+                    ) : null}
+                    <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                  </tr>
+                  <tr className="bg-[#e9e7e9] font-semibold text-slate-900">
+                    <td className="border border-slate-300 px-2 py-1">TOTAL</td>
+                    {taxType === "cgst-sgst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.cgst)}</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.sgst)}</td>
+                      </>
+                    ) : taxType === "igst" ? (
+                      <>
+                        <td className="border border-slate-300 px-2 py-1 text-right">—</td>
+                        <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.igst)}</td>
+                      </>
+                    ) : null}
+                    <td className="border border-slate-300 px-2 py-1 text-right">{formatCurrency(totals.tax)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="mt-2.5 text-[11px] text-slate-700">
                 <span className="font-semibold text-slate-900">Amount in Words: </span>
                 {numberToIndianWords(totals.grandTotal)}
               </div>
             </div>
           </div>
 
-          <div className="min-w-0 bg-white p-4 text-[13px] text-slate-800">
+          {/* Totals right */}
+          <div className="p-3 text-[12px] text-slate-800">
             {totals.discountTotal > 0 && (
-              <div className="mt-1 flex items-start justify-between gap-3">
-                <span className="min-w-0 pr-2">Item-wise Discount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Item-wise Discount</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.discountTotal)}</span>
               </div>
             )}
             {totals.extraDiscountAmount > 0 && (
-              <div className="mt-1 flex items-start justify-between gap-3 text-amber-700">
-                <span className="min-w-0 pr-2">Discount on Taxable Amount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
+              <div className="flex justify-between gap-2 mt-0.5 text-amber-700">
+                <span>Discount on Taxable Amount</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.extraDiscountAmount)}</span>
               </div>
             )}
             {totals.extraDiscountAmount > 0 ? (
-              <div className="mt-1 flex items-start justify-between gap-3">
-                <span className="min-w-0 pr-2">Taxable Amount (After Extra Discount)</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxable)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Taxable Amount (After Extra Discount)</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.taxable)}</span>
               </div>
             ) : (
-              <div className="flex items-start justify-between gap-3">
-                <span className="min-w-0 pr-2">Taxable Amount</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Taxable Amount</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.taxableBeforeExtraDiscount)}</span>
               </div>
             )}
-            <div className="mt-1 flex items-start justify-between gap-3">
-              <span className="min-w-0 pr-2">Tax</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
+            <div className="flex justify-between gap-2 mt-0.5">
+              <span>Tax</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.tax)}</span>
             </div>
             {Math.abs(totals.roundOff) > 0 && (
-              <div className="mt-1 flex items-start justify-between gap-3">
-                <span className="min-w-0 pr-2">Round Off</span>
-                <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
+              <div className="flex justify-between gap-2 mt-0.5">
+                <span>Round Off</span>
+                <span className="shrink-0 text-right">: {formatCurrency(totals.roundOff)}</span>
               </div>
             )}
-            <div className="mt-2 flex items-start justify-between gap-3 border-t border-slate-300 pt-2 text-[15px] font-semibold text-slate-950">
-              <span className="min-w-0 pr-2">Grand Total</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="flex justify-between gap-2 mt-2 pt-2 border-t border-slate-300 text-[14px] font-bold text-slate-950">
+              <span>Grand Total</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <span className="min-w-0 pr-2">Payment Mode</span>
-              <span className="ml-auto shrink-0 text-right">: {invoice.paymentMode || "—"}</span>
+            <div className="flex justify-between gap-2 mt-2">
+              <span>Payment Mode</span>
+              <span className="shrink-0 text-right">: {invoice.paymentMode || "—"}</span>
             </div>
-            <div className="mt-1 flex items-start justify-between gap-3 font-semibold text-slate-900">
-              <span className="min-w-0 pr-2">Balance</span>
-              <span className="ml-auto shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
+            <div className="flex justify-between gap-2 mt-0.5 font-semibold text-slate-900">
+              <span>Balance</span>
+              <span className="shrink-0 text-right">: {formatCurrency(totals.grandTotal)}</span>
             </div>
           </div>
         </div>
 
+        {/* ── Notes & Terms ── */}
         
-
-        <div className="grid grid-cols-1 gap-4 bg-white p-4 sm:grid-cols-2 print:grid-cols-2">
-          <div>
-            <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Reference</p>
-              <div className="mt-2 space-y-1 text-[12px] text-slate-700">
-                <div>
-                  <span className="font-semibold text-slate-900">Annexure No:</span> {annexureNumber || invoice.invoiceNumber || "—"}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-900">Annexure Date:</span> {formatDate(annexureDate || invoice.invoiceDate || invoice.createdAt)}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-900">Prepared For:</span> {invoice.partyName || "—"}
-                </div>
+        {/* ── Reference | Signature ── */}
+        <div className="grid grid-cols-2">
+          <div className="border-r border-slate-300">
+            <div className={secHeader}>Reference:</div>
+            <div className="p-3 text-[12px] leading-5 text-slate-700">
+              <div>
+                <span className="font-semibold text-slate-900">Annexure No:</span>{" "}
+                {annexureNumber || invoice.invoiceNumber || "—"}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900">Annexure Date:</span>{" "}
+                {formatDate(annexureDate || invoice.invoiceDate || invoice.createdAt)}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900">Prepared For:</span> {invoice.partyName || "—"}
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end justify-between text-[13px] text-slate-700">
-            <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3">
-              <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
-              <div className="mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
+          <div>
+            <div className={`${secHeader} text-right`}>For Radiatech Electra:</div>
+            <div className="invoice-card p-3 flex flex-col items-end">
+              <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
                 {signatureImageSrc ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={signatureImageSrc} alt="Authorized signature" className="h-full w-full object-contain" />
                 ) : (
                   "Signature"
                 )}
               </div>
-              <div className="mt-1 text-center text-[11px] font-semibold text-slate-700">
+              <div className="mt-1 text-[11px] font-semibold text-slate-700 text-center">
                 {invoice.authorizedSignature || "Authorized Signatory"}
               </div>
             </div>
           </div>
         </div>
+
       </div>
 
       <style jsx global>{`
@@ -595,8 +614,7 @@ export default function AnnexurePreview({
             max-width: none !important;
             min-height: 285mm !important;
             box-shadow: none !important;
-            border: 1.2px solid #cbd5e1 !important;
-            border-radius: 0 !important;
+            border: 1.2px solid #000 !important;
             box-sizing: border-box !important;
             overflow: visible !important;
           }

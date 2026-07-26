@@ -2952,7 +2952,7 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
 
         {/* ── Header bar ── */}
         <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
-          <h2 className="text-[15px] font-bold text-slate-900">{docLabel}</h2>
+          <h2 className="text-[15px] font-bold text-slate-900">Tax Invoice</h2>
           <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700">
             Original for Recipient
           </span>

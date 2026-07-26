@@ -270,6 +270,42 @@ export default function EWayBillPreview({ data, onClose }: Props) {
   const modeLabel = data.mode.charAt(0).toUpperCase() + data.mode.slice(1);
   const typeLabel = `${data.supplyType.charAt(0).toUpperCase() + data.supplyType.slice(1)}-${data.subType.charAt(0).toUpperCase() + data.subType.slice(1)}`;
 
+  const handlePrint = () => {
+    const printContents = document.getElementById('ewb-print')?.outerHTML;
+    if (!printContents) {
+      window.alert('Unable to prepare the e-way bill preview for printing.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1200');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups to open the print preview.');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>E-Way Bill Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @page { size: A4; margin: 10mm; }
+      body { margin: 0; background: #fff; font-family: Arial, sans-serif; }
+      @media print {
+        body { padding: 0; background: #fff; }
+      }
+    </style>
+  </head>
+  <body>
+    ${printContents}
+  </body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.setTimeout(() => printWindow.print(), 600);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center overflow-y-auto py-6">
       <div className="bg-gray-100 rounded-lg shadow-2xl w-full max-w-4xl mx-4">
@@ -278,7 +314,7 @@ export default function EWayBillPreview({ data, onClose }: Props) {
           <span className="text-white font-semibold text-sm">E-Way Bill Preview</span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded transition-colors"
             >
               <Printer size={13} />

@@ -43,3 +43,7 @@ test("resolveInvoiceNumber avoids reusing a previously blocked number on retries
 test("getConversionSourceLabel returns the correct source label for quotations", () => {
   assert.equal(getConversionSourceLabel("quotation"), "Quotation");
 });
+
+test("getConversionSourceLabel returns the correct source label for delivery challans", () => {
+  assert.equal(getConversionSourceLabel("delivery-challan"), "Delivery Challan");
+});
