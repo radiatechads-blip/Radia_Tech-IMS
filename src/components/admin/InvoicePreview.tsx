@@ -2746,7 +2746,7 @@
 // }
 
 
-import { getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
+import { getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -2952,11 +2952,17 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
   const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
 
   return (
-    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm text-black" style={{ color: "#000" }}>
+      <style jsx global>{`
+        .invoice-preview-shell,
+        .invoice-preview-shell * {
+          color: #000 !important;
+        }
+      `}</style>
       {previewPageLabels.map((label, index) => (
         <div
           key={`${label}-${index}`}
-          className={`invoice-preview-page mx-auto w-full max-w-7xl overflow-hidden border border-black bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`}
+          className={`invoice-preview-page mx-auto w-full max-w-7xl overflow-hidden border border-black bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${index > 0 ? "mt-6 pt-6 print:mt-0 print:pt-0" : ""}`}
           style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}
         >
 
@@ -3004,7 +3010,7 @@ export default function InvoicePreview({ invoice, taxType: taxTypeProp, onTaxTyp
           <div>
             <div className={secHeader}>Invoice Details:</div>
             <div className="p-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px] text-slate-800">
-              <span className="font-semibold text-slate-900">Invoice No:</span><span>{invoice.invoiceNumber || "—"}</span>
+              <span className="font-semibold text-slate-900">Invoice No:</span><span>{getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false) || "—"}</span>
               <span className="font-semibold text-slate-900">Date:</span><span>{fmtDate(invoice.invoiceDate || invoice.createdAt)}</span>
               <span className="font-semibold text-slate-900">PO Date:</span><span>{fmtDate(invoice.poDate)}</span>
               <span className="font-semibold text-slate-900">E-way Bill No:</span><span>{invoice.ewayBillNo || "—"}</span>

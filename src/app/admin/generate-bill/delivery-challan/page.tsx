@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import AdminShell from "@/components/admin/AdminShell";
 import DeliveryChallen from "@/components/admin/DeliveryChallen";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
+import { getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 import { CalendarDays, ChevronDown, Plus, Save } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -71,6 +72,7 @@ export function DeliveryChallanPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [isDuplicateCopy, setIsDuplicateCopy] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([fallbackCustomer]);
   const [selectedCustomerId, setSelectedCustomerId] = useState(fallbackCustomer.id);
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
@@ -196,6 +198,7 @@ export function DeliveryChallanPageContent() {
         setDeliveredByDate(String(data.deliveredByDate || "").slice(0, 10) || today);
         setDeliveredBySignature(String(data.deliveredBySignature || ""));
         setAuthorizedSignature(String(data.authorizedSignature || ""));
+        setIsDuplicateCopy(Boolean(data.isDuplicate || getInvoiceDuplicateFlag(data as { invoiceNumber?: string | null; isDuplicate?: boolean | null })));
 
         const loadedItems = Array.isArray(data.items)
           ? data.items.map((item: Record<string, unknown>, index: number) => ({
@@ -371,13 +374,15 @@ export function DeliveryChallanPageContent() {
         ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=delivery-challan`
         : "/api/invoices";
 
+      const invoiceNumberToSend = challanNo.trim() ? getDuplicateCopyInvoiceNumber(challanNo.trim(), isDuplicateCopy) : "";
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           documentType: "delivery-challan",
           billType: "Delivery Challan",
-          invoiceNumber: challanNo,
+          invoiceNumber: invoiceNumberToSend,
           invoiceDate: challanDate,
           partyName,
           address,
@@ -401,6 +406,7 @@ export function DeliveryChallanPageContent() {
           deliveredBySignature,
           terms,
           authorizedSignature,
+          isDuplicate: isDuplicateCopy,
           items: items.map((item) => ({ description: item.itemName, hsn: item.hsn, qty: item.qty, unit: item.unit })),
         }),
       });
@@ -563,7 +569,21 @@ export function DeliveryChallanPageContent() {
                       <CalendarDays size={14} className="pointer-events-none absolute right-2 top-2.5 text-slate-400" />
                     </div>
                   </div>
-                </div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id="isDuplicateCopy"
+                            checked={isDuplicateCopy}
+                            onChange={(e) => setIsDuplicateCopy(e.target.checked)}
+                            className="h-4 w-4 accent-blue-600 cursor-pointer"
+                          />
+                          <label htmlFor="isDuplicateCopy" className="text-[12px] text-gray-600 cursor-pointer select-none">
+                            Mark as “Duplicate Copy” (unchecked = “Original for Recipient”)
+                          </label>
+                        </div>
+                      </div>
                 <div>
                   <label className={labelCls}>Place of Supply</label>
                   <input value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} className={inputCls} />
@@ -690,6 +710,8 @@ export function DeliveryChallanPageContent() {
             terms={terms}
             authorizedSignature={authorizedSignature}
             items={items.map((item) => ({ description: item.itemName, hsn: item.hsn, qty: item.qty, unit: item.unit }))}
+            pageLabels={getDuplicateCopyPageLabels(isDuplicateCopy)}
+            isDuplicateCopy={isDuplicateCopy}
           />
           <div className="hidden">
           <div className="border border-gray-200 bg-white p-6 shadow-sm">

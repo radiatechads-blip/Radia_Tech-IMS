@@ -6,13 +6,11 @@ import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
     AlignLeft,
     CalendarDays,
-    Camera,
     Check,
     ChevronDown,
-    FileText,
     Plus,
     Save,
-    Share2,
+    Share2
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -202,7 +200,7 @@ function CreditNotePageContent() {
 
     const loadInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=invoice`);
+        const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=credit-note`);
         if (!response.ok) {
           return;
         }
@@ -435,7 +433,7 @@ function CreditNotePageContent() {
     setIsSaving(true);
     try {
       const method = isEditing && editingInvoiceId ? "PUT" : "POST";
-      const url = isEditing && editingInvoiceId ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=invoice` : "/api/invoices";
+      const url = isEditing && editingInvoiceId ? `/api/invoices?id=${encodeURIComponent(editingInvoiceId)}&documentType=credit-note` : "/api/invoices";
       const invoiceNumberToSend = invoiceNumber.trim() ? getDuplicateCopyInvoiceNumber(invoiceNumber.trim(), isDuplicateCopy) : "";
       const invoiceDateToSend = invoiceDate || today;
       const response = await fetch(url, {
@@ -443,7 +441,7 @@ function CreditNotePageContent() {
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
         body: JSON.stringify({
-          documentType: "invoice",
+          documentType: "credit-note",
           billType: "Credit Note",
           invoiceNumber: invoiceNumberToSend,
           invoiceDate: invoiceDateToSend,

@@ -1,3 +1,4 @@
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -254,7 +255,7 @@ export default function DNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
               <div>
                 <div className={secHeader}>Return Details:</div>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 p-3 text-[13px] text-slate-800">
-                  <span className="font-semibold text-slate-900">Return No:</span><span>{invoice.invoiceNumber || "—"}</span>
+                  <span className="font-semibold text-slate-900">Return No:</span><span>{getDuplicateCopyInvoiceNumber(invoice.invoiceNumber, false) || "—"}</span>
                   <span className="font-semibold text-slate-900">Date:</span><span>{fmtDate(invoice.invoiceDate || invoice.createdAt)}</span>
                   <span className="font-semibold text-slate-900">Bill Date:</span><span>{fmtDate(invoice.poDate)}</span>
                   <span className="font-semibold text-slate-900">E-way Bill No:</span><span>{invoice.ewayBillNo || "—"}</span>

@@ -2,6 +2,7 @@
 "use client";
 
 import type { InvoiceSummary } from "@/lib/invoiceRoute";
+import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { useMemo, useState } from "react";
 
 type TaxType = "cgst-sgst" | "igst" | "none";
@@ -118,6 +119,7 @@ interface QuotationPreviewProps {
   bankDetails?: string | null;
   onTaxTypeChange?: (type: TaxType) => void;
   invoice?: InvoiceSummary;
+  pageLabels?: string[];
 }
 
 export default function QuotationPreview({
@@ -166,6 +168,7 @@ export default function QuotationPreview({
   convertedFromProforma,
   bankDetails,
   onTaxTypeChange,
+  pageLabels,
 }: QuotationPreviewProps) {
   const effectivePartyName = partyName ?? invoice?.partyName ?? null;
   const effectiveContactPerson = contactPerson ?? invoice?.contactPerson ?? null;
@@ -318,20 +321,23 @@ export default function QuotationPreview({
   };
 
   const docLabel = "Delivery Challan";
+  const labels = (pageLabels && pageLabels.length > 0 ? pageLabels : [docLabel]).map((l) => l || docLabel);
   const hasNotes = !!effectiveNotes?.trim();
   const hasTerms = !!effectiveTerms?.trim();
 
   const sectionHeaderClass = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
 
   return (
-    <section className="invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0">
-      <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white">
+    <div>
+      {labels.map((label, labelIndex) => (
+        <section key={`${label}-${labelIndex}`} className={`invoice-preview-shell rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0 ${labelIndex > 0 ? "mt-6 pt-6 print:mt-0 print:pt-0" : ""}`} style={labelIndex > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}>
+          <div className="mx-auto w-full max-w-[900px] overflow-hidden rounded-xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.08)] print:max-w-none print:w-[210mm] print:h-auto print:min-h-0 print:rounded-none print:border-0 print:shadow-none print:bg-white">
 
-        {/* Header bar */}
-        <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
-          <h2 className="text-[15px] font-bold text-slate-900">{docLabel}</h2>
-          <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700"></span>
-        </div>
+            {/* Header bar */}
+            <div className="relative flex items-center justify-center border-b border-slate-300 bg-white px-5 py-2.5">
+              <h2 className="text-[15px] font-bold text-slate-900">{docLabel}</h2>
+              <span className="absolute right-5 text-[10px] font-bold uppercase tracking-widest text-slate-700">{label}</span>
+            </div>
 
         {/* Company row */}
         <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-white px-5 py-3">
@@ -369,8 +375,8 @@ export default function QuotationPreview({
           </div>
           <div>
             <div className={sectionHeaderClass}>Challan Details:</div>
-            <div className="p-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px] text-slate-800">
-              <span className="font-semibold text-slate-900">Challan No.:</span><span>{effectiveChallanNo || "—"}</span>
+              <div className="p-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px] text-slate-800">
+              <span className="font-semibold text-slate-900">Challan No.:</span><span>{getDuplicateCopyInvoiceNumber(String(effectiveChallanNo ?? ""), false) || "—"}</span>
               <span className="font-semibold text-slate-900">Date:</span><span>{formatDate(effectiveQuotationDate ?? (invoice?.createdAt as string | null))}</span>
               <span className="font-semibold text-slate-900">Place Of Supply:</span><span>{effectivePlaceOfSupply || "—"}</span>
             </div>
@@ -476,7 +482,9 @@ export default function QuotationPreview({
             </div>
           </div>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+      ))}
+    </div>
   );
 }

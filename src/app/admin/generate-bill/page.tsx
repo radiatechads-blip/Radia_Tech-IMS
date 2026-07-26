@@ -10,13 +10,13 @@ import PMPreview from "@/components/admin/PMPreview";
 import ProformaInvoicePreview from "@/components/admin/ProformaInvoicePreview";
 import QuotationPreview from "@/components/admin/QuotationPreview";
 import {
-  BILL_REPORT_COLUMN_OPTIONS,
-  buildBillReportRows,
-  exportBillReport,
-  type BillReportColumnKey,
+    BILL_REPORT_COLUMN_OPTIONS,
+    buildBillReportRows,
+    exportBillReport,
+    type BillReportColumnKey,
 } from "@/lib/billReport";
 import { getConversionSourceLabel } from "@/lib/invoicePayload";
-import { getBillTypeLabel, getDuplicateCopyInvoiceNumber, getInvoiceDuplicateFlag, getInvoiceEditRoute } from "@/lib/invoiceRoute";
+import { getBillTypeLabel, getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag, getInvoiceEditRoute } from "@/lib/invoiceRoute";
 import jsPDF from "jspdf";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -437,11 +437,13 @@ export default function GenerateBillPage() {
   const renderPreviewForInvoice = (invoice: InvoiceSummary) => {
     // Use the Tax Invoice preview template for all document types
  const label = getBillTypeLabel(invoice);
+    const isDuplicate = Boolean(invoice.isDuplicate || getInvoiceDuplicateFlag(invoice));
+    const pageLabels = getDuplicateCopyPageLabels(isDuplicate);
     if (isDebitNoteInvoice(invoice)) {
-      return <DNPreview invoice={invoice} />;
+      return <DNPreview invoice={invoice} pageLabels={pageLabels} />;
     }
     if (label === "Credit Note") {
-      return <CNPreview invoice={invoice} />;
+      return <CNPreview invoice={invoice} pageLabels={pageLabels} />;
     }
     if (label === "Proforma Invoice") {
       return <ProformaInvoicePreview invoice={invoice} />;
@@ -487,7 +489,7 @@ export default function GenerateBillPage() {
       );
     }
     if (label === "Delivery Challan") {
-      return <DeliveryChallen invoice={invoice} />;
+      return <DeliveryChallen invoice={invoice} pageLabels={pageLabels} />;
     }
     if (label === "Pending Material") {
       return <PMPreview invoice={invoice} taxType={invoice.taxType as "cgst-sgst" | "igst" | "none" | undefined} />;

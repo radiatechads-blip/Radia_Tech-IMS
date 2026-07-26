@@ -1011,6 +1011,7 @@ export default function InvoicePage() {
   const hasAnyHsn = items.some((item) => item.hsn.trim() !== "");
   const hasAnyDiscount = items.some((item) => Number(item.discountPercent) > 0);
   const previewPageLabels = getDuplicateCopyPageLabels(isDuplicateCopy);
+  const previewInvoiceNumber = getDuplicateCopyInvoiceNumber(invoiceNumber, false);
 
   // ── file 2 style helpers ─────────────────────────────────────────────────
 
@@ -1814,12 +1815,12 @@ export default function InvoicePage() {
             </div>
           )}
 
-          <div className="invoice-preview-shell mx-auto w-full">
+          <div className="invoice-preview-shell mx-auto w-full" style={{ color: "#000" }}>
             <div className="overflow-hidden rounded-2xl border-[1.5px] border-slate-300 bg-white text-slate-800 shadow-[0_8px_32px_rgba(15,23,42,0.07)] print:rounded-none print:shadow-none print:border-[1.2px]">
               {previewPageLabels.map((label, index) => (
                 <div
                   key={`${label}-${index}`}
-                  className={`invoice-preview-page ${index > 0 ? "mt-6 border-t border-dashed border-slate-300 pt-6 print:mt-0 print:border-t-0 print:pt-0" : ""}`}
+                  className={`invoice-preview-page ${index > 0 ? "mt-6 pt-6 print:mt-0 print:pt-0" : ""}`}
                   style={index > 0 ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}
                 >
                   <div className="relative flex items-center justify-center border-b border-slate-300 bg-[#f7f9fc] px-6 py-3">
@@ -1905,7 +1906,11 @@ export default function InvoicePage() {
                         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Invoice Details:</p>
                         <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-[13px] text-slate-800">
                           <span className="whitespace-nowrap font-semibold text-slate-900">Invoice No:</span>
-                          <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="inv-field w-full" />
+                          <input
+                            value={previewInvoiceNumber}
+                            onChange={(e) => setInvoiceNumber(e.target.value)}
+                            className="inv-field w-full"
+                          />
                           <span className="font-semibold text-slate-900">Date:</span>
                           <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="inv-field w-full" />
                           <span className="whitespace-nowrap font-semibold text-slate-900">Due Date:</span>
@@ -2344,6 +2349,11 @@ export default function InvoicePage() {
 
           {/* print styles — identical to file 1 */}
           <style jsx global>{`
+            .invoice-preview-shell,
+            .invoice-preview-shell * {
+              color: #000 !important;
+            }
+
             @media print {
               body {
                 background: white !important;
@@ -2355,6 +2365,7 @@ export default function InvoicePage() {
               .invoice-preview-shell,
               .invoice-preview-shell * {
                 visibility: visible !important;
+                color: #000 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }

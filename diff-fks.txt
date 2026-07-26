@@ -1,0 +1,56 @@
+﻿
+> ALTER TABLE "Payment" DROP CONSTRAINT "Payment_invoiceId_fkey";
+  
+  -- AlterTable
+> ALTER TABLE "Annexure" ALTER COLUMN "extraDiscountAmount" SET NOT NULL;
+  
+  -- AlterTable
+> ALTER TABLE "Invoice" DROP COLUMN "status",
+  ALTER COLUMN "extraDiscountAmount" SET NOT NULL;
+  
+  -- AlterTable
+> ALTER TABLE "ProformaInvoice" ALTER COLUMN "extraDiscountAmount" SET NOT 
+NULL;
+  
+  -- AlterTable
+> ALTER TABLE "Quotation" DROP COLUMN "status",
+  ALTER COLUMN "updatedAt" DROP DEFAULT;
+  
+  -- AlterTable
+> ALTER TABLE "QuotationItem" ALTER COLUMN "updatedAt" DROP DEFAULT;
+  
+  -- DropTable
+  DROP TABLE "BlogPost";
+  
+  -- DropTable
+> -- AddForeignKey
+> ALTER TABLE "DebitNoteItem" ADD CONSTRAINT "DebitNoteItem_debitNoteId_fkey" 
+FOREIGN KEY ("debitNoteId") REFERENCES "DebitNote"("id") ON DELETE CASCADE ON 
+UPDATE CASCADE;
+  
+> -- AddForeignKey
+> ALTER TABLE "CreditNoteItem" ADD CONSTRAINT 
+"CreditNoteItem_creditNoteId_fkey" FOREIGN KEY ("creditNoteId") REFERENCES 
+"CreditNote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  
+> -- AddForeignKey
+> ALTER TABLE "DeliveryChallanItem" ADD CONSTRAINT 
+"DeliveryChallanItem_deliveryChallanId_fkey" FOREIGN KEY ("deliveryChallanId") 
+REFERENCES "DeliveryChallan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  
+> -- AddForeignKey
+> ALTER TABLE "PendingMaterialItem" ADD CONSTRAINT 
+"PendingMaterialItem_pendingMaterialId_fkey" FOREIGN KEY ("pendingMaterialId") 
+REFERENCES "PendingMaterial"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  
+> -- AddForeignKey
+> ALTER TABLE "InvoiceReminder" ADD CONSTRAINT 
+"InvoiceReminder_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES 
+"Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  
+> -- AddForeignKey
+> ALTER TABLE "Payment" ADD CONSTRAINT "Payment_invoiceId_fkey" FOREIGN KEY 
+("invoiceId") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  
+
+

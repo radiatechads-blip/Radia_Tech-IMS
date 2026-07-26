@@ -5,42 +5,7 @@ import { resolveInvoiceDate, resolveInvoiceNumber } from "@/lib/invoicePayload";
 import { buildStockReductionPlan, shouldApplyStockReduction } from "@/lib/stockReduction";
 import { NextResponse } from "next/server";
 
-type DocumentType = "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan";
-
-async function ensureDeliveryChallanColumns() {
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByName" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByComment" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedByDate" TIMESTAMP(3)`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "receivedBySignature" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByName" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByComment" TEXT NOT NULL DEFAULT ''`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredByDate" TIMESTAMP(3)`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "deliveredBySignature" TEXT NOT NULL DEFAULT ''`);
-}
-
-async function writeDeliveryChallanDetails(id: string, payload: Record<string, unknown>) {
-  await prisma.$executeRawUnsafe(
-    `UPDATE "Invoice"
-     SET "receivedByName" = $1,
-         "receivedByComment" = $2,
-         "receivedByDate" = $3,
-         "receivedBySignature" = $4,
-         "deliveredByName" = $5,
-         "deliveredByComment" = $6,
-         "deliveredByDate" = $7,
-         "deliveredBySignature" = $8
-     WHERE "id" = $9`,
-    payload.receivedByName,
-    payload.receivedByComment,
-    payload.receivedByDate,
-    payload.receivedBySignature,
-    payload.deliveredByName,
-    payload.deliveredByComment,
-    payload.deliveredByDate,
-    payload.deliveredBySignature,
-    id,
-  );
-}
+type DocumentType = "invoice" | "proforma" | "annexure" | "quotation" | "delivery-challan" | "debit-note" | "credit-note" | "pending-material";
 
 function buildInvoicePayload(data: Record<string, unknown>, documentType: DocumentType, invoiceNumberOverride?: string) {
   const override = String(invoiceNumberOverride || "").trim();
@@ -232,9 +197,7 @@ async function writeQuotationConversionMeta(id: string, meta: ReturnType<typeof 
 }
 
 async function createDocumentRecord(data: Record<string, unknown>, documentType: DocumentType) {
-  if (documentType === "delivery-challan") {
-    await ensureDeliveryChallanColumns();
-  }
+  // Document-specific column migrations are no longer required; new tables are used.
 
   const documentItems = buildDocumentItems(data);
   const stockReductionPlan = shouldApplyStockReduction(documentType)
@@ -253,13 +216,23 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
     : undefined;
 
   const existingNumbers = new Set<string>(
-    (documentType === "proforma"
-      ? await prisma.proformaInvoice.findMany({ select: { invoiceNumber: true } })
-      : documentType === "annexure"
-        ? await prisma.annexure.findMany({ select: { invoiceNumber: true } })
-        : documentType === "quotation"
-          ? await prisma.quotation.findMany({ select: { invoiceNumber: true } })
-          : await prisma.invoice.findMany({ select: { invoiceNumber: true } }))
+    (
+      documentType === "proforma"
+        ? await prisma.proformaInvoice.findMany({ select: { invoiceNumber: true } })
+        : documentType === "annexure"
+          ? await prisma.annexure.findMany({ select: { invoiceNumber: true } })
+          : documentType === "quotation"
+            ? await prisma.quotation.findMany({ select: { invoiceNumber: true } })
+            : documentType === "debit-note"
+              ? await prisma.debitNote.findMany({ select: { invoiceNumber: true } })
+              : documentType === "credit-note"
+                ? await prisma.creditNote.findMany({ select: { invoiceNumber: true } })
+                : documentType === "delivery-challan"
+                  ? await prisma.deliveryChallan.findMany({ select: { invoiceNumber: true } })
+                  : documentType === "pending-material"
+                    ? await prisma.pendingMaterial.findMany({ select: { invoiceNumber: true } })
+                    : await prisma.invoice.findMany({ select: { invoiceNumber: true } })
+    )
       .map((record) => String(record.invoiceNumber || "").trim())
       .filter(Boolean),
   );
@@ -369,6 +342,126 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...created, items: created.items ?? [] };
       }
 
+      if (documentType === "debit-note") {
+        const created = await prisma.debitNote.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
+                description: String(item.description || "").trim(),
+                hsn: String(item.hsn || "").trim(),
+                unit: String(item.unit || "").trim(),
+                qty: Number(item.qty || 0),
+                rate: Number(item.rate || 0),
+                taxPercent: Number(item.taxPercent || 0),
+                discountPercent: Number(item.discountPercent || 0),
+                taxablePerUnit: Number(item.taxablePerUnit || 0),
+                taxableAmount: Number(item.taxableAmount || 0),
+                gstAmount: Number(item.gstAmount || 0),
+                finalRatePerUnit: Number(item.finalRatePerUnit || 0),
+                rowAmount: Number(item.rowAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        await applyStockReductionPlan(stockReductionPlan);
+        return { ...created, items: created.items ?? [] };
+      }
+
+      if (documentType === "credit-note") {
+        const created = await prisma.creditNote.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
+                description: String(item.description || "").trim(),
+                hsn: String(item.hsn || "").trim(),
+                unit: String(item.unit || "").trim(),
+                qty: Number(item.qty || 0),
+                rate: Number(item.rate || 0),
+                taxPercent: Number(item.taxPercent || 0),
+                discountPercent: Number(item.discountPercent || 0),
+                taxablePerUnit: Number(item.taxablePerUnit || 0),
+                taxableAmount: Number(item.taxableAmount || 0),
+                gstAmount: Number(item.gstAmount || 0),
+                finalRatePerUnit: Number(item.finalRatePerUnit || 0),
+                rowAmount: Number(item.rowAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        await applyStockReductionPlan(stockReductionPlan);
+        return { ...created, items: created.items ?? [] };
+      }
+
+      if (documentType === "delivery-challan") {
+        const created = await prisma.deliveryChallan.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
+                description: String(item.description || "").trim(),
+                hsn: String(item.hsn || "").trim(),
+                unit: String(item.unit || "").trim(),
+                qty: Number(item.qty || 0),
+                rate: Number(item.rate || 0),
+                taxPercent: Number(item.taxPercent || 0),
+                discountPercent: Number(item.discountPercent || 0),
+                taxablePerUnit: Number(item.taxablePerUnit || 0),
+                taxableAmount: Number(item.taxableAmount || 0),
+                gstAmount: Number(item.gstAmount || 0),
+                finalRatePerUnit: Number(item.finalRatePerUnit || 0),
+                rowAmount: Number(item.rowAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        await applyStockReductionPlan(stockReductionPlan);
+        return { ...created, items: created.items ?? [] };
+      }
+
+      if (documentType === "pending-material") {
+        const created = await prisma.pendingMaterial.create({
+          data: {
+            ...payload,
+            invoiceDate: payload.invoiceDate,
+            dueDate: payload.dueDate,
+            poDate: payload.poDate,
+            items: {
+              create: documentItems.map((item) => ({
+                description: String(item.description || "").trim(),
+                hsn: String(item.hsn || "").trim(),
+                unit: String(item.unit || "").trim(),
+                qty: Number(item.qty || 0),
+                rate: Number(item.rate || 0),
+                taxPercent: Number(item.taxPercent || 0),
+                discountPercent: Number(item.discountPercent || 0),
+                taxablePerUnit: Number(item.taxablePerUnit || 0),
+                taxableAmount: Number(item.taxableAmount || 0),
+                gstAmount: Number(item.gstAmount || 0),
+                finalRatePerUnit: Number(item.finalRatePerUnit || 0),
+                rowAmount: Number(item.rowAmount || 0),
+              })),
+            },
+          },
+          include: { items: true },
+        });
+        await applyStockReductionPlan(stockReductionPlan);
+        return { ...created, items: created.items ?? [] };
+      }
+
       const {
         receivedByName: _receivedByName,
         receivedByComment: _receivedByComment,
@@ -408,12 +501,9 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
         include: { items: true },
       });
 
-      if (documentType === "invoice" || documentType === "delivery-challan") {
-        if (documentType === "delivery-challan") {
-          await writeDeliveryChallanDetails(created.id, payload);
-        }
+      if (documentType === "invoice") {
         await applyStockReductionPlan(stockReductionPlan);
-        await writeInvoiceConversionMeta(created.id, conversionMeta);
+        await writeInvoiceConversionMeta(created.id, conversionMeta).catch(() => {});
         const refreshed = await prisma.invoice.findUnique({
           where: { id: created.id },
           include: { items: true },
@@ -443,9 +533,7 @@ async function createDocumentRecord(data: Record<string, unknown>, documentType:
 }
 
 async function updateDocumentRecord(id: string, data: Record<string, unknown>, documentType: DocumentType) {
-  if (documentType === "delivery-challan") {
-    await ensureDeliveryChallanColumns();
-  }
+  // Updates for the new per-document tables are handled below.
 
   const payload = buildInvoicePayload(data, documentType);
   const itemPayload = buildDocumentItems(data);
@@ -510,7 +598,81 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     });
     return refreshed ? { ...refreshed, items: refreshed.items ?? [] } : { ...updated, items: updated.items ?? [] };
   }
+  if (documentType === "debit-note") {
+    const updated = await prisma.debitNote.update({
+      where: { id },
+      data: {
+        ...payload,
+        invoiceDate: payload.invoiceDate,
+        dueDate: payload.dueDate,
+        poDate: payload.poDate,
+        items: {
+          deleteMany: {},
+          create: itemPayload,
+        },
+      },
+      include: { items: true },
+    });
+    await writeInvoiceConversionMeta(updated.id, conversionMeta).catch(() => {});
+    return { ...updated, items: updated.items ?? [] };
+  }
 
+  if (documentType === "credit-note") {
+    const updated = await prisma.creditNote.update({
+      where: { id },
+      data: {
+        ...payload,
+        invoiceDate: payload.invoiceDate,
+        dueDate: payload.dueDate,
+        poDate: payload.poDate,
+        items: {
+          deleteMany: {},
+          create: itemPayload,
+        },
+      },
+      include: { items: true },
+    });
+    await writeInvoiceConversionMeta(updated.id, conversionMeta).catch(() => {});
+    return { ...updated, items: updated.items ?? [] };
+  }
+
+  if (documentType === "delivery-challan") {
+    const updated = await prisma.deliveryChallan.update({
+      where: { id },
+      data: {
+        ...payload,
+        invoiceDate: payload.invoiceDate,
+        dueDate: payload.dueDate,
+        poDate: payload.poDate,
+        items: {
+          deleteMany: {},
+          create: itemPayload,
+        },
+      },
+      include: { items: true },
+    });
+    return { ...updated, items: updated.items ?? [] };
+  }
+
+  if (documentType === "pending-material") {
+    const updated = await prisma.pendingMaterial.update({
+      where: { id },
+      data: {
+        ...payload,
+        invoiceDate: payload.invoiceDate,
+        dueDate: payload.dueDate,
+        poDate: payload.poDate,
+        items: {
+          deleteMany: {},
+          create: itemPayload,
+        },
+      },
+      include: { items: true },
+    });
+    return { ...updated, items: updated.items ?? [] };
+  }
+
+  // Default: update legacy Invoice table
   const {
     receivedByName: _receivedByName,
     receivedByComment: _receivedByComment,
@@ -538,10 +700,7 @@ async function updateDocumentRecord(id: string, data: Record<string, unknown>, d
     },
     include: { items: true },
   });
-  if (documentType === "delivery-challan") {
-    await writeDeliveryChallanDetails(updated.id, payload);
-  }
-  await writeInvoiceConversionMeta(updated.id, conversionMeta);
+  await writeInvoiceConversionMeta(updated.id, conversionMeta).catch(() => {});
   const refreshed = await prisma.invoice.findUnique({
     where: { id: updated.id },
     include: { items: true },
@@ -563,14 +722,36 @@ async function getAllDocumentRecords(documentType?: DocumentType) {
     return prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
   }
   if (documentType === "delivery-challan") {
-    return prisma.invoice.findMany({ where: { billType: "Delivery Challan" }, orderBy: { createdAt: "desc" }, include: { items: true } });
+    return prisma.deliveryChallan.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
+  }
+  if (documentType === "debit-note") {
+    return prisma.debitNote.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
+  }
+  if (documentType === "credit-note") {
+    return prisma.creditNote.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
+  }
+  if (documentType === "pending-material") {
+    return prisma.pendingMaterial.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } });
   }
 
-  const [invoices, proformas, annexures, quotations] = await Promise.all([
+  const [
+    invoices,
+    proformas,
+    annexures,
+    quotations,
+    debitNotes,
+    creditNotes,
+    deliveryChallans,
+    pendingMaterials,
+  ] = await Promise.all([
     prisma.invoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
     prisma.proformaInvoice.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
     prisma.annexure.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
     prisma.quotation.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
+    prisma.debitNote.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
+    prisma.creditNote.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
+    prisma.deliveryChallan.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
+    prisma.pendingMaterial.findMany({ orderBy: { createdAt: "desc" }, include: { items: true } }),
   ]);
 
   return [
@@ -578,6 +759,10 @@ async function getAllDocumentRecords(documentType?: DocumentType) {
     ...proformas.map((invoice) => ({ ...invoice, documentType: "proforma" })),
     ...annexures.map((invoice) => ({ ...invoice, documentType: "annexure" })),
     ...quotations.map((invoice) => ({ ...invoice, documentType: "quotation" })),
+    ...debitNotes.map((invoice) => ({ ...invoice, documentType: "debit-note" })),
+    ...creditNotes.map((invoice) => ({ ...invoice, documentType: "credit-note" })),
+    ...deliveryChallans.map((invoice) => ({ ...invoice, documentType: "delivery-challan" })),
+    ...pendingMaterials.map((invoice) => ({ ...invoice, documentType: "pending-material" })),
   ].sort((left, right) => new Date(String(right.createdAt)).getTime() - new Date(String(left.createdAt)).getTime());
 }
 
@@ -595,17 +780,43 @@ async function getDocumentRecordById(id: string, documentType?: DocumentType) {
     return prisma.invoice.findUnique({ where: { id }, include: { items: true } });
   }
 
-  const [invoice, proforma, annexure, quotation] = await Promise.all([
+  if (documentType === "debit-note") {
+    return prisma.debitNote.findUnique({ where: { id }, include: { items: true } });
+  }
+  if (documentType === "credit-note") {
+    return prisma.creditNote.findUnique({ where: { id }, include: { items: true } });
+  }
+  if (documentType === "delivery-challan") {
+    return prisma.deliveryChallan.findUnique({ where: { id }, include: { items: true } });
+  }
+  if (documentType === "pending-material") {
+    return prisma.pendingMaterial.findUnique({ where: { id }, include: { items: true } });
+  }
+
+  const [
+    invoice,
+    proforma,
+    annexure,
+    quotation,
+    debitNote,
+    creditNote,
+    deliveryChallan,
+    pendingMaterial,
+  ] = await Promise.all([
     prisma.invoice.findUnique({ where: { id }, include: { items: true } }),
     prisma.proformaInvoice.findUnique({ where: { id }, include: { items: true } }),
     prisma.annexure.findUnique({ where: { id }, include: { items: true } }),
     prisma.quotation.findUnique({ where: { id }, include: { items: true } }),
+    prisma.debitNote.findUnique({ where: { id }, include: { items: true } }),
+    prisma.creditNote.findUnique({ where: { id }, include: { items: true } }),
+    prisma.deliveryChallan.findUnique({ where: { id }, include: { items: true } }),
+    prisma.pendingMaterial.findUnique({ where: { id }, include: { items: true } }),
   ]);
 
-  return invoice ?? proforma ?? annexure ?? quotation;
+  return invoice ?? proforma ?? annexure ?? quotation ?? debitNote ?? creditNote ?? deliveryChallan ?? pendingMaterial;
 }
 
-async function deleteDocumentRecord(id: string, documentType: "invoice" | "proforma" | "annexure" | "quotation") {
+async function deleteDocumentRecord(id: string, documentType: DocumentType) {
   if (documentType === "proforma") {
     await prisma.proformaInvoice.delete({ where: { id } });
     return true;
@@ -616,6 +827,22 @@ async function deleteDocumentRecord(id: string, documentType: "invoice" | "profo
   }
   if (documentType === "quotation") {
     await prisma.quotation.delete({ where: { id } });
+    return true;
+  }
+  if (documentType === "debit-note") {
+    await prisma.debitNote.delete({ where: { id } });
+    return true;
+  }
+  if (documentType === "credit-note") {
+    await prisma.creditNote.delete({ where: { id } });
+    return true;
+  }
+  if (documentType === "delivery-challan") {
+    await prisma.deliveryChallan.delete({ where: { id } });
+    return true;
+  }
+  if (documentType === "pending-material") {
+    await prisma.pendingMaterial.delete({ where: { id } });
     return true;
   }
 
@@ -633,7 +860,7 @@ async function ensureDocumentStatusColumn(tableName: string) {
   await prisma.$executeRawUnsafe(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Active'`);
 }
 
-async function updateDocumentStatus(id: string, documentType: "invoice" | "proforma" | "annexure" | "quotation", status: string) {
+async function updateDocumentStatus(id: string, documentType: DocumentType, status: string) {
   if (documentType === "proforma") {
     await ensureDocumentStatusColumn("ProformaInvoice");
     await prisma.$executeRawUnsafe(`UPDATE "ProformaInvoice" SET "status" = $1 WHERE "id" = $2`, status, id);
@@ -650,6 +877,30 @@ async function updateDocumentStatus(id: string, documentType: "invoice" | "profo
     await ensureDocumentStatusColumn("Quotation");
     await prisma.$executeRawUnsafe(`UPDATE "Quotation" SET "status" = $1 WHERE "id" = $2`, status, id);
     const record = await prisma.quotation.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
+  }
+  if (documentType === "debit-note") {
+    await ensureDocumentStatusColumn("DebitNote");
+    await prisma.$executeRawUnsafe(`UPDATE "DebitNote" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.debitNote.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
+  }
+  if (documentType === "credit-note") {
+    await ensureDocumentStatusColumn("CreditNote");
+    await prisma.$executeRawUnsafe(`UPDATE "CreditNote" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.creditNote.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
+  }
+  if (documentType === "delivery-challan") {
+    await ensureDocumentStatusColumn("DeliveryChallan");
+    await prisma.$executeRawUnsafe(`UPDATE "DeliveryChallan" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.deliveryChallan.findUnique({ where: { id }, include: { items: true } });
+    return record ? { ...record, status } : null;
+  }
+  if (documentType === "pending-material") {
+    await ensureDocumentStatusColumn("PendingMaterial");
+    await prisma.$executeRawUnsafe(`UPDATE "PendingMaterial" SET "status" = $1 WHERE "id" = $2`, status, id);
+    const record = await prisma.pendingMaterial.findUnique({ where: { id }, include: { items: true } });
     return record ? { ...record, status } : null;
   }
   await ensureDocumentStatusColumn("Invoice");
@@ -682,7 +933,13 @@ export async function GET(req: Request) {
               ? "quotation"
               : documentTypeParam === "delivery-challan"
                 ? "delivery-challan"
-              : undefined;
+                : documentTypeParam === "debit-note"
+                  ? "debit-note"
+                  : documentTypeParam === "credit-note"
+                    ? "credit-note"
+                    : documentTypeParam === "pending-material"
+                      ? "pending-material"
+                      : undefined;
 
     if (invoiceId) {
       try {
@@ -803,14 +1060,22 @@ export async function PATCH(req: Request) {
     const url = new URL(req.url);
     const invoiceId = url.searchParams.get("id");
     const documentTypeParam = url.searchParams.get("documentType")?.toLowerCase();
-    const documentType: "invoice" | "proforma" | "annexure" | "quotation" =
+    const documentType: DocumentType =
       documentTypeParam === "proforma"
         ? "proforma"
         : documentTypeParam === "annexure"
           ? "annexure"
           : documentTypeParam === "quotation"
             ? "quotation"
-            : "invoice";
+            : documentTypeParam === "debit-note"
+              ? "debit-note"
+              : documentTypeParam === "credit-note"
+                ? "credit-note"
+                : documentTypeParam === "delivery-challan"
+                  ? "delivery-challan"
+                  : documentTypeParam === "pending-material"
+                    ? "pending-material"
+                    : "invoice";
 
     if (!invoiceId) {
       return jsonError("Invoice ID is required.", 400);
@@ -851,14 +1116,22 @@ export async function DELETE(req: Request) {
     const url = new URL(req.url);
     const invoiceId = url.searchParams.get("id");
     const documentTypeParam = url.searchParams.get("documentType")?.toLowerCase();
-    const documentType: "invoice" | "proforma" | "annexure" | "quotation" =
+    const documentType: DocumentType =
       documentTypeParam === "proforma"
         ? "proforma"
         : documentTypeParam === "annexure"
           ? "annexure"
           : documentTypeParam === "quotation"
             ? "quotation"
-            : "invoice";
+            : documentTypeParam === "debit-note"
+              ? "debit-note"
+              : documentTypeParam === "credit-note"
+                ? "credit-note"
+                : documentTypeParam === "delivery-challan"
+                  ? "delivery-challan"
+                  : documentTypeParam === "pending-material"
+                    ? "pending-material"
+                    : "invoice";
 
     if (!invoiceId) {
       return jsonError("Invoice ID is required.", 400);

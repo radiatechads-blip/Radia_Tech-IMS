@@ -211,6 +211,258 @@ model ProformaInvoice {
   updatedAt           DateTime              @updatedAt
 }
 
+model DebitNote {
+  id                  String         @id @default(cuid())
+  documentType        String         @default("debit-note")
+  billType            String         @default("Debit Note")
+  invoiceNumber       String         @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String         @default("")
+  email               String         @default("")
+  phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
+  state               String         @default("")
+  address             String         @default("")
+  poDate              DateTime?
+  ewayBillNo          String         @default("")
+  poNo                String         @default("")
+  placeOfSupply       String         @default("")
+  shipToAddress       String         @default("")
+  transportName       String         @default("")
+  vehicleNumber       String         @default("")
+  taxType             String         @default("cgst-sgst")
+  paymentMode         String         @default("")
+  notes               String         @default("")
+  terms               String         @default("")
+  bankDetails         String         @default("")
+  authorizedSignature String         @default("")
+  subtotal            Float          @default(0)
+  discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
+  taxableAmount       Float          @default(0)
+  taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
+  grandTotal          Float          @default(0)
+  items               DebitNoteItem[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model DebitNoteItem {
+  id           String    @id @default(cuid())
+  debitNoteId  String
+  debitNote    DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  description  String
+  hsn          String    @default("")
+  unit         String    @default("")
+  qty          Int       @default(0)
+  rate         Float     @default(0)
+  taxPercent   Float     @default(0)
+  discountPercent Float  @default(0)
+  taxablePerUnit Float   @default(0)
+  taxableAmount  Float   @default(0)
+  gstAmount      Float   @default(0)
+  finalRatePerUnit Float @default(0)
+  rowAmount     Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CreditNote {
+  id                  String         @id @default(cuid())
+  documentType        String         @default("credit-note")
+  billType            String         @default("Credit Note")
+  invoiceNumber       String         @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String         @default("")
+  email               String         @default("")
+  phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
+  state               String         @default("")
+  address             String         @default("")
+  poDate              DateTime?
+  ewayBillNo          String         @default("")
+  poNo                String         @default("")
+  placeOfSupply       String         @default("")
+  shipToAddress       String         @default("")
+  transportName       String         @default("")
+  vehicleNumber       String         @default("")
+  taxType             String         @default("cgst-sgst")
+  paymentMode         String         @default("")
+  notes               String         @default("")
+  terms               String         @default("")
+  bankDetails         String         @default("")
+  authorizedSignature String         @default("")
+  subtotal            Float          @default(0)
+  discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
+  taxableAmount       Float          @default(0)
+  taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
+  grandTotal          Float          @default(0)
+  items               CreditNoteItem[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model CreditNoteItem {
+  id             String     @id @default(cuid())
+  creditNoteId   String
+  creditNote     CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  description    String
+  hsn            String     @default("")
+  unit           String     @default("")
+  qty            Int        @default(0)
+  rate           Float      @default(0)
+  taxPercent     Float      @default(0)
+  discountPercent Float     @default(0)
+  taxablePerUnit Float      @default(0)
+  taxableAmount  Float      @default(0)
+  gstAmount      Float      @default(0)
+  finalRatePerUnit Float    @default(0)
+  rowAmount      Float      @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model DeliveryChallan {
+  id                  String         @id @default(cuid())
+  documentType        String         @default("delivery-challan")
+  billType            String         @default("Delivery Challan")
+  invoiceNumber       String         @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String         @default("")
+  email               String         @default("")
+  phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
+  state               String         @default("")
+  address             String         @default("")
+  poDate              DateTime?
+  ewayBillNo          String         @default("")
+  poNo                String         @default("")
+  placeOfSupply       String         @default("")
+  shipToAddress       String         @default("")
+  transportName       String         @default("")
+  vehicleNumber       String         @default("")
+  receivedByName      String         @default("")
+  receivedByComment   String         @default("")
+  receivedByDate      DateTime?
+  receivedBySignature String         @default("")
+  deliveredByName     String         @default("")
+  deliveredByComment  String         @default("")
+  deliveredByDate     DateTime?
+  deliveredBySignature String        @default("")
+  taxType             String         @default("cgst-sgst")
+  paymentMode         String         @default("")
+  notes               String         @default("")
+  terms               String         @default("")
+  bankDetails         String         @default("")
+  authorizedSignature String         @default("")
+  subtotal            Float          @default(0)
+  discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
+  taxableAmount       Float          @default(0)
+  taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
+  grandTotal          Float          @default(0)
+  items               DeliveryChallanItem[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model DeliveryChallanItem {
+  id                   String          @id @default(cuid())
+  deliveryChallanId    String
+  deliveryChallan      DeliveryChallan @relation(fields: [deliveryChallanId], references: [id], onDelete: Cascade)
+  description          String
+  hsn                  String          @default("")
+  unit                 String          @default("")
+  qty                  Int             @default(0)
+  rate                 Float           @default(0)
+  taxPercent           Float           @default(0)
+  discountPercent      Float           @default(0)
+  taxablePerUnit       Float           @default(0)
+  taxableAmount        Float           @default(0)
+  gstAmount            Float           @default(0)
+  finalRatePerUnit     Float           @default(0)
+  rowAmount            Float           @default(0)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @default(now())
+}
+
+model PendingMaterial {
+  id                  String         @id @default(cuid())
+  documentType        String         @default("pending-material")
+  billType            String         @default("Pending Material")
+  invoiceNumber       String         @unique
+  invoiceDate         DateTime
+  dueDate             DateTime?
+  partyName           String
+  contactPerson       String         @default("")
+  email               String         @default("")
+  phone               String         @default("")
+  city                String         @default("")
+  pincode             String         @default("")
+  gstin               String         @default("")
+  state               String         @default("")
+  address             String         @default("")
+  poDate              DateTime?
+  ewayBillNo          String         @default("")
+  poNo                String         @default("")
+  placeOfSupply       String         @default("")
+  shipToAddress       String         @default("")
+  transportName       String         @default("")
+  vehicleNumber       String         @default("")
+  taxType             String         @default("cgst-sgst")
+  paymentMode         String         @default("")
+  notes               String         @default("")
+  terms               String         @default("")
+  bankDetails         String         @default("")
+  authorizedSignature String         @default("")
+  subtotal            Float          @default(0)
+  discountTotal       Float          @default(0)
+  extraDiscountAmount Float          @default(0)
+  taxableAmount       Float          @default(0)
+  taxAmount           Float          @default(0)
+  roundOff            Float          @default(0)
+  grandTotal          Float          @default(0)
+  items               PendingMaterialItem[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model PendingMaterialItem {
+  id                   String          @id @default(cuid())
+  pendingMaterialId    String
+  pendingMaterial      PendingMaterial @relation(fields: [pendingMaterialId], references: [id], onDelete: Cascade)
+  description          String
+  hsn                  String          @default("")
+  unit                 String          @default("")
+  qty                  Int             @default(0)
+  rate                 Float           @default(0)
+  taxPercent           Float           @default(0)
+  discountPercent      Float           @default(0)
+  taxablePerUnit       Float           @default(0)
+  taxableAmount        Float           @default(0)
+  gstAmount            Float           @default(0)
+  finalRatePerUnit     Float           @default(0)
+  rowAmount            Float           @default(0)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @default(now())
+}
+
 model Quotation {
   id                     String          @id @default(cuid())
   documentType           String          @default("quotation")
