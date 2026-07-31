@@ -1,18 +1,27 @@
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '@/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
+import { normalizeDatabaseUrl } from './dbUrl';
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// 1. Create a standard pg connection pool using your transaction URL
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+function createPrismaClient() {
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
 
-// 2. Wrap it inside the native Prisma 7 driver adapter
-const adapter = new PrismaPg(pool);
+  if (!connectionString) {
+    throw new Error('DATABASE_URL or DIRECT_URL is required');
+  }
 
-// 3. Initialize Prisma Client with the driver adapter directly
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({ adapter });
+  const normalizedConnectionString = normalizeDatabaseUrl(connectionString);
+  const adapter = new PrismaPg({
+    connectionString: normalizedConnectionString,
+    ssl: { rejectUnauthorized: false },
+  });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+  return new PrismaClient({ adapter });
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
