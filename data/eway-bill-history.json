@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1785527988915-4kvb3wsr",
+    "ewbNo": "",
+    "ewbDate": "",
+    "validUpto": "",
+    "billNo": "INV-1001",
+    "docType": "Tax Invoice",
+    "customerName": "Acme",
+    "gstin": "29AABCD1234Z1Z1",
+    "formData": {
+      "documentNo": "INV-1001"
+    },
+    "status": "pending"
+  }
+]

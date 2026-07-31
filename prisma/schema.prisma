@@ -15,6 +15,37 @@ model AdminUser {
   createdAt DateTime @default(now())
 }
 
+model EWayBillRecord {
+  id                  String   @id @default(cuid())
+  billNumber          String   @default("")
+  documentType        String   @default("")
+  documentNo          String   @default("")
+  ewayBillNumber      String   @default("")
+  status              String   @default("draft")
+  portalMessage       String   @default("")
+  portalResponse      String   @default("")
+  vehicleNumber       String   @default("")
+  validityDate        String   @default("")
+  remarks             String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model EWayBillFormSubmission {
+  id                String   @id @default(cuid())
+  documentType      String   @default("")
+  documentNo        String   @default("")
+  customerName      String   @default("")
+  gstin             String   @default("")
+  ewayBillNumber    String   @default("")
+  status            String   @default("pending")
+  formData          Json?
+  requestPayload    Json?
+  responsePayload   Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 model ProductCategory {
   id           String    @id @default(cuid())
   slug         String    @unique

@@ -3,7 +3,7 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { buildTaxInvoiceChartData, type InvoiceRange } from "@/lib/taxInvoiceChart";
-import { DollarSign, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { DollarSign, FileText, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -130,6 +130,7 @@ export default function AdminDashboard() {
     { label: "Total Sold Products", value: stats?.totalSoldProducts ?? 0, icon: ShoppingCart, tone: "bg-sky-50 text-sky-700", href: "/admin/generate-bill" },
     { label: "Total Amount", value: `₹${(stats?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: DollarSign, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
     { label: "Total Bills", value: totalInvoiceCount, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
+    { label: "E-Way Bills", value: "Open", icon: FileText, tone: "bg-indigo-50 text-indigo-700", href: "/admin/generate-bill/eway-bill" },
   ];
 
   const taxInvoiceChartData = useMemo(
