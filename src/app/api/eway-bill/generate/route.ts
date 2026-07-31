@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma";
 import { extractEWayBillDisplayResult } from "@/lib/eway/display";
 import { generateEwayBill } from "@/lib/ewaybill-client";
 import { saveEwayBillHistoryRecord } from "@/lib/ewaybillHistoryStorage";
@@ -32,9 +33,9 @@ async function persistSubmissionRecord(recordId: string, payload: Record<string,
         gstin: typeof payload.gstin === 'string' ? payload.gstin : '',
         ewayBillNumber,
         status,
-        formData: formData ? (formData as Record<string, unknown>) : undefined,
-        requestPayload: payload ? (payload as Record<string, unknown>) : undefined,
-        responsePayload: responsePayload ? (responsePayload as Record<string, unknown>) : undefined,
+        formData: formData ? (formData as Prisma.InputJsonValue) : undefined,
+        requestPayload: payload ? (payload as Prisma.InputJsonValue) : undefined,
+        responsePayload: responsePayload ? (responsePayload as Prisma.InputJsonValue) : undefined,
       },
     });
   } catch (error) {
@@ -61,7 +62,7 @@ async function updateSubmissionStatus(recordId: string, status: string, ewayBill
       data: {
         status,
         ewayBillNumber,
-        responsePayload: responsePayload ? (responsePayload as Record<string, unknown>) : undefined,
+        responsePayload: responsePayload ? (responsePayload as Prisma.InputJsonValue) : undefined,
       },
     });
   } catch (error) {
