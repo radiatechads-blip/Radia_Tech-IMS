@@ -5,7 +5,7 @@ import JSBarcode from 'jsbarcode';
 import { jsPDF } from 'jspdf';
 import { Printer, X } from 'lucide-react';
 import QRCodeLib from 'qrcode';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface FormData {
   supplyType: string;
@@ -270,15 +270,16 @@ function Barcode({ value }: { value: string }) {
 }
 
 function QRCode({ ewbNo, generatedDate, generatedBy }: { ewbNo: string; generatedDate: string; generatedBy: string }) {
-  const ref = useRef<HTMLCanvasElement | null>(null);
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
   const qrData = `${ewbNo.replace(/\s/g, '')}/${generatedBy}/${generatedDate}`;
 
   useEffect(() => {
-    if (!ref.current || !qrData) {
+    if (!qrData) {
+      setDataUrl(null);
       return;
     }
 
-    QRCodeLib.toCanvas(ref.current, qrData, {
+    QRCodeLib.toDataURL(qrData, {
       errorCorrectionLevel: 'M',
       margin: 1,
       width: 140,
@@ -286,14 +287,20 @@ function QRCode({ ewbNo, generatedDate, generatedBy }: { ewbNo: string; generate
         dark: '#000000',
         light: '#ffffff',
       },
-    }).catch((error) => {
-      console.error('Unable to render QR code', error);
-    });
+    })
+      .then(setDataUrl)
+      .catch((error) => {
+        console.error('Unable to render QR code', error);
+      });
   }, [qrData]);
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <canvas ref={ref} className="w-24 h-24" />
+      {dataUrl ? (
+        <img src={dataUrl} alt="E-Way Bill QR Code" className="w-24 h-24" />
+      ) : (
+        <div className="w-24 h-24 border border-gray-200 rounded bg-white" />
+      )}
     </div>
   );
 }
@@ -307,40 +314,55 @@ export default function EWayBillPreview({ data, onClose, ewayBillNumber, generat
   const previewGeneratedDate = formatPreviewGeneratedDate(generatedDate);
   const previewValidUpto = formatPreviewValidUpto(validUpto);
 
-  const handlePrint = () => {
-    const printContents = document.getElementById('ewb-print')?.outerHTML;
-    if (!printContents) {
+  const handlePrint = async () => {
+    const previewElement = document.getElementById('ewb-print');
+    if (!previewElement) {
       window.alert('Unable to prepare the e-way bill preview for printing.');
       return;
     }
 
-    const printWindow = window.open('', '_blank', 'width=900,height=1200');
-    if (!printWindow) {
-      window.alert('Please allow pop-ups to open the print preview.');
-      return;
-    }
+    try {
+      const canvas = await html2canvas(previewElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
 
-    printWindow.document.write(`<!DOCTYPE html>
+      const imgData = canvas.toDataURL('image/png');
+      const printWindow = window.open('', '_blank', 'width=900,height=1200');
+      if (!printWindow) {
+        window.alert('Please allow pop-ups to open the print preview.');
+        return;
+      }
+
+      printWindow.document.write(`<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>E-Way Bill Preview</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @page { size: A4; margin: 10mm; }
-      body { margin: 0; background: #fff; font-family: Arial, sans-serif; }
+      @page { size: A4; margin: 8mm; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      body { display: flex; justify-content: center; align-items: flex-start; }
+      img { width: 100%; height: auto; max-width: 210mm; }
       @media print {
-        body { padding: 0; background: #fff; }
+        body { display: block; padding: 0; margin: 0; }
+        img { max-width: 100%; width: 100%; margin: 0; }
       }
     </style>
   </head>
   <body>
-    ${printContents}
+    <img src="${imgData}" alt="E-Way Bill Preview" />
   </body>
 </html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.setTimeout(() => printWindow.print(), 600);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.setTimeout(() => printWindow.print(), 600);
+    } catch (error) {
+      console.error('Unable to create print image for e-way bill preview', error);
+      window.alert('Unable to prepare the print preview. Please try again.');
+    }
   };
 
   const handleDownload = async () => {
@@ -428,8 +450,8 @@ export default function EWayBillPreview({ data, onClose, ewayBillNumber, generat
         {/* Bill Document */}
         <div
           id="ewb-print"
-          className="bg-white mx-4 my-4 border border-gray-700 rounded p-6 text-xs font-sans text-black print:mx-0 print:my-0 print:border-0"
-          style={{ fontFamily: 'Arial, sans-serif' }}
+          className="mx-auto my-4 w-full max-w-[210mm] rounded border border-gray-700 bg-white p-6 text-xs font-sans text-black print:mx-0 print:my-0 print:border-0 print:p-0"
+          style={{ fontFamily: 'Arial, sans-serif', minHeight: '297mm' }}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-4 gap-4">
