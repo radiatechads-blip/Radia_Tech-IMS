@@ -5,6 +5,28 @@ import { saveEwayBillHistoryRecord } from "@/lib/ewaybillHistoryStorage";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => toPrismaJsonValue(item)) as Prisma.InputJsonValue;
+  }
+
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, nestedValue]) => [key, toPrismaJsonValue(nestedValue)])
+    ) as Prisma.InputJsonValue;
+  }
+
+  return undefined;
+}
+
 async function persistSubmissionRecord(recordId: string, payload: Record<string, unknown>, formData: unknown, responsePayload: unknown, status: string, ewayBillNumber: string) {
   try {
     await prisma.$executeRawUnsafe(`
@@ -33,9 +55,9 @@ async function persistSubmissionRecord(recordId: string, payload: Record<string,
         gstin: typeof payload.gstin === 'string' ? payload.gstin : '',
         ewayBillNumber,
         status,
-        formData: formData ? (formData as Prisma.InputJsonValue) : undefined,
-        requestPayload: payload ? (payload as Prisma.InputJsonValue) : undefined,
-        responsePayload: responsePayload ? (responsePayload as Prisma.InputJsonValue) : undefined,
+        formData: formData !== undefined && formData !== null ? toPrismaJsonValue(formData) : undefined,
+        requestPayload: payload ? toPrismaJsonValue(payload) : undefined,
+        responsePayload: responsePayload !== undefined && responsePayload !== null ? toPrismaJsonValue(responsePayload) : undefined,
       },
     });
   } catch (error) {
@@ -62,7 +84,7 @@ async function updateSubmissionStatus(recordId: string, status: string, ewayBill
       data: {
         status,
         ewayBillNumber,
-        responsePayload: responsePayload ? (responsePayload as Prisma.InputJsonValue) : undefined,
+        responsePayload: responsePayload !== undefined && responsePayload !== null ? toPrismaJsonValue(responsePayload) : undefined,
       },
     });
   } catch (error) {
