@@ -224,6 +224,7 @@
 "use client";
 
 import AdminShell from "@/components/admin/AdminShell";
+import { readJsonResponse } from "@/lib/fetchJson";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
 import { matchesPaymentDateFilter, type PaymentDateFilter } from "@/lib/paymentInFilters";
 import { useEffect, useMemo, useState } from "react";
@@ -278,9 +279,11 @@ export default function PaymentInPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/payment-invoices");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Unable to load invoices");
-      setInvoices(data.invoices || []);
+      const data = await readJsonResponse(res);
+      if (!res.ok) {
+        throw new Error((data as { error?: string } | null)?.error || "Unable to load invoices");
+      }
+      setInvoices((data as { invoices?: InvoiceRow[] } | null)?.invoices || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unable to load invoices");
     } finally {
@@ -347,9 +350,11 @@ export default function PaymentInPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoiceId: updateInvoice.id, amount, paymentMode, note }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Payment failed");
-      
+      const data = await readJsonResponse(res);
+      if (!res.ok) {
+        throw new Error((data as { error?: string } | null)?.error || "Payment failed");
+      }
+
       alert("Payment recorded successfully.");
       setUpdateInvoice(null);
       await fetchInvoices();
