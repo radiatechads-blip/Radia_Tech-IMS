@@ -30,7 +30,12 @@ export function isDatabaseUnavailableError(error: unknown) {
     return true;
   }
 
-  return typeof value.message === "string" && value.message.includes("Can't reach database server");
+  return typeof value.message === "string" && (
+    value.message.includes("Can't reach database server") ||
+    value.message.includes("DATABASE_URL") ||
+    value.message.includes("DIRECT_URL") ||
+    value.message.includes("database")
+  );
 }
 
 function getSafeErrorSummary(error: unknown) {

@@ -1,3 +1,4 @@
+import { categories as fallbackCategories, products as fallbackProducts } from "@/data/products";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -83,6 +84,31 @@ function buildTrendData(invoices: InvoiceLike[], period: Period): TrendPoint[] {
   }
 
   return buckets;
+}
+
+function buildFallbackStats(period: Period) {
+  return {
+    products: fallbackProducts.length,
+    categories: fallbackCategories.length,
+    stock: 0,
+    customers: 0,
+    totalSoldProducts: 0,
+    totalAmount: 0,
+    inquiries: { total: 0, unread: 0 },
+    recentInquiries: [],
+    recentTransactions: [],
+    lowStockAlerts: [],
+    categoriesWithCounts: fallbackCategories.map((category) => ({ name: category.name, products: category.productCount })),
+    taxInvoiceSeries: [],
+    businessSummary: {
+      period,
+      trend: [],
+      totalRevenue: 0,
+      totalBills: 0,
+      avgBillValue: 0,
+      totalSoldProducts: 0,
+    },
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -202,6 +228,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(buildFallbackStats(period));
+    }
+
     logServerError("api.admin.stats.GET", error);
     const status = isDatabaseUnavailableError(error) ? 503 : 500;
     return jsonError(status === 503 ? DATABASE_UNAVAILABLE_MESSAGE : "Unable to load dashboard statistics.", status);

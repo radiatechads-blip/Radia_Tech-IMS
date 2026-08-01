@@ -1,7 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { categories as fallbackCategories } from "@/data/products";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+
+function buildFallbackCategories() {
+  return fallbackCategories.map((category, index) => ({
+    id: `fallback-${index + 1}`,
+    slug: category.slug,
+    name: category.name,
+    description: category.description,
+    image: category.image,
+    sortOrder: index + 1,
+    _count: { products: category.productCount },
+  }));
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,6 +29,10 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json(categories);
   } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      return NextResponse.json(buildFallbackCategories());
+    }
+
     logServerError("api.categories.GET", error);
     const status = isDatabaseUnavailableError(error) ? 503 : 500;
     return jsonError(status === 503 ? DATABASE_UNAVAILABLE_MESSAGE : "Unable to load categories.", status);
