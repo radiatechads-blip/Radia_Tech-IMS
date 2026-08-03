@@ -3,11 +3,15 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
 function getJwtSecret() {
-  if (!process.env.JWT_SECRET) {
+  return process.env.JWT_SECRET || null;
+}
+
+function getRequiredJwtSecret() {
+  const secret = getJwtSecret();
+  if (!secret) {
     throw new Error("JWT_SECRET is required");
   }
-
-  return process.env.JWT_SECRET;
+  return secret;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -19,12 +23,14 @@ export async function verifyPassword(password: string, hashed: string): Promise<
 }
 
 export function signToken(payload: { id: string; email: string }): string {
-  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
+  return jwt.sign(payload, getRequiredJwtSecret(), { expiresIn: "7d" });
 }
 
 export function verifyToken(token: string): { id: string; email: string } | null {
   try {
-    return jwt.verify(token, getJwtSecret()) as { id: string; email: string };
+    const secret = getJwtSecret();
+    if (!secret) return null;
+    return jwt.verify(token, secret) as { id: string; email: string };
   } catch {
     return null;
   }

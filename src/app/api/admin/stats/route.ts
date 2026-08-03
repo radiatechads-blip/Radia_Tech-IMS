@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { categories as fallbackCategories, products as fallbackProducts } from "@/data/products";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
