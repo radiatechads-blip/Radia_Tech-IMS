@@ -1284,11 +1284,11 @@ function AnnexurePageContent() {
                       <input value={authorizedSignature} onChange={(e) => setAuthorizedSignature(e.target.value)} placeholder="Authorized Signatory" className={inputCls} />
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
+                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50">
                         {signatureImage ? (
                           <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
                         ) : (
-                          "Signature"
+                          <img src="/STAMP.jpeg" alt="Default authorized stamp" className="h-full w-full object-contain" />
                         )}
                       </div>
                       <div className="flex flex-col gap-1">

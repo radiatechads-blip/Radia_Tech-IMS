@@ -1015,13 +1015,16 @@ export default function InvoicePreview({
         <div className="grid grid-cols-1 border-b border-slate-300 sm:grid-cols-2 print:grid-cols-2">
           <div className="border-b border-slate-300 pt-0 pb-3 px-3 sm:border-b-0 sm:border-r print:border-b-0 print:border-r">
             <SectionHeader title="Bank Details" />
-            <div className="whitespace-pre-line text-[12px] leading-5 text-slate-800">{invoice.bankDetails || "—"}</div>
+            <div className="mt-2 flex items-start gap-3">
+              <div className="min-w-0 whitespace-pre-line text-[12px] leading-5 text-slate-800">{invoice.bankDetails || "—"}</div>
+              <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 shrink-0 object-contain" />
+            </div>
           </div>
           <div className="pt-0 pb-3 px-3">
             <SectionHeader title="For Radiatech Electra" />
             <div className="mt-2 flex flex-col items-start">
               <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border border-slate-300 bg-slate-50 text-[11px] text-slate-400">
-                {invoice.signatureImage ? (
+                {signatureImageSrc ? (
                   <Image src={signatureImageSrc} alt="Signature" width={128} height={64} className="h-full w-full object-contain" unoptimized />
                 ) : (
                   "Signature"

@@ -40,13 +40,36 @@ function generateInvoiceSerial(existingNumbers: Set<string>, prefix: string) {
   return String(Math.min(maxSerial + 1, 999)).padStart(3, "0");
 }
 
+function generateSimpleSerial(existingNumbers: Set<string>, prefix: string) {
+  let maxSerial = 0;
+
+  for (const invoiceNumber of existingNumbers) {
+    if (!invoiceNumber.startsWith(prefix)) {
+      continue;
+    }
+
+    const serial = invoiceNumber.slice(prefix.length);
+    const match = /^([0-9]{3})$/.exec(serial);
+    if (!match) {
+      continue;
+    }
+
+    const value = Number(match[1]);
+    if (value > maxSerial) {
+      maxSerial = value;
+    }
+  }
+
+  return String(Math.min(maxSerial + 1, 999)).padStart(3, "0");
+}
+
 function getInvoicePrefix(documentType: DocumentType) {
   if (documentType === "proforma") {
     return "PFI-";
   }
 
   if (documentType === "annexure") {
-    return "ANN-";
+    return "ANX-";
   }
 
   if (documentType === "quotation") {
@@ -113,16 +136,8 @@ export function resolveInvoiceNumber(
   }
 
   const prefix = getInvoicePrefix(documentType);
-  let attempt = 0;
-
-  while (true) {
-    const suffix = `${String(fallbackDate.getFullYear()).slice(-2)}${String(fallbackDate.getMonth() + 1).padStart(2, "0")}${String(fallbackDate.getDate()).padStart(2, "0")}-${String(attempt + 1).padStart(3, "0")}`;
-    const candidate = `${prefix}${suffix}`;
-    if (!existingNumbers.has(candidate)) {
-      return candidate;
-    }
-    attempt += 1;
-  }
+  const serial = generateSimpleSerial(existingNumbers, prefix);
+  return `${prefix}${serial}`;
 }
 
 export function resolveInvoiceDate(data: Record<string, unknown>) {

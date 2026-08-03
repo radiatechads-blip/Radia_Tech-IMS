@@ -539,8 +539,11 @@ export default function QuotationPreview({
         <div className="grid grid-cols-2">
           <div className="border-r border-slate-300">
             <div className={sectionHeaderClass}>Bank Details:</div>
-            <div className="p-3 whitespace-pre-line text-[12px] text-slate-700 leading-5">
-              {effectiveBankDetails || "—"}
+            <div className="flex items-start gap-3 p-3">
+              <div className="min-w-0 whitespace-pre-line text-[12px] text-slate-700 leading-5">
+                {effectiveBankDetails || "—"}
+              </div>
+              <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 shrink-0 object-contain" />
             </div>
           </div>
           <div>

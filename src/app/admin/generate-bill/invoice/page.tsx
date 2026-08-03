@@ -2504,7 +2504,10 @@ export default function InvoicePage() {
                   </div>
                   <div>
                     <label className={labelCls}>Bank Details</label>
-                    <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className={`${inputCls} resize-none`} />
+                    <div className="mt-1 flex items-start gap-2">
+                      <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className={`${inputCls} resize-none flex-1`} />
+                      <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-20 w-20 shrink-0 rounded border border-slate-200 bg-white object-contain p-1" />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 items-end">
@@ -2513,11 +2516,11 @@ export default function InvoicePage() {
                       <input value={authorizedSignature} onChange={(e) => setAuthorizedSignature(e.target.value)} placeholder="Authorized Signatory" className={inputCls} />
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
+                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50">
                         {signatureImage ? (
                           <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
                         ) : (
-                          "Signature"
+                          <img src="/STAMP.jpeg" alt="Default authorized stamp" className="h-full w-full object-contain" />
                         )}
                       </div>
                       <div className="flex flex-col gap-1">
@@ -3170,22 +3173,25 @@ export default function InvoicePage() {
                     <div>
                       <div className="invoice-card rounded-lg border border-slate-300 bg-slate-50 p-3">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bank Details:</p>
-                        <textarea
-                          value={bankDetails}
-                          onChange={(e) => setBankDetails(e.target.value)}
-                          rows={4}
-                          className="inv-field mt-2 w-full resize-none text-[12px] text-slate-700"
-                        />
+                        <div className="mt-2 flex items-start gap-2">
+                          <textarea
+                            value={bankDetails}
+                            onChange={(e) => setBankDetails(e.target.value)}
+                            rows={4}
+                            className="inv-field w-full resize-none text-[12px] text-slate-700"
+                          />
+                          <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-20 w-20 shrink-0 rounded border border-slate-200 bg-white object-contain p-1" />
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col items-end justify-end text-[13px] text-slate-700">
                       <div className="invoice-card rounded-lg border border-slate-300 bg-white p-3 text-center">
                         <div className="font-semibold text-slate-900">For Radiatech Electra:</div>
-                        <div className="mx-auto mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
+                        <div className="mx-auto mt-2 flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50">
                           {signatureImage ? (
                             <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
                           ) : (
-                            "Signature"
+                            <img src="/STAMP.jpeg" alt="Default authorized stamp" className="h-full w-full object-contain" />
                           )}
                         </div>
                         <div className="mt-2 flex items-center justify-center gap-3 print:hidden">

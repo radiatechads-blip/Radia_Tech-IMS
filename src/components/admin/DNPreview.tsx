@@ -209,6 +209,7 @@ export default function DNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
   const hasTerms = !!invoice.terms?.trim();
   const labels = (pageLabels && pageLabels.length > 0 ? pageLabels : [docLabel]).map((label) => label || "Debit Note");
   const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
+  const signatureImageSrc = (invoice.signatureImage || "").trim() ? invoice.signatureImage : "/STAMP.jpeg";
 
   return (
     <div className="invoice-preview-shell mx-auto w-full" style={{ color: "#000" }}>
@@ -475,14 +476,17 @@ export default function DNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
             <div className="grid md:grid-cols-2">
               <div className="border-b border-slate-300 md:border-b-0 md:border-r">
                 <div className={secHeader}>Bank Details:</div>
-                <div className="whitespace-pre-line p-3 text-[12px] leading-5 text-slate-700">{invoice.bankDetails || "—"}</div>
+                <div className="flex items-start gap-3 p-3">
+                  <div className="min-w-0 whitespace-pre-line text-[12px] leading-5 text-slate-700">{invoice.bankDetails || "—"}</div>
+                  <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 shrink-0 object-contain" />
+                </div>
               </div>
               <div>
                 <div className={`${secHeader} text-right`}>For Radiatech Electra:</div>
                 <div className="flex flex-col items-end p-3">
                   <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
-                    {invoice.signatureImage ? (
-                      <img src={invoice.signatureImage} alt="Signature" className="h-full w-full object-contain" />
+                    {signatureImageSrc ? (
+                      <img src={signatureImageSrc} alt="Signature" className="h-full w-full object-contain" />
                     ) : "Signature"}
                   </div>
                   <div className="mt-1 text-center text-[11px] font-semibold text-slate-700">

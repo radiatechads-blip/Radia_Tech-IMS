@@ -209,6 +209,7 @@ export default function CNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
   const hasTerms = !!invoice.terms?.trim();
   const labels = (pageLabels && pageLabels.length > 0 ? pageLabels : [docLabel]).map((label) => label || "Debit Note");
   const secHeader = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-black border-b border-slate-300";
+  const signatureImageSrc = (invoice.signatureImage || "").trim() ? invoice.signatureImage : "/STAMP.jpeg";
 
   return (
     <div className="invoice-preview-shell mx-auto w-full" style={{ color: "#000" }}>
@@ -465,8 +466,8 @@ export default function CNPreview({ invoice, taxType: taxTypeProp, pageLabels, o
                 <div className={`${secHeader} text-right`}>For Radiatech Electra:</div>
                 <div className="flex flex-1 flex-col items-end justify-end p-3">
                   <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-black">
-                    {invoice.signatureImage ? (
-                      <img src={invoice.signatureImage} alt="Signature" className="h-full w-full object-contain" />
+                    {signatureImageSrc ? (
+                      <img src={signatureImageSrc} alt="Signature" className="h-full w-full object-contain" />
                     ) : "Signature"}
                   </div>
                   <div className="mt-1 text-center text-[11px] font-semibold text-black">

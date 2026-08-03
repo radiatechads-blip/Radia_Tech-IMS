@@ -2008,13 +2008,13 @@ import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import { getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
 import { calculateQuotationTotals } from "@/lib/quotationTotals";
 import {
-  AlignLeft,
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Plus,
-  Save,
-  Share2,
+    AlignLeft,
+    CalendarDays,
+    Check,
+    ChevronDown,
+    Plus,
+    Save,
+    Share2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -3311,7 +3311,10 @@ function QuotationPageContent() {
                   </div>
                   <div>
                     <label className={labelCls}>Bank Details</label>
-                    <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className={`${inputCls} resize-none`} />
+                    <div className="mt-1 flex items-start gap-2">
+                      <textarea value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} rows={4} className={`${inputCls} resize-none flex-1`} />
+                      <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-20 w-20 shrink-0 rounded border border-slate-200 bg-white object-contain p-1" />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 items-end">
@@ -3320,11 +3323,11 @@ function QuotationPageContent() {
                       <input value={authorizedSignature} onChange={(e) => setAuthorizedSignature(e.target.value)} placeholder="Authorized Signatory" className={inputCls} />
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50 text-[10px] text-slate-400">
+                      <div className="flex h-14 w-24 items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-slate-300 bg-slate-50">
                         {signatureImage ? (
                           <img src={signatureImage} alt="Authorized signature" className="h-full w-full object-contain" />
                         ) : (
-                          "Signature"
+                          <img src="/STAMP.jpeg" alt="Default authorized stamp" className="h-full w-full object-contain" />
                         )}
                       </div>
                       <div className="flex flex-col gap-1">

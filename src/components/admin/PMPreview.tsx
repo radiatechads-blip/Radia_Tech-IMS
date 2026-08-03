@@ -77,7 +77,8 @@ export default function PMPreview({ invoice, taxType: taxTypeProp, onTaxTypeChan
   const effectiveNotes = invoice?.notes ?? "";
   const effectiveTerms = invoice?.terms ?? "";
   const effectiveAuthorizedSignature = invoice?.authorizedSignature || "Authorized Signatory";
-  const effectiveBankDetails = invoice?.bankDetails ?? "—";
+  const defaultBankDetails = "Name: Punjab and Sind Bank, Plot No C1A, Sector 63, Noida\nAccount No: 15111180000370\nIFSC code: PSIB0021511\nAccount holder's name: Radiatech Electra";
+  const effectiveBankDetails = (invoice?.bankDetails || "").trim() ? invoice?.bankDetails : defaultBankDetails;
 
   const handleTaxTypeChange = (value: TaxType) => {
     if (onTaxTypeChange) {
@@ -90,6 +91,7 @@ export default function PMPreview({ invoice, taxType: taxTypeProp, onTaxTypeChan
   const sectionHeaderClass = "bg-[#e7eef9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#294c76] border-b border-slate-300";
   const hasNotes = !!effectiveNotes?.trim();
   const hasTerms = !!effectiveTerms?.trim();
+  const signatureImageSrc = (invoice?.signatureImage || "").trim() ? invoice?.signatureImage : "/STAMP.jpeg";
 
   return (
     <section className="invoice-preview-shell border border-slate-200 bg-slate-50 p-4 shadow-sm print:border-[1.2px] print:border-slate-400 print:bg-white print:shadow-none print:p-0" style={{ color: "#000" }}>
@@ -274,13 +276,18 @@ export default function PMPreview({ invoice, taxType: taxTypeProp, onTaxTypeChan
         <div className="grid grid-cols-2">
           <div className="border-r border-slate-300">
             <div className={sectionHeaderClass}>Bank Details</div>
-            <div className="p-3 whitespace-pre-line text-[12px] text-slate-700 leading-5">{effectiveBankDetails}</div>
+            <div className="flex items-start gap-3 p-3">
+              <div className="min-w-0 whitespace-pre-line text-[12px] text-slate-700 leading-5">{effectiveBankDetails}</div>
+              <img src="/Bank QR.jpeg" alt="Bank QR Code" className="h-16 w-16 shrink-0 object-contain" />
+            </div>
           </div>
           <div>
             <div className={`${sectionHeaderClass} text-right`}>For Radiatech Electra</div>
             <div className="p-3 flex flex-col items-end">
               <div className="flex h-16 w-32 items-center justify-center overflow-hidden rounded border-2 border-dashed border-slate-300 bg-slate-50 text-[11px] text-slate-400">
-                {effectiveAuthorizedSignature ? effectiveAuthorizedSignature : "Signature"}
+                {signatureImageSrc ? (
+                  <img src={signatureImageSrc} alt="Signature" className="h-full w-full object-contain" />
+                ) : "Signature"}
               </div>
               <div className="mt-1 text-[11px] font-semibold text-slate-700">{effectiveAuthorizedSignature}</div>
             </div>

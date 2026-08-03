@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     logServerError("api.auth.login", error);
-    return jsonError("Internal server error", 500);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return jsonError(message, 500);
   }
 }
