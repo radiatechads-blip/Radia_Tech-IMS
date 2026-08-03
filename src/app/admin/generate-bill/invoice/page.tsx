@@ -4,20 +4,24 @@ export const dynamic = "force-dynamic";
 import AdminShell from "@/components/admin/AdminShell";
 import ProductCreateModal from "@/components/admin/ProductCreateModal";
 import {
-  AlignLeft,
-  CalendarDays,
-  Camera,
-  Check,
-  ChevronDown,
-  FileText,
-  Plus,
-  Save,
-  Share2,
+    AlignLeft,
+    CalendarDays,
+    Camera,
+    Check,
+    ChevronDown,
+    FileText,
+    Info,
+    Plus,
+    RefreshCw,
+    Save,
+    Share2,
+    Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getDuplicateCopyInvoiceNumber, getDuplicateCopyPageLabels, getInvoiceDuplicateFlag } from "@/lib/invoiceRoute";
+import EWayBillPreview, { type FormData as EWayBillPreviewData } from "../eway-bill/EWayBillPreview";
 
 // ────────────────────────────────────────────────────────────────────────
 // Types — identical to invoice/page.tsx (file 1). The item shape/logic for
@@ -124,6 +128,843 @@ const UNITS = [
   { value: "ROLLS", label: "ROLLS" },
 ];
 
+interface EwayBillItemRow {
+  id: number;
+  name: string;
+  description: string;
+  hsn: string;
+  quantity: string;
+  unit: string;
+  taxableValue: string;
+  cgstSgst: string;
+  igst: string;
+  cessAdvit: string;
+  cessNonAdvit: string;
+}
+
+const initialEwayBillItem: EwayBillItemRow = {
+  id: 1,
+  name: "",
+  description: "",
+  hsn: "",
+  quantity: "",
+  unit: "",
+  taxableValue: "",
+  cgstSgst: "-Select",
+  igst: "-Select",
+  cessAdvit: "-Select",
+  cessNonAdvit: "0",
+};
+
+const STATE_CODE_BY_NAME: Record<string, number> = {
+  "JAMMU AND KASHMIR": 1,
+  "HIMACHAL PRADESH": 2,
+  PUNJAB: 3,
+  CHANDIGARH: 4,
+  UTTARAKHAND: 5,
+  HARYANA: 6,
+  DELHI: 7,
+  RAJASTHAN: 8,
+  "UTTAR PRADESH": 9,
+  BIHAR: 10,
+  SIKKIM: 11,
+  "ARUNACHAL PRADESH": 12,
+  NAGALAND: 13,
+  MANIPUR: 14,
+  MIZORAM: 15,
+  TRIPURA: 16,
+  MEGHALAYA: 17,
+  ASSAM: 18,
+  "WEST BENGAL": 19,
+  JHARKHAND: 20,
+  ODISHA: 21,
+  CHHATTISGARH: 22,
+  "MADHYA PRADESH": 23,
+  GUJARAT: 24,
+  MAHARASHTRA: 27,
+  KARNATAKA: 29,
+  GOA: 30,
+  KERALA: 32,
+  "TAMIL NADU": 33,
+  PUDUCHERRY: 34,
+  "ANDAMAN AND NICOBAR ISLANDS": 35,
+  TELANGANA: 36,
+  "ANDHRA PRADESH": 37,
+  LADAKH: 38,
+};
+
+const SUB_SUPPLY_TYPE_CODE: Record<string, string> = {
+  supply: "1",
+  export: "3",
+  "job view": "4",
+  "skd/ckd/cxd": "9",
+  "reciyent not known": "11",
+  "for own use": "5",
+  "exhibition or fairs": "12",
+  "line sales": "10",
+  others: "8",
+};
+
+const DOC_TYPE_CODE: Record<string, string> = {
+  "Delivery Challan": "CHL",
+  "Tax Invoice": "INV",
+  "Bill of Supply": "BIL",
+  "Credit Note": "OTH",
+  "Debit Note": "OTH",
+};
+
+const TRANSACTION_TYPE_CODE: Record<string, number> = {
+  Regular: 1,
+  "Bill To - Ship To": 2,
+  "Bill From - Dispatch From": 3,
+  "Combination of 2 and 3": 4,
+};
+
+const TRANS_MODE_CODE: Record<string, string> = {
+  road: "1",
+  rail: "2",
+  all: "3",
+  "ship or ship chin roed/rail": "4",
+};
+
+const ewbSubTypes = ["Supply", "Export", "Job View", "SKD/CKD/Cxd", "Reciyent Not Known", "For Own Use", "Exhibition or Fairs", "Line Sales", "Others"];
+const ewbStates = [
+  "ANDAMAN AND NICOBAR ISLANDS",
+  "ANDHRA PRADESH",
+  "ARUNACHAL PRADESH",
+  "ASSAM",
+  "BIHAR",
+  "CHANDIGARH",
+  "CHHATTISGARH",
+  "DELHI",
+  "GOA",
+  "GUJARAT",
+  "HARYANA",
+  "HIMACHAL PRADESH",
+  "JAMMU AND KASHMIR",
+  "JHARKHAND",
+  "KARNATAKA",
+  "KERALA",
+  "LADAKH",
+  "MADHYA PRADESH",
+  "MAHARASHTRA",
+  "MANIPUR",
+  "MEGHALAYA",
+  "MIZORAM",
+  "NAGALAND",
+  "ODISHA",
+  "PUDUCHERRY",
+  "PUNJAB",
+  "RAJASTHAN",
+  "SIKKIM",
+  "TAMIL NADU",
+  "TELANGANA",
+  "TRIPURA",
+  "UTTAR PRADESH",
+  "UTTARAKHAND",
+  "WEST BENGAL",
+];
+const ewbGstRates = ["-Select", "0", "0.1", "0.25", "1", "1.5", "3", "5", "6", "7.5", "9", "12", "14", "18", "28"];
+
+function stateCode(stateName: string): number {
+  return STATE_CODE_BY_NAME[stateName?.toUpperCase()] ?? 0;
+}
+
+function gstRateOf(value: string): number {
+  if (!value || value === "-Select") return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatDateForDisplay(value?: string | Date | null): string {
+  const source = value ? new Date(value) : new Date();
+  if (Number.isNaN(source.getTime())) {
+    return "";
+  }
+
+  const day = String(source.getDate()).padStart(2, "0");
+  const month = String(source.getMonth() + 1).padStart(2, "0");
+  const year = String(source.getFullYear());
+  return `${day}/${month}/${year}`;
+}
+
+function InvoiceEwayBillModal({
+  isOpen,
+  onClose,
+  invoiceNumber,
+  invoiceDate,
+  partyName,
+  gstin,
+  state,
+  address,
+  city,
+  pincode,
+  transportName,
+  vehicleNumber,
+  invoiceItems,
+  taxType,
+  onGenerated,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  invoiceNumber: string;
+  invoiceDate: string;
+  partyName: string;
+  gstin: string;
+  state: string;
+  address: string;
+  city: string;
+  pincode: string;
+  transportName: string;
+  vehicleNumber: string;
+  invoiceItems: InvoiceItem[];
+  taxType: TaxType;
+  onGenerated: (ewayBillNo: string) => void;
+}) {
+  const [supplyType, setSupplyType] = useState<"outward" | "inward">("outward");
+  const [subType, setSubType] = useState("supply");
+  const [documentType, setDocumentType] = useState("Tax Invoice");
+  const [documentNo, setDocumentNo] = useState("");
+  const [documentDate, setDocumentDate] = useState(formatDateForDisplay());
+  const [transactionType, setTransactionType] = useState("Regular");
+
+  const [billFromName, setBillFromName] = useState("Radiatech Electra");
+  const [billFromGstin, setBillFromGstin] = useState("27XYZAB9876C1Z2");
+  const [billFromState, setBillFromState] = useState("UTTAR PRADESH");
+  const [dispatchAddress1, setDispatchAddress1] = useState("A 287, Basement, Sector-69");
+  const [dispatchAddress2, setDispatchAddress2] = useState("Transport Nagar");
+  const [dispatchPlace, setDispatchPlace] = useState("Noida");
+  const [dispatchPincode, setDispatchPincode] = useState("201301");
+  const [dispatchState, setDispatchState] = useState("UTTAR PRADESH");
+
+  const [billToName, setBillToName] = useState("");
+  const [billToGstin, setBillToGstin] = useState("");
+  const [billToState, setBillToState] = useState("");
+  const [shipAddress1, setShipAddress1] = useState("");
+  const [shipAddress2, setShipAddress2] = useState("");
+  const [shipPlace, setShipPlace] = useState("");
+  const [shipPincode, setShipPincode] = useState("");
+  const [shipState, setShipState] = useState("");
+  const [items, setItems] = useState<EwayBillItemRow[]>([{ ...initialEwayBillItem }]);
+
+  const [transporterId, setTransporterId] = useState("");
+  const [transporterName, setTransporterName] = useState("");
+  const [approxDistance, setApproxDistance] = useState("");
+  const [mode, setMode] = useState("road");
+  const [vehicleType, setVehicleType] = useState("regular");
+  const [vehicleNo, setVehicleNo] = useState("");
+  const [transporterDocNo, setTransporterDocNo] = useState("");
+  const [transporterDocDate, setTransporterDocDate] = useState(formatDateForDisplay());
+  const [otherAmount, setOtherAmount] = useState("0.00");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const mappedItems = (invoiceItems.length > 0 ? invoiceItems : [{ id: 1, description: "", hsn: "", unit: "", qty: 1, rate: 0, taxPercent: 0, discountPercent: 0 }]).map((item, index) => ({
+      id: index + 1,
+      name: item.description || "",
+      description: item.description || "",
+      hsn: item.hsn || "",
+      quantity: String(item.qty || ""),
+      unit: item.unit || "Nos",
+      taxableValue: String((item.qty || 0) * (item.rate || 0)),
+      cgstSgst: taxType === "cgst-sgst" && item.taxPercent > 0 ? String(item.taxPercent / 2) : "-Select",
+      igst: taxType === "igst" && item.taxPercent > 0 ? String(item.taxPercent) : "-Select",
+      cessAdvit: "-Select",
+      cessNonAdvit: "0",
+    }));
+
+    setDocumentNo(invoiceNumber || "");
+    setDocumentDate(formatDateForDisplay(invoiceDate || today));
+    setDocumentType("Tax Invoice");
+    setBillToName(partyName || "");
+    setBillToGstin(gstin || "");
+    setBillToState(state || "");
+    setShipAddress1(address || "");
+    setShipAddress2("");
+    setShipPlace(city || "");
+    setShipPincode(pincode || "");
+    setShipState(state || "");
+    setTransporterName(transportName || "");
+    setVehicleNo(vehicleNumber || "");
+    setItems(mappedItems.length > 0 ? mappedItems : [{ ...initialEwayBillItem }]);
+    setTransporterDocDate(formatDateForDisplay(invoiceDate || today));
+    setOtherAmount("0.00");
+    setSubmitError(null);
+    setSubmitSuccess(null);
+  }, [isOpen, invoiceNumber, invoiceDate, partyName, gstin, state, address, city, pincode, transportName, vehicleNumber, invoiceItems, taxType]);
+
+  const calculateTotals = () => {
+    let totalTaxable = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+    let totalCessAdvit = 0;
+    let totalCessNon = 0;
+
+    items.forEach((item) => {
+      const taxableValue = parseFloat(item.taxableValue) || 0;
+      const cgstRate = item.cgstSgst === "-Select" ? 0 : parseFloat(item.cgstSgst) || 0;
+      const igstRate = item.igst === "-Select" ? 0 : parseFloat(item.igst) || 0;
+      const cessRate = item.cessAdvit === "-Select" ? 0 : parseFloat(item.cessAdvit) || 0;
+      const cessNonRate = parseFloat(item.cessNonAdvit) || 0;
+
+      totalTaxable += taxableValue;
+      totalCgst += (taxableValue * cgstRate) / 100;
+      totalSgst += (taxableValue * cgstRate) / 100;
+      totalIgst += (taxableValue * igstRate) / 100;
+      totalCessAdvit += (taxableValue * cessRate) / 100;
+      totalCessNon += cessNonRate;
+    });
+
+    const otherAmt = parseFloat(otherAmount) || 0;
+    const totalInvoice = totalTaxable + totalCgst + totalSgst + totalIgst + totalCessAdvit + totalCessNon + otherAmt;
+
+    return {
+      totalTaxable: totalTaxable.toFixed(2),
+      totalCgst: totalCgst.toFixed(2),
+      totalSgst: totalSgst.toFixed(2),
+      totalIgst: totalIgst.toFixed(2),
+      totalCessAdvit: totalCessAdvit.toFixed(2),
+      totalCessNon: totalCessNon.toFixed(2),
+      totalInvoice: totalInvoice.toFixed(2),
+    };
+  };
+
+  const totals = calculateTotals();
+
+  const previewData = useMemo<EWayBillPreviewData>(() => ({
+    supplyType,
+    subType,
+    documentType,
+    documentNo,
+    documentDate,
+    transactionType,
+    billFromName,
+    billFromGstin,
+    billFromState,
+    dispatchAddress1,
+    dispatchAddress2,
+    dispatchPlace,
+    dispatchPincode,
+    dispatchState,
+    billToName,
+    billToGstin,
+    billToState,
+    shipAddress1,
+    shipAddress2,
+    shipPlace,
+    shipPincode,
+    shipState,
+    items: items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      hsn: item.hsn,
+      quantity: item.quantity,
+      unit: item.unit,
+      taxableValue: item.taxableValue,
+      cgstSgst: item.cgstSgst,
+      igst: item.igst,
+      cessAdvit: item.cessAdvit,
+      cessNonAdvit: item.cessNonAdvit,
+    })),
+    transporterId,
+    transporterName,
+    approxDistance,
+    mode,
+    vehicleType,
+    vehicleNo,
+    transporterDocNo,
+    transporterDocDate,
+    otherAmount,
+  }), [
+    supplyType,
+    subType,
+    documentType,
+    documentNo,
+    documentDate,
+    transactionType,
+    billFromName,
+    billFromGstin,
+    billFromState,
+    dispatchAddress1,
+    dispatchAddress2,
+    dispatchPlace,
+    dispatchPincode,
+    dispatchState,
+    billToName,
+    billToGstin,
+    billToState,
+    shipAddress1,
+    shipAddress2,
+    shipPlace,
+    shipPincode,
+    shipState,
+    items,
+    transporterId,
+    transporterName,
+    approxDistance,
+    mode,
+    vehicleType,
+    vehicleNo,
+    transporterDocNo,
+    transporterDocDate,
+    otherAmount,
+  ]);
+
+  const addItem = () => {
+    setItems((prev) => [...prev, { ...initialEwayBillItem, id: Date.now() }]);
+  };
+
+  const removeItem = (id: number) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateItem = (id: number, field: keyof EwayBillItemRow, value: string) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const buildEwayBillPayload = () => {
+    const t = totals;
+    return {
+      supplyType: supplyType === "outward" ? "O" : "I",
+      subSupplyType: SUB_SUPPLY_TYPE_CODE[subType] ?? "8",
+      subSupplyDesc: "",
+      docType: DOC_TYPE_CODE[documentType] ?? "OTH",
+      docNo: documentNo,
+      docDate: documentDate,
+      fromGstin: billFromGstin,
+      fromTrdName: billFromName,
+      fromAddr1: dispatchAddress1,
+      fromAddr2: dispatchAddress2,
+      fromPlace: dispatchPlace,
+      fromPincode: parseInt(dispatchPincode, 10) || 0,
+      fromStateCode: stateCode(dispatchState || billFromState),
+      actFromStateCode: stateCode(dispatchState || billFromState),
+      toGstin: billToGstin,
+      toTrdName: billToName,
+      toAddr1: shipAddress1,
+      toAddr2: shipAddress2,
+      toPlace: shipPlace,
+      toPincode: parseInt(shipPincode, 10) || 0,
+      toStateCode: stateCode(shipState || billToState),
+      actToStateCode: stateCode(shipState || billToState),
+      transactionType: TRANSACTION_TYPE_CODE[transactionType] ?? 1,
+      otherValue: parseFloat(otherAmount) || 0,
+      totalValue: parseFloat(t.totalTaxable),
+      cgstValue: parseFloat(t.totalCgst),
+      sgstValue: parseFloat(t.totalSgst),
+      igstValue: parseFloat(t.totalIgst),
+      cessValue: parseFloat(t.totalCessAdvit),
+      totInvValue: parseFloat(t.totalInvoice),
+      transMode: TRANS_MODE_CODE[mode] ?? "1",
+      transDistance: approxDistance,
+      transporterName,
+      transporterId,
+      transDocNo: transporterDocNo,
+      transDocDate: transporterDocDate,
+      vehicleNo,
+      vehicleType: vehicleType === "regular" ? "R" : "O",
+      itemList: items.map((item) => ({
+        productName: item.name,
+        productDesc: item.description,
+        hsnCode: item.hsn,
+        quantity: parseFloat(item.quantity) || 0,
+        qtyUnit: item.unit,
+        taxableAmount: parseFloat(item.taxableValue) || 0,
+        cgstRate: gstRateOf(item.cgstSgst),
+        sgstRate: gstRateOf(item.cgstSgst),
+        igstRate: gstRateOf(item.igst),
+        cessRate: gstRateOf(item.cessAdvit),
+        cessNonAdvol: parseFloat(item.cessNonAdvit) || 0,
+      })),
+    };
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    try {
+      const payload = buildEwayBillPayload();
+      const response = await fetch("/api/eway-bill/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          documentType,
+          documentNo,
+          billToName,
+          gstin: billToGstin,
+          formData: previewData,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || `Request failed with status ${response.status}`);
+      }
+      const generatedNumber = String(data.ewayBillNo ?? data.ewbNo ?? "");
+      if (generatedNumber) {
+        onGenerated(generatedNumber);
+      }
+      setSubmitSuccess(generatedNumber ? `E-Way Bill generated successfully. E-Way Bill No: ${generatedNumber}` : "E-Way Bill generated successfully.");
+      onClose();
+    } catch (error: any) {
+      setSubmitError(error?.message || "Failed to generate e-way bill.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 px-4 py-6 print:hidden">
+      <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Generate E-Way Bill</h3>
+            <p className="text-sm text-slate-500">This popup mirrors the standalone e-way bill form and uses the current invoice details.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800">×</button>
+        </div>
+
+        <div className="space-y-3 px-5 py-4">
+          {submitError && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</div>}
+          {submitSuccess && <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{submitSuccess}</div>}
+
+          <section className="rounded border border-gray-300 bg-white shadow-sm">
+            <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Transaction Details</div>
+            <div className="space-y-3 p-3">
+              <div className="flex flex-wrap gap-6 items-center">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Supply Type <Req /></span>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="supplyType" value="outward" checked={supplyType === "outward"} onChange={() => setSupplyType("outward")} className="accent-blue-600" />
+                    <span>Outward</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="supplyType" value="inward" checked={supplyType === "inward"} onChange={() => setSupplyType("inward")} className="accent-blue-600" />
+                    <span>Inward</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Sub Type <InfoIcon /></span>
+                  <div className="flex flex-wrap gap-2">
+                    {ewbSubTypes.map((value) => (
+                      <label key={value} className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="subType" value={value.toLowerCase()} checked={subType === value.toLowerCase()} onChange={() => setSubType(value.toLowerCase())} className="accent-blue-600" />
+                        <span>{value}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-6 items-center">
+                <FieldGroup label="Document Type" required>
+                  <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} className={inputCls}>
+                    <option>Delivery Challan</option>
+                    <option>Tax Invoice</option>
+                    <option>Bill of Supply</option>
+                    <option>Credit Note</option>
+                    <option>Debit Note</option>
+                  </select>
+                </FieldGroup>
+                <FieldGroup label="Document No">
+                  <input value={documentNo} onChange={(e) => setDocumentNo(e.target.value)} className={`${inputCls} w-44`} />
+                </FieldGroup>
+                <FieldGroup label="Document Date" required>
+                  <input value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} className={`${inputCls} w-28`} placeholder="DD/MM/YYYY" maxLength={10} />
+                </FieldGroup>
+                <FieldGroup label="Transaction Type" required>
+                  <select value={transactionType} onChange={(e) => setTransactionType(e.target.value)} className={inputCls}>
+                    <option>Regular</option>
+                    <option>Bill To - Ship To</option>
+                    <option>Bill From - Dispatch From</option>
+                    <option>Combination of 2 and 3</option>
+                  </select>
+                </FieldGroup>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <section className="rounded border border-gray-300 bg-white shadow-sm">
+              <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Bill From</div>
+              <div className="space-y-2 p-3">
+                <FieldRow label="Name">
+                  <input value={billFromName} onChange={(e) => setBillFromName(e.target.value)} className={`${inputCls} flex-1`} />
+                  <button type="button" className="rounded border border-gray-400 px-1 py-0.5 text-xs hover:bg-gray-100"><RefreshCw size={10} /></button>
+                </FieldRow>
+                <FieldRow label={<><span>GSTIN</span><Req /></>}>
+                  <input value={billFromGstin} onChange={(e) => setBillFromGstin(e.target.value)} className={`${inputCls} flex-1 bg-blue-50`} placeholder="GSTIN" />
+                </FieldRow>
+                <FieldRow label={<><span>State</span><Req /></>}>
+                  <select value={billFromState} onChange={(e) => setBillFromState(e.target.value)} className={`${inputCls} flex-1`}>
+                    {ewbStates.map((stateName) => <option key={stateName}>{stateName}</option>)}
+                  </select>
+                </FieldRow>
+              </div>
+            </section>
+
+            <section className="rounded border border-gray-300 bg-white shadow-sm">
+              <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Dispatch From</div>
+              <div className="space-y-2 p-3">
+                <FieldRow label="Address">
+                  <div className="flex gap-1">
+                    <input value={dispatchAddress1} onChange={(e) => setDispatchAddress1(e.target.value)} className={`${inputCls} flex-1`} />
+                    <input value={dispatchAddress2} onChange={(e) => setDispatchAddress2(e.target.value)} className={`${inputCls} flex-1`} />
+                  </div>
+                </FieldRow>
+                <FieldRow label="Place">
+                  <input value={dispatchPlace} onChange={(e) => setDispatchPlace(e.target.value)} className={`${inputCls} w-40`} />
+                </FieldRow>
+                <FieldRow label={<><span>Pincode</span><Req /></>}>
+                  <div className="flex items-center gap-1">
+                    <input value={dispatchPincode} onChange={(e) => setDispatchPincode(e.target.value)} className={`${inputCls} w-24`} />
+                    <select value={dispatchState} onChange={(e) => setDispatchState(e.target.value)} className={`${inputCls} flex-1`}>
+                      {ewbStates.map((stateName) => <option key={stateName}>{stateName}</option>)}
+                    </select>
+                  </div>
+                </FieldRow>
+              </div>
+            </section>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <section className="rounded border border-gray-300 bg-white shadow-sm">
+              <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Bill To</div>
+              <div className="space-y-2 p-3">
+                <FieldRow label="Name">
+                  <input value={billToName} onChange={(e) => setBillToName(e.target.value)} className={`${inputCls} flex-1`} />
+                </FieldRow>
+                <FieldRow label={<><span>GSTIN</span><Req /></>}>
+                  <input value={billToGstin} onChange={(e) => setBillToGstin(e.target.value)} className={`${inputCls} flex-1 bg-blue-50`} placeholder="GSTIN" />
+                </FieldRow>
+                <FieldRow label={<><span>State</span><Req /></>}>
+                  <select value={billToState} onChange={(e) => setBillToState(e.target.value)} className={`${inputCls} flex-1`}>
+                    {ewbStates.map((stateName) => <option key={stateName}>{stateName}</option>)}
+                  </select>
+                </FieldRow>
+              </div>
+            </section>
+
+            <section className="rounded border border-gray-300 bg-white shadow-sm">
+              <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Ship To</div>
+              <div className="space-y-2 p-3">
+                <FieldRow label="Address">
+                  <div className="flex gap-1">
+                    <input value={shipAddress1} onChange={(e) => setShipAddress1(e.target.value)} className={`${inputCls} flex-1`} />
+                    <input value={shipAddress2} onChange={(e) => setShipAddress2(e.target.value)} className={`${inputCls} flex-1`} />
+                  </div>
+                </FieldRow>
+                <FieldRow label="Place">
+                  <input value={shipPlace} onChange={(e) => setShipPlace(e.target.value)} className={`${inputCls} w-40`} />
+                </FieldRow>
+                <FieldRow label={<><span>Pincode</span><Req /></>}>
+                  <div className="flex items-center gap-1">
+                    <input value={shipPincode} onChange={(e) => setShipPincode(e.target.value)} className={`${inputCls} w-24`} />
+                    <select value={shipState} onChange={(e) => setShipState(e.target.value)} className={`${inputCls} flex-1`}>
+                      {ewbStates.map((stateName) => <option key={stateName}>{stateName}</option>)}
+                    </select>
+                  </div>
+                </FieldRow>
+              </div>
+            </section>
+          </div>
+
+          <section className="rounded border border-gray-300 bg-white shadow-sm">
+            <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Item Details</div>
+            <div className="p-3">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="border border-gray-300 bg-gray-100">
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-36">Product Name</th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-36">Description</th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-24">HSN <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-24">Quantity</th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-20">Unit</th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-28">Value/Taxable Value (Rs.) <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-32">CGST / SGST Rate(%) <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-28">IGST Rate(%) <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-28">CESS Advit Rate(%) <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-left font-semibold text-gray-700 w-28">CESS non Advit Rate <Req /></th>
+                      <th className="border border-gray-300 px-2 py-1.5 text-center w-10">
+                        <button type="button" onClick={addItem} className="rounded bg-blue-600 p-0.5 text-white hover:bg-blue-700"><Plus size={12} /></button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={item.id} className="border border-gray-300 hover:bg-gray-50">
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.name} onChange={(e) => updateItem(item.id, "name", e.target.value)} placeholder="Name" className={tableCellInput} /></td>
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.description} onChange={(e) => updateItem(item.id, "description", e.target.value)} placeholder="Description" className={tableCellInput} /></td>
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} className={tableCellInput} /></td>
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.quantity} onChange={(e) => updateItem(item.id, "quantity", e.target.value)} className={`${tableCellInput} text-right`} /></td>
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.unit} onChange={(e) => updateItem(item.id, "unit", e.target.value)} className={tableCellInput} /></td>
+                        <td className="border border-gray-300 px-1 py-1"><input value={item.taxableValue} onChange={(e) => updateItem(item.id, "taxableValue", e.target.value)} className={`${tableCellInput} text-right`} /></td>
+                        <td className="border border-gray-300 px-1 py-1">
+                          <select value={item.cgstSgst} onChange={(e) => updateItem(item.id, "cgstSgst", e.target.value)} className={tableCellInput}>
+                            {ewbGstRates.map((rate) => <option key={rate}>{rate}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-1 py-1">
+                          <select value={item.igst} onChange={(e) => updateItem(item.id, "igst", e.target.value)} className={tableCellInput}>
+                            {ewbGstRates.map((rate) => <option key={rate}>{rate}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-1 py-1">
+                          <select value={item.cessAdvit} onChange={(e) => updateItem(item.id, "cessAdvit", e.target.value)} className={tableCellInput}>
+                            {ewbGstRates.map((rate) => <option key={rate}>{rate}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-1 py-1">
+                          <select value={item.cessNonAdvit} onChange={(e) => updateItem(item.id, "cessNonAdvit", e.target.value)} className={tableCellInput}>
+                            {['0', '1', '2', '3', '4', '5'].map((rate) => <option key={rate}>{rate}</option>)}
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-1 py-1 text-center">
+                          <button type="button" onClick={() => removeItem(item.id)} className="text-red-500 hover:text-red-700"><Trash2 size={12} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 grid grid-cols-8 gap-2 rounded border border-gray-300 bg-gradient-to-r from-green-50 to-blue-50 p-3">
+                <TotalField label={<><span>Total Taxable Amount</span><Req /></>} value={totals.totalTaxable} />
+                <TotalField label={<><span>CGST Amount</span><Req /></>} value={totals.totalCgst} />
+                <TotalField label={<><span>SGST Amount</span><Req /></>} value={totals.totalSgst} />
+                <TotalField label={<><span>IGST Amount</span><Req /></>} value={totals.totalIgst} />
+                <TotalField label={<><span>CESS Advit Amount</span><Req /></>} value={totals.totalCessAdvit} />
+                <TotalField label={<><span>CESS Non Advit Amount</span><Req /></>} value={totals.totalCessNon} />
+                <div className="flex flex-col gap-1">
+                  <label className="flex items-center gap-0.5 font-medium text-gray-600">Other Amount(+-) <InfoIcon /></label>
+                  <input value={otherAmount} onChange={(e) => setOtherAmount(e.target.value)} className="w-full rounded border border-gray-300 bg-yellow-50 px-1.5 py-0.5 text-right text-xs font-semibold" placeholder="0.00" />
+                </div>
+                <TotalField label={<><span>Total Inv. Amount</span><InfoIcon /></>} value={totals.totalInvoice} className="font-bold text-green-700" />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded border border-gray-300 bg-white shadow-sm">
+            <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">Transportation Details</div>
+            <div className="p-3">
+              <div className="flex flex-wrap gap-6 items-center">
+                <FieldGroup label="Transporter ID">
+                  <input value={transporterId} onChange={(e) => setTransporterId(e.target.value)} className={`${inputCls} w-48`} />
+                </FieldGroup>
+                <FieldGroup label="Transporter Name">
+                  <input value={transporterName} onChange={(e) => setTransporterName(e.target.value)} className={`${inputCls} w-40`} />
+                </FieldGroup>
+                <FieldGroup label={<><span>Approximate Distance (in KM)</span><Req /></>}>
+                  <input value={approxDistance} onChange={(e) => setApproxDistance(e.target.value)} className={`${inputCls} w-24 text-right`} />
+                </FieldGroup>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded border border-gray-300 bg-white shadow-sm">
+            <div className="rounded-t bg-gradient-to-r from-purple-700 to-purple-600 px-3 py-1.5 text-xs font-semibold tracking-wide text-white">PART-B</div>
+            <div className="space-y-3 p-3">
+              <div className="flex flex-wrap gap-6 items-center">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Mode</span>
+                  {['Road', 'Rail', 'All', 'Ship or Ship Chin Roed/Rail'].map((modeOption) => (
+                    <label key={modeOption} className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="mode" value={modeOption.toLowerCase()} checked={mode === modeOption.toLowerCase()} onChange={() => setMode(modeOption.toLowerCase())} className="accent-blue-600" />
+                      <span>{modeOption}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 ml-8">
+                  <span className="font-semibold text-gray-700">Vehicle Type</span>
+                  {['Regular', 'Over Dimensional Cargo'].map((vehicleOption) => (
+                    <label key={vehicleOption} className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="vehicleType" value={vehicleOption.toLowerCase()} checked={vehicleType === vehicleOption.toLowerCase()} onChange={() => setVehicleType(vehicleOption.toLowerCase())} className="accent-blue-600" />
+                      <span>{vehicleOption}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-6 items-center">
+                <FieldGroup label="Vehicle No">
+                  <input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} className={`${inputCls} w-36 bg-yellow-50`} />
+                </FieldGroup>
+                <FieldGroup label="Transporter Doc. No. & Date">
+                  <div className="flex items-center gap-2">
+                    <input value={transporterDocNo} onChange={(e) => setTransporterDocNo(e.target.value)} className={`${inputCls} w-48`} placeholder="Document No." />
+                    <input value={transporterDocDate} onChange={(e) => setTransporterDocDate(e.target.value)} className={`${inputCls} w-28`} placeholder="DD/MM/YYYY" maxLength={10} />
+                  </div>
+                </FieldGroup>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+          <button type="button" onClick={() => setShowPreview(true)} className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Preview</button>
+          <button type="button" onClick={onClose} className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+          <button type="button" onClick={() => void handleSubmit()} disabled={isSubmitting} className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400">
+            {isSubmitting ? "Generating…" : "Generate E-Way Bill"}
+          </button>
+        </div>
+      </div>
+      {showPreview && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 px-3 py-4 print:hidden">
+          <div className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <EWayBillPreview data={previewData} onClose={() => setShowPreview(false)} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const inputCls = "border border-gray-400 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
+const tableCellInput = "w-full border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
+
+function Req() {
+  return <span className="ml-0.5 font-bold text-red-500">*</span>;
+}
+
+function InfoIcon() {
+  return <Info size={12} className="flex-shrink-0 cursor-pointer text-blue-500" />;
+}
+
+function FieldGroup({ label, required, children }: { label: ReactNode; required?: boolean; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex items-center gap-0.5 whitespace-nowrap font-medium text-gray-700">{label}{required && <Req />}</span>
+      {children}
+    </div>
+  );
+}
+
+function FieldRow({ label, children }: { label: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex w-20 flex-shrink-0 items-center gap-0.5 pt-0.5 font-medium text-gray-700">{label}</span>
+      <div className="flex flex-1 items-center gap-1">{children}</div>
+    </div>
+  );
+}
+
+function TotalField({ label, value, className = "" }: { label: ReactNode; value: string; className?: string }) {
+  return (
+    <div className={`flex flex-col gap-1 ${className}`}>
+      <label className="flex items-center gap-0.5 font-medium leading-tight text-gray-600">{label}</label>
+      <input readOnly value={value} className="w-full rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-right text-xs font-semibold" />
+    </div>
+  );
+}
+
 export default function InvoicePage() {
   const router = useRouter();
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
@@ -215,6 +1056,7 @@ export default function InvoicePage() {
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [attachedDocument, setAttachedDocument] = useState<{ name: string; dataUrl: string } | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [showEwayBillModal, setShowEwayBillModal] = useState(false);
 
   // ── data application / lookups (identical logic to file 1) ─────────────
 
@@ -1771,8 +2613,34 @@ export default function InvoicePage() {
               </div>
             </div>
 
+            <InvoiceEwayBillModal
+              isOpen={showEwayBillModal}
+              onClose={() => setShowEwayBillModal(false)}
+              invoiceNumber={invoiceNumber}
+              invoiceDate={invoiceDate}
+              partyName={partyName}
+              gstin={gstin}
+              state={state}
+              address={address}
+              city={city}
+              pincode={pincode}
+              transportName={transportName}
+              vehicleNumber={vehicleNumber}
+              invoiceItems={items}
+              taxType={taxType}
+              onGenerated={(ewayBillNoValue) => setEwayBillNo(ewayBillNoValue)}
+            />
+
             {/* ── Action Bar ── */}
             <div className="flex items-center justify-end gap-2 pb-2">
+              <button
+                type="button"
+                onClick={() => setShowEwayBillModal(true)}
+                className="flex items-center gap-1.5 rounded border border-gray-300 bg-white px-4 py-2 text-[13px] font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+              >
+                E-Way Bill
+              </button>
+
               <button
                 type="button"
                 onClick={() => void handleShareInvoice()}

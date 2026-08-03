@@ -119,6 +119,8 @@ export default function GenerateBillPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceSummary | null>(
     null,
   );
+  const [previewMode, setPreviewMode] = useState<"invoice" | "delivery-challan">
+    ("invoice");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -434,11 +436,16 @@ export default function GenerateBillPage() {
     );
   };
 
-  const renderPreviewForInvoice = (invoice: InvoiceSummary) => {
-    // Use the Tax Invoice preview template for all document types
- const label = getBillTypeLabel(invoice);
+  const renderPreviewForInvoice = (
+    invoice: InvoiceSummary,
+    mode: "invoice" | "delivery-challan" = "invoice",
+  ) => {
+    const label = getBillTypeLabel(invoice);
     const isDuplicate = Boolean(invoice.isDuplicate || getInvoiceDuplicateFlag(invoice));
     const pageLabels = getDuplicateCopyPageLabels(isDuplicate);
+    if (mode === "delivery-challan") {
+      return <DeliveryChallen invoice={invoice} pageLabels={pageLabels} />;
+    }
     if (isDebitNoteInvoice(invoice)) {
       return <DNPreview invoice={invoice} pageLabels={pageLabels} />;
     }
@@ -498,14 +505,19 @@ export default function GenerateBillPage() {
     return <InvoicePreview invoice={invoice} />;
   };
 
-  const openPreview = (invoice: InvoiceSummary) => {
+  const openPreview = (
+    invoice: InvoiceSummary,
+    mode: "invoice" | "delivery-challan" = "invoice",
+  ) => {
     setSelectedInvoice(invoice);
+    setPreviewMode(mode);
     setIsPreviewOpen(true);
   };
 
   const closePreview = () => {
     setIsPreviewOpen(false);
     setSelectedInvoice(null);
+    setPreviewMode("invoice");
   };
 
   const handlePrintPreview = (invoice: InvoiceSummary) => {
@@ -514,7 +526,7 @@ export default function GenerateBillPage() {
       window.alert("Please allow pop-ups to open the print preview.");
       return;
     }
-    const markup = renderToStaticMarkup(renderPreviewForInvoice(invoice));
+    const markup = renderToStaticMarkup(renderPreviewForInvoice(invoice, previewMode));
     const origin = window.location.origin;
     const html = `<!DOCTYPE html>
 <html>
@@ -758,6 +770,11 @@ export default function GenerateBillPage() {
   const handlePreview = (invoice: InvoiceSummary) => {
     setOpenActionMenuId(null);
     openPreview(invoice);
+  };
+
+  const handlePreviewDeliveryChallan = (invoice: InvoiceSummary) => {
+    setOpenActionMenuId(null);
+    openPreview(invoice, "delivery-challan");
   };
 
   const handleCopyLink = async (invoice: InvoiceSummary) => {
@@ -1589,6 +1606,16 @@ export default function GenerateBillPage() {
                               Preview
                             </button>
 
+                            {label === "Tax Invoice" && !isCancelled && (
+                              <button
+                                type="button"
+                                onClick={() => handlePreviewDeliveryChallan(invoice)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                              >
+                                Delivery Challan
+                              </button>
+                            )}
+
                             {(isProforma || isQuotation || isDeliveryChallan) && (
                               alreadyConverted ? (
                                 <div className="flex flex-col items-end gap-1">
@@ -1679,6 +1706,8 @@ export default function GenerateBillPage() {
                                     Preview
                                   </button>
 
+
+
                                   {!isCancelled && (
                                     <button
                                       type="button"
@@ -1716,6 +1745,16 @@ export default function GenerateBillPage() {
                                   >
                                     Open PDF
                                   </button>
+
+                                  {!isCancelled && label === "Tax Invoice" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handlePreviewDeliveryChallan(invoice)}
+                                      className="block w-full px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                    >
+                                      Delivery Challan Preview
+                                    </button>
+                                  )}
 
                                   {!isCancelled && (
                                     <button
@@ -1801,7 +1840,7 @@ export default function GenerateBillPage() {
                         ref={previewContentRef}
                         className="mx-auto w-full max-w-4xl bg-white"
                       >
-                        {renderPreviewForInvoice(selectedInvoice)}
+                        {renderPreviewForInvoice(selectedInvoice, previewMode)}
                       </div>
                     </div>
 

@@ -68,6 +68,9 @@ export function DeliveryChallanPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceId = searchParams.get("invoiceId");
+  const sourceInvoiceId = searchParams.get("sourceInvoiceId");
+  const previewOnly = searchParams.get("previewOnly") === "1";
+  const previewOnlyMode = Boolean(sourceInvoiceId || previewOnly);
   const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -154,7 +157,10 @@ export function DeliveryChallanPageContent() {
   }, []);
 
   useEffect(() => {
-    if (!invoiceId) {
+    const activeInvoiceId = sourceInvoiceId || invoiceId;
+    const documentType = sourceInvoiceId ? "invoice" : "delivery-challan";
+
+    if (!activeInvoiceId) {
       setIsEditing(false);
       setEditingInvoiceId(null);
       return;
@@ -162,7 +168,7 @@ export function DeliveryChallanPageContent() {
 
     const loadInvoice = async () => {
       try {
-        const response = await fetch(`/api/invoices?id=${encodeURIComponent(invoiceId)}&documentType=delivery-challan`);
+        const response = await fetch(`/api/invoices?id=${encodeURIComponent(activeInvoiceId)}&documentType=${documentType}`);
         if (!response.ok) {
           return;
         }
@@ -172,8 +178,17 @@ export function DeliveryChallanPageContent() {
           return;
         }
 
-        setIsEditing(true);
-        setEditingInvoiceId(invoiceId);
+        if (sourceInvoiceId) {
+          setShowPreview(true);
+          setIsEditing(false);
+          setEditingInvoiceId(null);
+          setIsDuplicateCopy(false);
+        } else {
+          setIsEditing(true);
+          setEditingInvoiceId(invoiceId);
+          setIsDuplicateCopy(Boolean(data.isDuplicate || getInvoiceDuplicateFlag(data as { invoiceNumber?: string | null; isDuplicate?: boolean | null })));
+        }
+
         setChallanNo(String(data.invoiceNumber || ""));
         setChallanDate(String(data.invoiceDate || today).slice(0, 10));
         setPartyName(String(data.partyName || ""));
@@ -198,7 +213,6 @@ export function DeliveryChallanPageContent() {
         setDeliveredByDate(String(data.deliveredByDate || "").slice(0, 10) || today);
         setDeliveredBySignature(String(data.deliveredBySignature || ""));
         setAuthorizedSignature(String(data.authorizedSignature || ""));
-        setIsDuplicateCopy(Boolean(data.isDuplicate || getInvoiceDuplicateFlag(data as { invoiceNumber?: string | null; isDuplicate?: boolean | null })));
 
         const loadedItems = Array.isArray(data.items)
           ? data.items.map((item: Record<string, unknown>, index: number) => ({
@@ -220,7 +234,7 @@ export function DeliveryChallanPageContent() {
     };
 
     void loadInvoice();
-  }, [customers, invoiceId]);
+  }, [customers, invoiceId, sourceInvoiceId]);
 
   const handleCustomerSelect = (id: string) => {
     if (id === ADD_NEW_CUSTOMER_OPTION) {
@@ -488,7 +502,7 @@ export function DeliveryChallanPageContent() {
       )}
       <ProductCreateModal open={showAddProductModal} initialName={newProductName} onClose={() => setShowAddProductModal(false)} onProductCreated={handleProductCreated} />
       <div className="min-h-screen bg-[#e8eaf0] font-sans text-[13px]">
-        <div className={`${showPreview ? "hidden" : ""} print:hidden`}>
+        <div className={`${showPreview || previewOnlyMode ? "hidden" : ""} print:hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-300 bg-[#f4f5f8] px-4 py-2 shadow-sm">
             <span className="text-base font-semibold text-gray-800">Delivery Challan</span>
             <div className="flex flex-wrap items-center gap-2">
@@ -678,8 +692,13 @@ export function DeliveryChallanPageContent() {
             </div>
           </div>
         </div>
-        <div className={`${showPreview ? "block" : "hidden"} print:block`}>
+        <div className={`${showPreview || previewOnlyMode ? "block" : "hidden"} print:block`}>
           <div className="mx-auto max-w-[1400px] p-3">
+          {previewOnlyMode && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              Preview only: delivery challan content is loaded from the source invoice.
+            </div>
+          )}
           <DeliveryChallen
             partyName={partyName}
             phone={phone}

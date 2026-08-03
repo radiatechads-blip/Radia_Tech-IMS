@@ -59,28 +59,30 @@ export async function GET() {
       },
     });
 
-    const history = rows.map((row) => {
-      const formData = parseJsonValue(row.formData);
-      const responsePayload = parseJsonValue(row.responsePayload);
-      const generatedDate = typeof responsePayload === 'object' && responsePayload && 'ewayBillDate' in responsePayload
-        ? String((responsePayload as Record<string, unknown>).ewayBillDate || '')
-        : '';
-      const validUpto = typeof responsePayload === 'object' && responsePayload && 'validUpto' in responsePayload
-        ? String((responsePayload as Record<string, unknown>).validUpto || '')
-        : '';
+    const history = rows
+      .filter((row) => typeof row.ewayBillNumber === 'string' && row.ewayBillNumber.trim() !== '')
+      .map((row) => {
+        const formData = parseJsonValue(row.formData);
+        const responsePayload = parseJsonValue(row.responsePayload);
+        const generatedDate = typeof responsePayload === 'object' && responsePayload && 'ewayBillDate' in responsePayload
+          ? String((responsePayload as Record<string, unknown>).ewayBillDate || '')
+          : '';
+        const validUpto = typeof responsePayload === 'object' && responsePayload && 'validUpto' in responsePayload
+          ? String((responsePayload as Record<string, unknown>).validUpto || '')
+          : '';
 
-      return {
-        id: row.id,
-        ewbNo: row.ewayBillNumber || '-',
-        ewbDate: generatedDate || row.createdAt?.toISOString?.() || '',
-        validUpto,
-        billNo: row.documentNo || '-',
-        docType: row.documentType || '-',
-        customerName: row.customerName || '-',
-        gstin: row.gstin || '-',
-        formData,
-      };
-    });
+        return {
+          id: row.id,
+          ewbNo: row.ewayBillNumber,
+          ewbDate: generatedDate || row.createdAt?.toISOString?.() || '',
+          validUpto,
+          billNo: row.documentNo || '-',
+          docType: row.documentType || '-',
+          customerName: row.customerName || '-',
+          gstin: row.gstin || '-',
+          formData,
+        };
+      });
 
     return NextResponse.json(history);
   } catch (error) {

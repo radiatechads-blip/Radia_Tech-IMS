@@ -1561,59 +1561,61 @@ function EWayBillFormContent() {
                 Generate E-Way Bill
               </button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-[#cad5e2] text-[#000000] uppercase text-[11px]">
-                    <th className="px-3 py-2 text-left font-semibold">Date</th>
-                    <th className="px-3 py-2 text-left font-semibold">Valid Upto</th>
-                    <th className="px-3 py-2 text-left font-semibold">EWB No</th>
-                    <th className="px-3 py-2 text-left font-semibold">Bill No</th>
-                    <th className="px-3 py-2 text-left font-semibold">Type of Bill</th>
-                    <th className="px-3 py-2 text-left font-semibold">Customer</th>
-                    <th className="px-3 py-2 text-left font-semibold">GSTIN</th>
-                    <th className="px-3 py-2 text-center font-semibold">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingHistory ? (
-                    <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-gray-400">Loading history…</td>
+            {history.length > 0 || isLoadingHistory ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#cad5e2] text-[#000000] uppercase text-[11px]">
+                      <th className="px-3 py-2 text-left font-semibold">Date</th>
+                      <th className="px-3 py-2 text-left font-semibold">Valid Upto</th>
+                      <th className="px-3 py-2 text-left font-semibold">EWB No</th>
+                      <th className="px-3 py-2 text-left font-semibold">Bill No</th>
+                      <th className="px-3 py-2 text-left font-semibold">Type of Bill</th>
+                      <th className="px-3 py-2 text-left font-semibold">Customer</th>
+                      <th className="px-3 py-2 text-left font-semibold">GSTIN</th>
+                      <th className="px-3 py-2 text-center font-semibold">Action</th>
                     </tr>
-                  ) : history.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-gray-400">No e-way bills generated yet.</td>
-                    </tr>
-                  ) : (
-                    history.map(record => (
-                      <tr key={record.id} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
-                        <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.ewbDate}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.validUpto || '-'}</td>
-                        <td className="px-3 py-2 font-medium text-[#000000] whitespace-nowrap">{record.ewbNo || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.billNo || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.docType}</td>
-                        <td className="px-3 py-2 text-[#000000]">{record.customerName || '-'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.gstin || '-'}</td>
-                        <td className="px-3 py-2 text-center">
-                          <button
-                            onClick={() => {
-                              setHistoryPreviewData(record.formData);
-                              setHistoryPreviewNumber(record.ewbNo);
-                              setHistoryPreviewGeneratedDate(record.ewbDate);
-                              setHistoryPreviewValidUpto(record.validUpto);
-                            }}
-                            className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold px-3 py-1 rounded transition-colors"
-                          >
-                            <Eye size={11} />
-                            Preview
-                          </button>
-                        </td>
+                  </thead>
+                  <tbody>
+                    {isLoadingHistory ? (
+                      <tr>
+                        <td colSpan={8} className="px-3 py-6 text-center text-gray-400">Loading history…</td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      history.map(record => (
+                        <tr key={record.id} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.ewbDate}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.validUpto || '-'}</td>
+                          <td className="px-3 py-2 font-medium text-[#000000] whitespace-nowrap">{record.ewbNo || '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.billNo || '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.docType}</td>
+                          <td className="px-3 py-2 text-[#000000]">{record.customerName || '-'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-[#000000]">{record.gstin || '-'}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => {
+                                setHistoryPreviewData(record.formData);
+                                setHistoryPreviewNumber(record.ewbNo);
+                                setHistoryPreviewGeneratedDate(record.ewbDate);
+                                setHistoryPreviewValidUpto(record.validUpto);
+                              }}
+                              className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-semibold px-3 py-1 rounded transition-colors"
+                            >
+                              <Eye size={11} />
+                              Preview
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="px-3 py-6 text-center text-gray-500">
+                History will appear here after a successful E-Way Bill generation.
+              </div>
+            )}
           </section>
         </div>
       )}
