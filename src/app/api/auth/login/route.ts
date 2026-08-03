@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
+    const databaseUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      logServerError("api.auth.login", new Error("Missing DATABASE_URL or DIRECT_URL"));
+      return jsonError("Server misconfigured: DATABASE_URL or DIRECT_URL is required.", 500);
+    }
+
+    const jwtSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+    if (!jwtSecret) {
+      logServerError("api.auth.login", new Error("Missing JWT secret environment variable"));
+      return jsonError("Server misconfigured: JWT_SECRET or NEXTAUTH_SECRET is required.", 500);
+    }
+
     const user = await prisma.adminUser.findUnique({ where: { email } });
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
