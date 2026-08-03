@@ -3,13 +3,13 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
 function getJwtSecret() {
-  return process.env.JWT_SECRET || null;
+  return process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || null;
 }
 
 function getRequiredJwtSecret() {
   const secret = getJwtSecret();
   if (!secret) {
-    throw new Error("JWT_SECRET is required");
+    throw new Error("JWT_SECRET or NEXTAUTH_SECRET is required");
   }
   return secret;
 }

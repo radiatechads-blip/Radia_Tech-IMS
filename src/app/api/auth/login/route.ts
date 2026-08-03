@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { verifyPassword, signToken } from "@/lib/auth";
+export const runtime = "nodejs";
+
 import { jsonError, logServerError } from "@/lib/api";
+import { signToken, verifyPassword } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { checkRateLimit, getClientIdentifier } from "@/lib/rateLimit";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
