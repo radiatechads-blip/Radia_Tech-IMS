@@ -47,7 +47,7 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 
 function toCurrency(value: number | string | null | undefined) {
   const numericValue = Number(value || 0);
-  return `₹${currencyFormatter.format(Number.isFinite(numericValue) ? numericValue : 0)}`;
+  return currencyFormatter.format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
 function toDisplayDate(value: string | null | undefined) {
@@ -59,6 +59,24 @@ function toDisplayDate(value: string | null | undefined) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function toBillNumber(value: string | null | undefined) {
+  if (!value) return "-";
+
+  const text = String(value).trim();
+  if (!text) return "-";
+
+  const normalized = text
+    .replace(/\b(?:bill\s+(?:no|number)|invoice\s+(?:no|number)|document\s+(?:no|number))\b/gi, "")
+    .replace(/\b(?:nill|nil|none|null|not\s+available|na)\b/gi, "")
+    .replace(/\s*\(\s*(?:duplicate|copy|dup|original)\s*\)/gi, "")
+    .replace(/[\s:.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const cleaned = normalized.replace(/\b(\w+)(\s+\1)+\b/gi, "$1");
+  return cleaned || "-";
 }
 
 export function buildBillReportRows(
@@ -76,7 +94,7 @@ export function buildBillReportRows(
       row.date = toDisplayDate(record.invoiceDate ?? null);
     }
     if (selectedColumns.includes("billNumber")) {
-      row.billNumber = String(record.invoiceNumber || "-");
+      row.billNumber = toBillNumber(record.invoiceNumber ?? null);
     }
     if (selectedColumns.includes("customerName")) {
       row.customerName = String(record.partyName || "-");

@@ -1268,7 +1268,7 @@ export default function GenerateBillPage() {
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.35-4.35" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="font-medium">Search:</span>
+              <span className="font-medium"></span>
               <select
                 value={searchField}
                 onChange={(event) =>
