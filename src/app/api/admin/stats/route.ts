@@ -4,6 +4,7 @@ import { categories as fallbackCategories, products as fallbackProducts } from "
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailableError, jsonError, logServerError } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { readStoredHistoryRecords } from "@/lib/ewaybillHistoryStorage";
 import { readInvoiceStore } from "@/lib/invoiceStorage";
 import { buildLowStockAlerts } from "@/lib/lowStockAlerts";
 import { NextRequest, NextResponse } from "next/server";
@@ -142,6 +143,26 @@ export async function GET(request: NextRequest) {
     const totalStock = Number(stockAggregation._sum.stock ?? 0);
     const lowStockAlerts = buildLowStockAlerts(lowStockProducts);
 
+    const [deliveryChallanCount, creditNoteCount, debitNoteCount, quotationCount, annexureCount, pendingMaterialCount, proformaCount, taxInvoiceCount] = await Promise.all([
+      prisma.deliveryChallan.count(),
+      prisma.creditNote.count(),
+      prisma.debitNote.count(),
+      prisma.quotation.count(),
+      prisma.annexure.count(),
+      prisma.pendingMaterial.count(),
+      prisma.proformaInvoice.count(),
+      prisma.invoice.count({ where: { billType: { in: ["Invoice", "Tax Invoice"] } } }),
+    ]);
+
+    let eWayBillCount = 0;
+    try {
+      eWayBillCount = await prisma.eWayBillFormSubmission.count({ where: { ewayBillNumber: { not: "" } } });
+    } catch (eWayBillError) {
+      logServerError("api.admin.stats.eWayBillHistoryCount", eWayBillError);
+      const history = await readStoredHistoryRecords();
+      eWayBillCount = history.length;
+    }
+
     let totalSoldProducts = 0;
     let totalAmount = 0;
     let totalBills = 0;
@@ -220,6 +241,17 @@ export async function GET(request: NextRequest) {
       lowStockAlerts,
       categoriesWithCounts: categoriesWithCounts.map((c) => ({ name: c.name, products: c._count.products })),
       taxInvoiceSeries,
+      documentCounts: {
+        eWayBillRecords: eWayBillCount,
+        deliveryChallan: deliveryChallanCount,
+        creditNote: creditNoteCount,
+        debitNote: debitNoteCount,
+        quotation: quotationCount,
+        taxInvoice: taxInvoiceCount,
+        annexure: annexureCount,
+        pendingMaterial: pendingMaterialCount,
+        proformaInvoice: proformaCount,
+      },
       businessSummary: {
         period,
         trend: trendData,

@@ -57,6 +57,17 @@ interface Stats {
   lowStockAlerts?: LowStockAlert[];
   categoriesWithCounts?: CategoryCount[];
   taxInvoiceSeries?: TaxInvoiceSeriesPoint[];
+  documentCounts?: {
+    eWayBillRecords: number;
+    deliveryChallan: number;
+    creditNote: number;
+    debitNote: number;
+    quotation: number;
+    taxInvoice: number;
+    annexure: number;
+    pendingMaterial: number;
+    proformaInvoice: number;
+  };
   businessSummary?: { totalBills?: number };
 }
 
@@ -77,6 +88,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [chartRange, setChartRange] = useState<InvoiceRange>("thisMonth");
+  const [showBillOverview, setShowBillOverview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,7 +142,7 @@ export default function AdminDashboard() {
     { label: "Total Sold Products", value: stats?.totalSoldProducts ?? 0, icon: ShoppingCart, tone: "bg-sky-50 text-sky-700", href: "/admin/generate-bill" },
     { label: "Total Amount", value: `₹${(stats?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: DollarSign, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
     { label: "Total Bills", value: totalInvoiceCount, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
-    { label: "E-Way Bills", value: "Open", icon: FileText, tone: "bg-indigo-50 text-indigo-700", href: "/admin/generate-bill/eway-bill" },
+    { label: "E-Way Bills", value: stats?.documentCounts?.eWayBillRecords ?? 0, icon: FileText, tone: "bg-indigo-50 text-indigo-700", href: "/admin/generate-bill/eway-bill" },
   ];
 
   const taxInvoiceChartData = useMemo(
@@ -155,6 +167,23 @@ export default function AdminDashboard() {
     ],
     [stats?.categories, stats?.customers, stats?.products, stats?.stock, stats?.totalAmount, stats?.totalSoldProducts, totalInvoiceCount]
   );
+
+  const documentOverviewData = useMemo(() => {
+    const counts = stats?.documentCounts;
+    return [
+      { label: "E-Way Bill", value: counts?.eWayBillRecords ?? 0 },
+      { label: "Delivery Challan", value: counts?.deliveryChallan ?? 0 },
+      { label: "Credit Note", value: counts?.creditNote ?? 0 },
+      { label: "Debit Note", value: counts?.debitNote ?? 0 },
+      { label: "Quotation", value: counts?.quotation ?? 0 },
+      { label: "Tax Invoice", value: counts?.taxInvoice ?? 0 },
+      { label: "Annexure", value: counts?.annexure ?? 0 },
+      { label: "Pending Material", value: counts?.pendingMaterial ?? 0 },
+      { label: "Proforma Invoice", value: counts?.proformaInvoice ?? 0 },
+    ];
+  }, [stats?.documentCounts]);
+
+  const currentOverviewData = showBillOverview ? documentOverviewData : overviewChartData;
 
   return (
     <AdminShell
@@ -315,19 +344,33 @@ export default function AdminDashboard() {
             </section>
 
             <section className="border border-slate-200 bg-white shadow-sm lg:col-span-7">
-              <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="text-lg font-semibold text-slate-950">Overview Graph</h2>
-                <p className="text-sm text-slate-500">Summary of dashboard card data</p>
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-950">Overview Graph</h2>
+                  <p className="text-sm text-slate-500">Summary of dashboard card data</p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      id="bill-overview-switch"
+                      type="checkbox"
+                      checked={showBillOverview}
+                      onChange={(e) => setShowBillOverview(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-200 text-primary focus:ring-0"
+                    />
+                    <span className="font-medium">Bill overview</span>
+                  </label>
+                </div>
               </div>
               <div className="px-2 py-5">
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={overviewChartData} margin={{ top: 8, right: 8, left: -10, bottom: 8 }}>
+                  <BarChart data={currentOverviewData} margin={{ top: 8, right: 8, left: -10, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} />
                     <YAxis tick={{ fontSize: 11, fill: "#64748b" }} allowDecimals={false} />
                     <Tooltip
                       cursor={{ fill: "rgba(15, 23, 42, 0.06)" }}
-                      formatter={(value) => [value, "Value"]}
+                      formatter={(value) => (showBillOverview ? [value, "Count"] : [value, "Value"])}
                       contentStyle={{ fontSize: 12, borderRadius: 0, border: "1px solid #e2e8f0" }}
                     />
                     <Bar dataKey="value" fill="#0f766e" radius={[4, 4, 0, 0]} />
