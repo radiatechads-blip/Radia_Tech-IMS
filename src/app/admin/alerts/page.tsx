@@ -78,7 +78,8 @@ export default function AlertsPage() {
       if (!res.ok || !data?.ok || !data?.result?.ok) {
         throw new Error(data?.error || data?.result?.error || "Send failed");
       }
-      alert("Reminder sent successfully");
+      const message = data?.result?.skipped ? "Manual reminder sent again for this customer." : "Reminder sent successfully";
+      alert(message);
       // refresh
       const refreshedRes = await fetch("/api/admin/invoice-reminders");
       const refreshed = await readJsonResponse(refreshedRes);

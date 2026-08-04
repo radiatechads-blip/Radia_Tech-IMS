@@ -119,6 +119,7 @@
 
 import { companyInfo } from '@/data/company';
 import { sendEmail } from './email';
+import { shouldSkipReminderSend } from './invoiceReminderPolicy';
 import { prisma } from './prisma';
 
 function fmtDate(d?: Date | string | null) {
@@ -425,10 +426,10 @@ export async function sendInvoiceReminderEmail(invoice: InvoiceReminderInvoice, 
       remainingAmount: paymentSummary.remainingAmount,
     },
   });
-  // Skip if we've already sent this reminder for this invoice
+  // Only block duplicate reminder sends for non-manual reminder types.
   try {
     const existing = await prisma.invoiceReminder.findFirst({ where: { invoiceId: invoice.id, type } });
-    if (existing) {
+    if (shouldSkipReminderSend({ type, existingReminder: existing })) {
       return { ok: true, skipped: true, message: 'Reminder already sent' };
     }
   } catch {

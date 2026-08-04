@@ -661,8 +661,6 @@ model InvoiceReminder {
   sentAt    DateTime @default(now())
   meta      String?  @default("")
   createdAt DateTime @default(now())
-
-  @@unique([invoiceId, type])
 }
 
 model Payment {
