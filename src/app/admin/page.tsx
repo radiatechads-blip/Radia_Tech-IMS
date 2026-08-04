@@ -82,6 +82,8 @@ const CHART_RANGE_OPTIONS: Array<{ value: InvoiceRange; label: string }> = [
 ];
 
 const CATEGORY_CHART_COLORS = ["#1e40af", "#0369a1", "#0891b2", "#0d9488", "#059669", "#16a34a", "#ca8a04", "#dc2626"];
+const OVERVIEW_CHART_COLORS = ["#2563eb", "#0ea5e9", "#14b8a6", "#f97316", "#8b5cf6", "#fb7185", "#f59e0b"];
+const DOCUMENT_OVERVIEW_COLORS = ["#6366f1", "#0284c7", "#0ea5e9", "#10b981", "#f97316", "#ef4444", "#8b5cf6", "#14b8a6"];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -398,9 +400,28 @@ export default function AdminDashboard() {
                       formatter={(value) => (showBillOverview ? [value, "Count"] : [value, "Value"])}
                       contentStyle={{ fontSize: 12, borderRadius: 0, border: "1px solid #e2e8f0" }}
                     />
-                    <Bar dataKey="value" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {currentOverviewData.map((entry, index) => (
+                        <Cell
+                          key={`overview-cell-${entry.label}`}
+                          fill={showBillOverview ? DOCUMENT_OVERVIEW_COLORS[index % DOCUMENT_OVERVIEW_COLORS.length] : OVERVIEW_CHART_COLORS[index % OVERVIEW_CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+
+                <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {currentOverviewData.map((entry, index) => (
+                    <div key={`legend-${entry.label}`} className="flex items-center gap-2 text-sm text-slate-600">
+                      <span
+                        className="inline-block h-3.5 w-3.5 rounded-full"
+                        style={{ backgroundColor: showBillOverview ? DOCUMENT_OVERVIEW_COLORS[index % DOCUMENT_OVERVIEW_COLORS.length] : OVERVIEW_CHART_COLORS[index % OVERVIEW_CHART_COLORS.length] }}
+                      />
+                      <span>{entry.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           </div>
