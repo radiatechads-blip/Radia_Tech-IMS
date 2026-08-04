@@ -2,6 +2,7 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
+import type { SalaryPageData } from "@/lib/localEmployeeStorage";
 import { buildTaxInvoiceChartData, type InvoiceRange } from "@/lib/taxInvoiceChart";
 import { DollarSign, FileText, FolderTree, Inbox, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
@@ -85,6 +86,7 @@ const CATEGORY_CHART_COLORS = ["#1e40af", "#0369a1", "#0891b2", "#0d9488", "#059
 export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [salaryData, setSalaryData] = useState<SalaryPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [chartRange, setChartRange] = useState<InvoiceRange>("thisMonth");
@@ -101,21 +103,33 @@ export default function AdminDashboard() {
           return;
         }
 
-        const res = await fetch("/api/admin/stats");
-        const data = (await res.json().catch(() => null)) as Stats | { error?: unknown } | null;
+        const [statsRes, salaryRes] = await Promise.all([
+          fetch("/api/admin/stats"),
+          fetch("/api/admin/salary-page-data"),
+        ]);
+
+        const statsData = (await statsRes.json().catch(() => null)) as Stats | { error?: unknown } | null;
+        const salaryDataResponse = (await salaryRes.json().catch(() => null)) as { payload?: unknown } | null;
+
         if (cancelled) return;
 
-        if (!res.ok) {
+        if (!statsRes.ok) {
           setStats(null);
-          setError(typeof data && data && "error" in data && typeof data.error === "string" ? data.error : "Unable to load dashboard statistics.");
-          return;
+          setError(typeof statsData && statsData && "error" in statsData && typeof statsData.error === "string" ? statsData.error : "Unable to load dashboard statistics.");
+        } else {
+          setStats(statsData as Stats);
+          setError("");
         }
 
-        setStats(data as Stats);
-        setError("");
+        if (salaryRes.ok && salaryDataResponse && salaryDataResponse.payload) {
+          setSalaryData(salaryDataResponse.payload as SalaryPageData);
+        } else {
+          setSalaryData(null);
+        }
       } catch {
         if (!cancelled) {
           setStats(null);
+          setSalaryData(null);
           setError("Unable to load dashboard statistics.");
         }
       } finally {
@@ -134,6 +148,15 @@ export default function AdminDashboard() {
 
   const totalInvoiceCount = stats?.businessSummary?.totalBills ?? stats?.recentTransactions?.length ?? 0;
 
+  const employeeCount = salaryData?.employees.length ?? 0;
+  const currentMonthSalaryTotal = salaryData?.salaryRecords
+    .filter((record) => {
+      const paidAt = new Date(record.paid_at ?? (record as any).paidAt);
+      const now = new Date();
+      return paidAt.getFullYear() === now.getFullYear() && paidAt.getMonth() === now.getMonth();
+    })
+    .reduce((sum, record) => sum + (record.amount ?? 0), 0) ?? 0;
+
   const statCards = [
     { label: "Active Products", value: stats?.products ?? 0, icon: Package, tone: "bg-blue-50 text-primary", href: "/admin/products" },
     { label: "Stock", value: stats?.stock ?? 0, icon: Package, tone: "bg-emerald-50 text-emerald-700", href: "/admin/products" },
@@ -143,6 +166,8 @@ export default function AdminDashboard() {
     { label: "Total Amount", value: `₹${(stats?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: DollarSign, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
     { label: "Total Bills", value: totalInvoiceCount, icon: Inbox, tone: "bg-amber-50 text-amber-700", href: "/admin/generate-bill" },
     { label: "E-Way Bills", value: stats?.documentCounts?.eWayBillRecords ?? 0, icon: FileText, tone: "bg-indigo-50 text-indigo-700", href: "/admin/generate-bill/eway-bill" },
+    { label: "Employees", value: employeeCount, icon: Users, tone: "bg-violet-50 text-violet-700", href: "/admin/payment-salary-record" },
+    { label: "Salary Paid (This Month)", value: `₹${currentMonthSalaryTotal.toLocaleString("en-IN")}`, icon: DollarSign, tone: "bg-amber-50 text-amber-700", href: "/admin/payment-salary-record" },
   ];
 
   const taxInvoiceChartData = useMemo(

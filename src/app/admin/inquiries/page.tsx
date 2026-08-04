@@ -2,44 +2,45 @@
 
 import AdminShell from "@/components/admin/AdminShell";
 import { getDuplicateCopyInvoiceNumber } from "@/lib/invoiceRoute";
+import { getStoredEmployees, getStoredSalaryRecords, refreshSalaryPageData } from "@/lib/localEmployeeStorage";
 import {
-    BarChart3,
-    CalendarDays,
-    DollarSign,
-    FileText,
-    Gauge,
-    Package,
-    PieChart as PieChartIcon,
-    Radar as RadarIcon,
-    TrendingUp,
-    Users,
+  BarChart3,
+  CalendarDays,
+  DollarSign,
+  FileText,
+  Gauge,
+  Package,
+  PieChart as PieChartIcon,
+  Radar as RadarIcon,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    ComposedChart,
-    Legend,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    PolarAngleAxis,
-    PolarGrid,
-    PolarRadiusAxis,
-    Radar,
-    RadarChart,
-    RadialBar,
-    RadialBarChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 
 type Period = "day" | "month" | "year";
@@ -108,9 +109,20 @@ export default function BusinessInsightPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [salaryRefreshKey, setSalaryRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    void (async () => {
+      try {
+        await refreshSalaryPageData();
+        if (!cancelled) {
+          setSalaryRefreshKey((value) => value + 1);
+        }
+      } catch {
+        // ignore salary load failures in the insight view
+      }
+    })();
 
     async function loadStats() {
       try {
@@ -163,6 +175,29 @@ export default function BusinessInsightPage() {
   }), [stats]);
 
   const trendData = stats?.businessSummary?.trend ?? [];
+
+  const salaryStatus = useMemo(() => {
+    const employees = getStoredEmployees();
+    const now = new Date();
+    return employees.map((employee) => {
+      const currentMonthPaidAmount = getStoredSalaryRecords(employee.id)
+        .filter((record) => {
+          const paidAt = new Date(record.paid_at);
+          return paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
+        })
+        .reduce((sum, record) => sum + record.amount, 0);
+      const salaryAmount = employee.salary ?? 0;
+      const percentPaid = salaryAmount > 0 ? Math.round((currentMonthPaidAmount / salaryAmount) * 100) : 0;
+
+      return {
+        id: employee.id,
+        name: employee.name || "Unknown employee",
+        salaryAmount,
+        currentMonthPaidAmount,
+        percentPaid,
+      };
+    });
+  }, [salaryRefreshKey]);
 
   // ---- Everything below is DERIVED from the same fetched `stats`/`summary`/
   // `trendData` above — no new API calls, no change to the loading logic —
@@ -256,14 +291,60 @@ export default function BusinessInsightPage() {
           <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             <section className="border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="text-lg font-semibold text-slate-950">Business snapshot</h2>
-                <p className="mt-1 text-sm text-slate-500">A quick look at your active inventory and customer base.</p>
+                <h2 className="text-lg font-semibold text-slate-950">Salary status</h2>
+                <p className="mt-1 text-sm text-slate-500">A quick look at employee salary vs paid amount progress.</p>
               </div>
-              <div className="grid gap-4 p-5 md:grid-cols-2">
-                <MiniStatCard label="Active products" value={summary.products.toString()} detail="Live product catalog" />
-                <MiniStatCard label="Categories" value={summary.categories.toString()} detail="Product groups" />
-                <MiniStatCard label="Stock units" value={summary.stock.toString()} detail="Available inventory" />
-                <MiniStatCard label="Customers" value={summary.customers.toString()} detail="Registered buyers" />
+              <div className="space-y-4 p-5 max-h-[28rem] overflow-y-auto">
+                {salaryStatus.length ? (
+                  salaryStatus.map((employee) => (
+                    <div key={employee.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">{employee.name}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">Salary amount</p>
+                          <p className="text-sm font-semibold text-slate-950">{formatCurrency(employee.salaryAmount)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[11px] text-slate-500">Current month paid amount</p>
+                          <p className="text-sm font-semibold text-slate-950">{formatCurrency(employee.currentMonthPaidAmount)}</p>
+                        </div>
+                      </div>
+                    
+                      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                        <span></span>
+                        <span
+                          className="font-semibold"
+                          style={{
+                            color:
+                              employee.percentPaid < 100
+                                ? "#dc2626"
+                                : employee.percentPaid === 100
+                                ? "#16a34a"
+                                : "#ec4899",
+                          }}
+                        >
+                          {Math.max(0, employee.percentPaid)}% paid
+                        </span>
+                      </div>
+                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, employee.percentPaid))}%`,
+                            backgroundColor:
+                              employee.percentPaid < 100
+                                ? "#dc2626"
+                                : employee.percentPaid === 100
+                                ? "#16a34a"
+                                : "#ec4899",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No salary payment data available yet.</p>
+                )}
               </div>
             </section>
 
