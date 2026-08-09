@@ -290,8 +290,8 @@ function AnnexurePageContent() {
     event.preventDefault();
     setNewCustomerError("");
 
-    if (!newCustomerForm.name || !newCustomerForm.phone || !newCustomerForm.email) {
-      setNewCustomerError("Name, phone, and email are required.");
+    if (!newCustomerForm.name) {
+      setNewCustomerError("Name is required.");
       return;
     }
 
@@ -896,7 +896,7 @@ function AnnexurePageContent() {
                 />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Phone *</span>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Phone</span>
                 <input
                   value={newCustomerForm.phone}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
@@ -904,7 +904,7 @@ function AnnexurePageContent() {
                 />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Email *</span>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Email</span>
                 <input
                   type="email"
                   value={newCustomerForm.email}
@@ -938,11 +938,45 @@ function AnnexurePageContent() {
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">State</span>
-                <input
-                  value={newCustomerForm.state}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, state: e.target.value })}
-                  className="admin-input w-full"
-                />
+                <select value={newCustomerForm.state} onChange={(e) => setNewCustomerForm({ ...newCustomerForm, state: e.target.value })} className="admin-input w-full">
+                    <option value="">Select state</option>
+                    <option>Andaman and Nicobar Islands</option>
+                    <option>Andhra Pradesh</option>
+                    <option>Arunachal Pradesh</option>
+                    <option>Assam</option>
+                    <option>Bihar</option>
+                    <option>Chandigarh</option>
+                    <option>Chhattisgarh</option>
+                    <option>Dadra and Nagar Haveli and Daman and Diu</option>
+                    <option>Delhi</option>
+                    <option>Goa</option>
+                    <option>Gujarat</option>
+                    <option>Haryana</option>
+                    <option>Himachal Pradesh</option>
+                    <option>Jammu and Kashmir</option>
+                    <option>Jharkhand</option>
+                    <option>Karnataka</option>
+                    <option>Kerala</option>
+                    <option>Ladakh</option>
+                    <option>Lakshadweep</option>
+                    <option>Madhya Pradesh</option>
+                    <option>Maharashtra</option>
+                    <option>Manipur</option>
+                    <option>Meghalaya</option>
+                    <option>Mizoram</option>
+                    <option>Nagaland</option>
+                    <option>Odisha</option>
+                    <option>Puducherry</option>
+                    <option>Punjab</option>
+                    <option>Rajasthan</option>
+                    <option>Sikkim</option>
+                    <option>Tamil Nadu</option>
+                    <option>Telangana</option>
+                    <option>Tripura</option>
+                    <option>Uttar Pradesh</option>
+                    <option>Uttarakhand</option>
+                    <option>West Bengal</option>
+                  </select>
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">Pincode</span>

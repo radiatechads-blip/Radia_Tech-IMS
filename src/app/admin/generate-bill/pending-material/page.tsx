@@ -1414,8 +1414,8 @@ export function PendingMaterialBillsPageContent() {
     event.preventDefault();
     setNewCustomerError("");
 
-    if (!newCustomerForm.name || !newCustomerForm.phone) {
-      setNewCustomerError("Name and Phone are required.");
+    if (!newCustomerForm.name) {
+      setNewCustomerError("Name is required.");
       return;
     }
 
@@ -1832,7 +1832,7 @@ export function PendingMaterialBillsPageContent() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">Phone *</span>
+                <span className="mb-1 block text-sm font-semibold text-slate-700">Phone</span>
                 <input
                   value={newCustomerForm.phone}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
@@ -1872,13 +1872,46 @@ export function PendingMaterialBillsPageContent() {
                   className="w-full rounded border border-gray-300 p-2 text-sm"
                 />
               </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">State</span>
-                <input
-                  value={newCustomerForm.state}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, state: e.target.value })}
-                  className="w-full rounded border border-gray-300 p-2 text-sm"
-                />
+              <label className="block"><span className="mb-1 block text-sm font-semibold text-slate-700">State</span>
+                <select value={newCustomerForm.state} onChange={(e) => setNewCustomerForm({ ...newCustomerForm, state: e.target.value })} className="w-full rounded border border-gray-300 p-2 text-sm">
+                  <option value="">Select state</option>
+                  <option>Andaman and Nicobar Islands</option>
+                  <option>Andhra Pradesh</option>
+                  <option>Arunachal Pradesh</option>
+                  <option>Assam</option>
+                  <option>Bihar</option>
+                  <option>Chandigarh</option>
+                  <option>Chhattisgarh</option>
+                  <option>Dadra and Nagar Haveli and Daman and Diu</option>
+                  <option>Delhi</option>
+                  <option>Goa</option>
+                  <option>Gujarat</option>
+                  <option>Haryana</option>
+                  <option>Himachal Pradesh</option>
+                  <option>Jammu and Kashmir</option>
+                  <option>Jharkhand</option>
+                  <option>Karnataka</option>
+                  <option>Kerala</option>
+                  <option>Ladakh</option>
+                  <option>Lakshadweep</option>
+                  <option>Madhya Pradesh</option>
+                  <option>Maharashtra</option>
+                  <option>Manipur</option>
+                  <option>Meghalaya</option>
+                  <option>Mizoram</option>
+                  <option>Nagaland</option>
+                  <option>Odisha</option>
+                  <option>Puducherry</option>
+                  <option>Punjab</option>
+                  <option>Rajasthan</option>
+                  <option>Sikkim</option>
+                  <option>Tamil Nadu</option>
+                  <option>Telangana</option>
+                  <option>Tripura</option>
+                  <option>Uttar Pradesh</option>
+                  <option>Uttarakhand</option>
+                  <option>West Bengal</option>
+                </select>
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-semibold text-slate-700">Pincode</span>

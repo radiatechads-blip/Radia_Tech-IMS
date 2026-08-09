@@ -295,8 +295,8 @@ export default function AdminCustomersPage() {
                 <input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="admin-input w-full" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Email</span>
-                <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="admin-input w-full" />
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Email *</span>
+                <input type="email" required value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="admin-input w-full" />
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">GSTIN</span>

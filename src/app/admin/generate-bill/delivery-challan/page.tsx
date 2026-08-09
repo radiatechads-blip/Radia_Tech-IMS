@@ -262,8 +262,8 @@ export function DeliveryChallanPageContent() {
     event.preventDefault();
     setNewCustomerError("");
 
-    if (!newCustomerForm.name || !newCustomerForm.phone || !newCustomerForm.email) {
-      setNewCustomerError("Name, phone, and email are required.");
+    if (!newCustomerForm.name) {
+      setNewCustomerError("Name is required.");
       return;
     }
 
@@ -466,11 +466,11 @@ export function DeliveryChallanPageContent() {
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-gray-500">Phone</label>
-                <input value={newCustomerForm.phone} onChange={(event) => setNewCustomerForm((current) => ({ ...current, phone: event.target.value }))} className={inputCls} required />
+                <input value={newCustomerForm.phone} onChange={(event) => setNewCustomerForm((current) => ({ ...current, phone: event.target.value }))} className={inputCls} />
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-gray-500">Email</label>
-                <input type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className={inputCls} required />
+                <input type="email" value={newCustomerForm.email} onChange={(event) => setNewCustomerForm((current) => ({ ...current, email: event.target.value }))} className={inputCls} />
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-gray-500">GSTIN</label>
@@ -486,7 +486,45 @@ export function DeliveryChallanPageContent() {
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-gray-500">State</label>
-                <input value={newCustomerForm.state} onChange={(event) => setNewCustomerForm((current) => ({ ...current, state: event.target.value }))} className={inputCls} />
+                <select value={newCustomerForm.state} onChange={(event) => setNewCustomerForm((current) => ({ ...current, state: event.target.value }))} className={inputCls}>
+                  <option value="">Select state</option>
+                  <option>Andaman and Nicobar Islands</option>
+                  <option>Andhra Pradesh</option>
+                  <option>Arunachal Pradesh</option>
+                  <option>Assam</option>
+                  <option>Bihar</option>
+                  <option>Chandigarh</option>
+                  <option>Chhattisgarh</option>
+                  <option>Dadra and Nagar Haveli and Daman and Diu</option>
+                  <option>Delhi</option>
+                  <option>Goa</option>
+                  <option>Gujarat</option>
+                  <option>Haryana</option>
+                  <option>Himachal Pradesh</option>
+                  <option>Jammu and Kashmir</option>
+                  <option>Jharkhand</option>
+                  <option>Karnataka</option>
+                  <option>Kerala</option>
+                  <option>Ladakh</option>
+                  <option>Lakshadweep</option>
+                  <option>Madhya Pradesh</option>
+                  <option>Maharashtra</option>
+                  <option>Manipur</option>
+                  <option>Meghalaya</option>
+                  <option>Mizoram</option>
+                  <option>Nagaland</option>
+                  <option>Odisha</option>
+                  <option>Puducherry</option>
+                  <option>Punjab</option>
+                  <option>Rajasthan</option>
+                  <option>Sikkim</option>
+                  <option>Tamil Nadu</option>
+                  <option>Telangana</option>
+                  <option>Tripura</option>
+                  <option>Uttar Pradesh</option>
+                  <option>Uttarakhand</option>
+                  <option>West Bengal</option>
+                </select>
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-medium text-gray-500">Pincode</label>

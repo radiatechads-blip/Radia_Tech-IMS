@@ -47,6 +47,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return jsonError("Name is required.", 400);
     }
 
+    if (typeof email !== "string" || !email.trim()) {
+      return jsonError("Email is required.", 400);
+    }
+
     const phoneValue = typeof phone === "string" ? phone.trim() : "";
     const emailValue = typeof email === "string" ? email.trim() : "";
 
