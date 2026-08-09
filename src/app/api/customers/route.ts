@@ -85,16 +85,19 @@ export async function POST(req: NextRequest) {
       pincode = "",
     } = data as Record<string, unknown>;
 
-    if (typeof name !== "string" || !name.trim() || typeof phone !== "string" || !phone.trim() || typeof email !== "string" || !email.trim()) {
-      return jsonError("Name, phone, and email are required.", 400);
+    if (typeof name !== "string" || !name.trim()) {
+      return jsonError("Name is required.", 400);
     }
+
+    const phoneValue = typeof phone === "string" ? phone.trim() : "";
+    const emailValue = typeof email === "string" ? email.trim() : "";
 
     const customer = await prisma.customer.create({
       data: {
         name: name.trim(),
         contactPerson: typeof contactPerson === "string" ? contactPerson.trim() : "",
-        phone: phone.trim(),
-        email: email.trim(),
+        phone: phoneValue,
+        email: emailValue,
         gstin: typeof gstin === "string" ? gstin.trim() : "",
         address: typeof address === "string" ? address.trim() : "",
         city: typeof city === "string" ? city.trim() : "",

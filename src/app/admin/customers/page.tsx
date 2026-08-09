@@ -37,6 +37,45 @@ interface InvoiceTransaction {
   balance: number;
 }
 
+const indianStates = [
+  "Andaman and Nicobar Islands",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chandigarh",
+  "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu and Kashmir",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Ladakh",
+  "Lakshadweep",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Puducherry",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+];
+
 type CustomersResponse = {
   items: Customer[];
   pagination: PaginationState;
@@ -191,8 +230,8 @@ export default function AdminCustomersPage() {
     setFormError("");
     setSuccessMessage("");
 
-    if (!form.name || !form.phone || !form.email) {
-      setFormError("Name, phone, and email are required.");
+    if (!form.name.trim()) {
+      setFormError("Name is required.");
       return;
     }
 
@@ -252,11 +291,11 @@ export default function AdminCustomersPage() {
                 <input value={form.contactPerson} onChange={(event) => setForm({ ...form, contactPerson: event.target.value })} className="admin-input w-full" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Phone *</span>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Phone</span>
                 <input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="admin-input w-full" />
               </label>
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">Email *</span>
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Email</span>
                 <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="admin-input w-full" />
               </label>
               <label className="block">
@@ -273,7 +312,14 @@ export default function AdminCustomersPage() {
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">State</span>
-                <input value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} className="admin-input w-full" />
+                <select value={form.state} onChange={(event) => setForm({ ...form, state: event.target.value })} className="admin-input w-full">
+                  <option value="">Select state</option>
+                  {indianStates.map((stateName) => (
+                    <option key={stateName} value={stateName}>
+                      {stateName}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">Pincode</span>
